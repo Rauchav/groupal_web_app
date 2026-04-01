@@ -1,0 +1,344 @@
+═══════════════════════════════════════════════════════════════════════════════
+  GROUPAL — COMPLETE PLATFORM DESCRIPTION
+  Version 1.0 · 2026
+═══════════════════════════════════════════════════════════════════════════════
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  WHAT IS GROUPAL?
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Groupal is a next-generation group-buying marketplace where buyers come
+together to unlock massive discounts on high-value products. The platform is
+built on one powerful, simple idea:
+
+  THE MORE BUYERS THAT JOIN, THE BIGGER THE DISCOUNT FOR EVERYONE.
+
+Unlike traditional e-commerce where every buyer pays the same price regardless
+of how many people are shopping, Groupal operates on a linear progressive
+discount model. Every single new buyer who joins a group buy pushes the price
+down a little more — for every existing participant. The group wins together.
+
+Groupal connects verified sellers with motivated buyer communities, creating a
+win-win dynamic that transforms online shopping from a solo transaction into a
+collective, social, and far more rewarding experience.
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  THE CORE MECHANIC — LINEAR PROGRESSIVE DISCOUNT
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Each group buy deal has:
+
+  · An ORIGINAL PRICE   — the full retail / in-store price
+  · A MAXIMUM DISCOUNT  — the best discount possible (e.g. 50%)
+  · A BUYER CAP         — the maximum number of buyers needed to unlock it
+  · A DEADLINE          — the date/time when the deal closes
+
+The discount formula is linear:
+
+  Discount per buyer = Max Discount % ÷ Max Buyers Required
+  Current Discount   = Current Buyer Count × Discount Per Buyer
+
+Example:
+  Product: 65" Smart TV — Original Price: $1,799
+  Max Discount: 50% — Max Buyers: 40
+
+  · With 1 buyer   → 1.25% off  → $1,776.52
+  · With 10 buyers → 12.5% off  → $1,574.13
+  · With 20 buyers → 25% off    → $1,349.25
+  · With 30 buyers → 37.5% off  → $1,124.37
+  · With 40 buyers → 50% off    → $899.50
+
+Every buyer benefits from every new person who joins — including you.
+This creates genuine social incentive to share and recruit.
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  HOW IT WORKS — STEP BY STEP (BUYER JOURNEY)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  STEP 1 — BROWSE & PICK
+  ──────────────────────
+  Buyers explore active group buy deals across multiple categories: smart TVs,
+  vehicles, technology, clothing, accessories, home appliances, travel
+  packages, and much more. Each deal card clearly shows:
+
+    · The product and seller (verified)
+    · The current price (based on how many buyers have already joined)
+    · The maximum possible discount
+    · The current buyer count vs. the buyer cap
+    · The countdown timer to the deal deadline
+    · The savings amount already accumulated by the group
+
+  Buyers can filter by category, sort by discount, and browse both active
+  deals and successfully completed past deals to build confidence.
+
+  ─────────────────────────────────────────────────────────────────────────
+
+  STEP 2 — RESERVE YOUR SPOT (10% UPFRONT)
+  ─────────────────────────────────────────
+  To join a group buy, buyers pay just 10% of the current item price as a
+  reservation fee. This small upfront payment:
+
+    · Locks in their spot in the group buy
+    · Confirms their intent to purchase
+    · Keeps deals serious and prevents fake demand
+
+  Important: By paying the reservation fee, the buyer is committing to
+  purchase the item. The deal is ON. The final price (and therefore the
+  final 90% payment) is not yet known — it depends on how many more buyers
+  join before the deal closes. The buyer's discount grows with every new
+  person who joins after them.
+
+  The reservation fee is proportional to the current price at join time,
+  not the final price. This ensures early joiners always benefit more.
+
+  ─────────────────────────────────────────────────────────────────────────
+
+  STEP 3 — SHARE & RECRUIT
+  ────────────────────────
+  Once inside a group buy, every participant has a powerful personal
+  incentive to recruit more buyers:
+
+    · Every new buyer they bring in reduces the price for the whole group
+    · INCLUDING for themselves — their own final price drops too
+    · Buyers can share deals directly via WhatsApp, X (Twitter), or a
+      direct link
+    · The more buyers join, the closer the group gets to maximum discount
+
+  This creates a viral, self-reinforcing growth loop. Buyers become
+  ambassadors for the deals they care about, not because they're paid to,
+  but because it literally saves them more money.
+
+  ─────────────────────────────────────────────────────────────────────────
+
+  STEP 4 — DEAL CLOSES, EVERYONE WINS
+  ────────────────────────────────────
+  A group buy deal closes when either:
+
+    (a) The countdown deadline expires, OR
+    (b) The maximum number of buyers is reached
+
+  Whichever happens first triggers the deal closure. At that moment:
+
+    · The final discount percentage is locked in and calculated precisely
+    · All participants are charged the remaining 90% of the final price,
+      minus their individual Groupal discount
+    · The seller is notified and begins fulfillment
+    · Buyers receive their items at the group-discounted price
+
+  Example closing scenario:
+  Smart TV deal, max 40 buyers, 30 joined before deadline →
+  37.5% discount applied → final price $1,124.37 for all 30 buyers.
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  MAIN OBJECTIVES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  1. DEMOCRATIZE ACCESS TO BIG-TICKET ITEMS
+     Make premium products affordable for everyday buyers by pooling demand
+     and creating discounts that no individual buyer could negotiate alone.
+
+  2. REWIRE THE INCENTIVE STRUCTURE OF ONLINE SHOPPING
+     In traditional e-commerce, buyers have no reason to involve others.
+     Groupal creates direct financial incentive to share, recruit, and
+     build buying communities around products.
+
+  3. ELIMINATE ADVERTISING COSTS FOR SELLERS
+     Sellers don't need to spend on ads when their own buyers become
+     organic growth channels. Word-of-mouth becomes the primary
+     distribution mechanism, driven by buyers' financial self-interest.
+
+  4. BUILD TRUST THROUGH TRANSPARENCY
+     Every buyer can see the exact discount formula, the current price,
+     the buyer count, and the deadline in real time. There are no hidden
+     fees, surprise prices, or bait-and-switch tactics.
+
+  5. CREATE A NEW CATEGORY: SOCIAL COMMERCE WITH REAL STAKES
+     Unlike social shopping apps that are mostly social with little actual
+     savings, Groupal makes the financial outcome directly tied to group
+     size — giving every interaction genuine commercial meaning.
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  HOW GROUPAL HELPS BUYERS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  · MASSIVE SAVINGS ON REAL PRODUCTS
+    Not coupons for $5 off. Discounts of 20%, 35%, even 50%+ on products
+    that buyers actually want: TVs, motorcycles, appliances, travel packages.
+
+  · LOW COMMITMENT TO JOIN
+    Only 10% upfront. Buyers don't need to have the full purchase price
+    ready on day one. The reservation model makes it accessible.
+
+  · THE PRICE CAN ONLY GO DOWN
+    From the moment a buyer joins, the price can only decrease as more
+    buyers join. Early joiners are protected — they always get the deal
+    at the discount level that was active when they reserved or better.
+
+  · SOCIAL SHOPPING THAT ACTUALLY REWARDS YOU
+    Sharing a Groupal deal with friends isn't altruistic — it's strategic.
+    Every person your network sends to the deal makes YOUR price lower too.
+
+  · VERIFIED SELLERS AND PRODUCT AUTHENTICITY
+    All sellers on Groupal are verified. Buyers shop with confidence
+    knowing the products are genuine and the sellers are accountable.
+
+  · TRANSPARENT DEAL TRACKING
+    Real-time buyer counts, countdown timers, and price updates. Buyers
+    always know exactly where the deal stands.
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  HOW GROUPAL HELPS SELLERS — AN INCREDIBLE REVENUE OPPORTUNITY
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  · SELL VOLUME WITHOUT ADVERTISING SPEND
+    Traditional e-commerce forces sellers to spend heavily on ads to
+    acquire buyers. On Groupal, the buyers recruit each other. The seller
+    lists a deal once and watches the buyer count grow organically —
+    driven by participants who are financially motivated to share.
+
+  · GUARANTEED MINIMUM REVENUE
+    Because every buyer commits with a 10% reservation fee, sellers know
+    demand is real before they commit to fulfillment. No ghost carts,
+    no abandoned checkouts — only committed purchasers.
+
+  · PREDICTABLE BULK ORDERS
+    Group buys create predictable order volumes that sellers can use to
+    negotiate better supplier pricing, optimize manufacturing runs, or
+    manage inventory more efficiently — creating a compounding margin
+    advantage.
+
+  · BRAND EXPOSURE TO QUALIFIED AUDIENCES
+    When a group buy deal is shared across WhatsApp groups, family chats,
+    and social networks, the seller's product reaches highly qualified
+    audiences: people who already trust the person sharing the deal.
+    This is the most valuable kind of marketing — personal recommendation.
+
+  · FLEXIBLE DEAL STRUCTURING
+    Sellers define the deal parameters: original price, maximum discount,
+    buyer cap, and deadline. They set an offer they're comfortable with
+    at scale. The Groupal platform does the rest.
+
+  · ZERO INVENTORY RISK ON SPECULATIVE DEALS
+    Sellers can run deals knowing they won't ship a single unit until
+    the deal closes. If the group doesn't reach a viable size before
+    the deadline, the seller has no obligation to fulfill.
+
+  · DIRECT ACCESS TO MOTIVATED BUYERS
+    Groupal's buyer base consists of people actively looking for the
+    best deal on big-ticket items. These are high-intent shoppers,
+    not casual browsers. Conversion rates on committed group buys
+    are inherently higher than standard e-commerce.
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  HOW GROUPAL WILL CHANGE ONLINE SHOPPING — FOR EVERYONE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  Today's online shopping is fundamentally individualistic. Each buyer
+  navigates a sea of products alone, pays a fixed price, and moves on.
+  The relationship ends at checkout. Sellers compete on tiny margins,
+  pour billions into advertising, and pray for repeat customers.
+
+  Groupal changes all of this by introducing GROUP DYNAMICS into the
+  purchase decision:
+
+  1. SHOPPING BECOMES SOCIAL WITH REAL FINANCIAL CONSEQUENCES
+     When inviting a friend to a group buy literally reduces your own price,
+     shopping becomes a collaborative, community-driven activity. People
+     stop scrolling alone and start buying together.
+
+  2. PRICE IS NO LONGER FIXED — IT'S EARNED
+     The Groupal model introduces the concept of "earned price" — the
+     final price reflects how engaged and motivated the buyer community
+     was. The most successful deals reward the most active participants.
+
+  3. SELLERS AND BUYERS BECOME ALIGNED
+     In traditional retail, sellers want prices high and buyers want them
+     low — an adversarial relationship. On Groupal, both sides benefit
+     from a large, engaged group: the seller moves volume, the buyer
+     gets a massive discount. Their interests become aligned.
+
+  4. WORD OF MOUTH IS MONETIZED FOR BUYERS, NOT JUST BRANDS
+     Affiliate marketing and influencer culture pay brands for buyer
+     recommendations. Groupal flips this: the BUYERS get paid (in
+     savings) for spreading the word. The value flows to the community.
+
+  5. A NEW DEFINITION OF SMART SHOPPING
+     Groupal redefines what it means to be a smart consumer. It's not
+     just about finding the lowest listed price — it's about building
+     a buying group, timing your join strategically, and leveraging
+     your network to drive the price even lower.
+
+  6. ACCESSIBLE LUXURY AND BIG-TICKET ITEMS FOR EVERYONE
+     Products that are aspirational for most people become attainable
+     when the price is slashed by 30–50% through collective action.
+     Groupal democratizes access to quality goods.
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  PRODUCT CATEGORIES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  · Motors        (cars, motorcycles, vehicles, automotive accessories)
+  · Fashion       (clothing, shoes, accessories, luxury goods)
+  · Technology    (computers, phones, cameras, software)
+  · Home          (appliances, furniture, decor, smart home)
+  · Gadgets       (electronics, wearables, audio, gaming)
+  · Travel        (flights, hotels, vacation packages, experiences)
+  · Experiences   (events, restaurants, entertainment, services)
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  TAGLINES & VOICE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  Primary tagline:
+    "Buy Together. Save Massive."
+
+  Supporting lines:
+    "Every new buyer drops the price — including yours."
+    "The more we buy together, the less we all pay."
+    "Group buying for the things that actually matter."
+    "Real savings. Real products. Real community."
+    "Unlock discounts you could never get alone."
+
+  Voice attributes:
+    · BOLD but not aggressive
+    · OPTIMISTIC and energizing
+    · TRANSPARENT and trustworthy
+    · COMMUNITY-FOCUSED, never selfish
+    · SMART and financially savvy
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  PLATFORM VISION
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  Groupal's long-term vision is to become the world's leading platform for
+  collective purchasing — a place where communities form around shared
+  consumer goals and use their collective power to access products and
+  experiences that would otherwise be out of reach.
+
+  We envision a world where:
+    · Families coordinate group buys for household appliances together
+    · Friend groups plan group travel at dramatically reduced costs
+    · Neighborhoods buy home improvement products as a community
+    · Online communities leverage their size for collective bargaining power
+
+  Groupal is not just a shopping app. It is the infrastructure for a new
+  kind of consumer economy — one where collective action is rewarded,
+  community is valued, and the best deals belong to those who build
+  the biggest groups.
+
+  Buy Together. Save Massive.
+
+═══════════════════════════════════════════════════════════════════════════════
+  groupal.com · hello@groupal.com
+  © 2026 Groupal. All rights reserved.
+═══════════════════════════════════════════════════════════════════════════════

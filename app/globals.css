@@ -1,0 +1,106 @@
+@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800;900&family=Inter:wght@300;400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ── CSS Custom Properties ──────────────────────────────────────────────────── */
+:root {
+  /* Groupal brand tokens */
+  --groupal-navy:   #002356;
+  --groupal-blue:   #1b4487;
+  --groupal-white:  #ffffff;
+  --groupal-gold:   #eaad00;
+  --groupal-orange: #e86300;
+  --groupal-green:  #048943;
+
+  /* shadcn/ui compatible */
+  --background: 0 0% 100%;
+  --foreground: 220 47% 11%;
+  --card: 0 0% 100%;
+  --card-foreground: 220 47% 11%;
+  --primary: 213 100% 17%;      /* navy */
+  --primary-foreground: 0 0% 100%;
+  --secondary: 44 100% 46%;     /* gold */
+  --secondary-foreground: 213 100% 17%;
+  --muted: 210 20% 97%;
+  --muted-foreground: 215 16% 47%;
+  --accent: 44 100% 46%;
+  --accent-foreground: 213 100% 17%;
+  --border: 214 32% 91%;
+  --input: 214 32% 91%;
+  --ring: 44 100% 46%;
+  --radius: 0.75rem;
+}
+
+/* ── Base reset ──────────────────────────────────────────────────────────────── */
+@layer base {
+  * {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+  }
+
+  html {
+    scroll-behavior: smooth;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    background-color: #ffffff;
+    color: #0f172a;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Respect user motion preferences */
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
+
+/* ── Utilities ──────────────────────────────────────────────────────────────── */
+@layer utilities {
+  /* Hide scrollbar but keep functionality */
+  .scrollbar-hide::-webkit-scrollbar { display: none; }
+  .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+
+  /* Font families */
+  .font-heading { font-family: 'Nunito', sans-serif; }
+  .font-body    { font-family: 'Inter', sans-serif; }
+
+  /* Tabular nums for prices/timers */
+  .tabular-nums { font-variant-numeric: tabular-nums; }
+
+  /* Line clamp */
+  .line-clamp-2 {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  /* Brand color utilities */
+  .text-groupal-navy   { color: #002356; }
+  .text-groupal-blue   { color: #1b4487; }
+  .text-groupal-gold   { color: #eaad00; }
+  .text-groupal-orange { color: #e86300; }
+  .text-groupal-green  { color: #048943; }
+
+  .bg-groupal-navy   { background-color: #002356; }
+  .bg-groupal-blue   { background-color: #1b4487; }
+  .bg-groupal-gold   { background-color: #eaad00; }
+  .bg-groupal-orange { background-color: #e86300; }
+  .bg-groupal-green  { background-color: #048943; }
+
+  /* Card shadows */
+  .shadow-card      { box-shadow: 0 2px 8px 0 rgba(0,35,86,0.08), 0 0 0 1px rgba(0,35,86,0.04); }
+  .shadow-card-hover{ box-shadow: 0 8px 32px 0 rgba(0,35,86,0.16), 0 0 0 1px rgba(0,35,86,0.06); }
+}
