@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import Image from "next/image";
 import { Search, Menu, X, ShoppingBag } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -137,49 +138,57 @@ export function Navbar() {
       </div>
 
       {/* ── Mobile dropdown ──────────────────────────────── */}
-      {mobileOpen && (
-        <div className="md:hidden border-t border-white/10 bg-groupal-navy px-4 pb-4 space-y-3">
-          {/* Mobile search */}
-          <div className="relative mt-3">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/50" />
-            <input
-              type="search"
-              placeholder="Search deals..."
-              className="w-full h-10 rounded-xl bg-white/10 text-white placeholder-white/40 pl-9 pr-4 text-sm outline-none ring-1 ring-white/20 focus:ring-groupal-gold transition-all"
-              aria-label="Search deals"
-            />
-          </div>
-          {/* Mobile categories */}
-          <div className="flex flex-wrap gap-1.5">
-            {CATEGORIES.map((cat) => (
-              <button
-                key={cat}
-                onClick={() => { setActiveCategory(cat); setMobileOpen(false); }}
-                className={cn(
-                  "px-3 py-1 rounded-full text-xs font-semibold transition-all cursor-pointer",
-                  activeCategory === cat
-                    ? "bg-groupal-gold text-groupal-navy"
-                    : "text-white/70 hover:text-white bg-white/10"
-                )}
+      <AnimatePresence>
+        {mobileOpen && (
+          <motion.div
+            className="md:hidden border-t border-white/10 bg-groupal-navy px-4 pb-4 space-y-3 overflow-hidden"
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.22, ease: "easeOut" }}
+          >
+            {/* Mobile search */}
+            <div className="relative mt-3">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/50" />
+              <input
+                type="search"
+                placeholder="Search deals..."
+                className="w-full h-10 rounded-xl bg-white/10 text-white placeholder-white/40 pl-9 pr-4 text-sm outline-none ring-1 ring-white/20 focus:ring-groupal-gold transition-all"
+                aria-label="Search deals"
+              />
+            </div>
+            {/* Mobile categories */}
+            <div className="flex flex-wrap gap-1.5">
+              {CATEGORIES.map((cat) => (
+                <button
+                  key={cat}
+                  onClick={() => { setActiveCategory(cat); setMobileOpen(false); }}
+                  className={cn(
+                    "px-3 py-1 rounded-full text-xs font-semibold transition-all cursor-pointer",
+                    activeCategory === cat
+                      ? "bg-groupal-gold text-groupal-navy"
+                      : "text-white/70 hover:text-white bg-white/10"
+                  )}
+                >
+                  {cat}
+                </button>
+              ))}
+            </div>
+            {/* Mobile CTA buttons */}
+            <div className="flex gap-2 pt-1">
+              <Button variant="ghost" size="sm" className="flex-1 text-white/80">
+                Sign In
+              </Button>
+              <Button
+                size="sm"
+                className="flex-1 bg-groupal-green hover:bg-[#059c4f] text-white font-bold"
               >
-                {cat}
-              </button>
-            ))}
-          </div>
-          {/* Mobile CTA buttons */}
-          <div className="flex gap-2 pt-1">
-            <Button variant="ghost" size="sm" className="flex-1 text-white/80">
-              Sign In
-            </Button>
-            <Button
-              size="sm"
-              className="flex-1 bg-groupal-green hover:bg-[#059c4f] text-white font-bold"
-            >
-              Join Now
-            </Button>
-          </div>
-        </div>
-      )}
+                Join Now
+              </Button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </header>
   );
 }

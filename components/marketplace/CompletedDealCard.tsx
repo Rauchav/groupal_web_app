@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { motion } from "framer-motion";
+import { motion, type Variants } from "framer-motion";
 import { Share2, ShieldCheck, Users } from "lucide-react";
 
 type CompletedDeal = {
@@ -31,7 +31,7 @@ export function CompletedDealCard({
   custom,
 }: {
   deal:      CompletedDeal;
-  variants?: object;
+  variants?: Variants;
   custom?:   number;
 }) {
   const savings = deal.originalPrice - deal.finalPrice;

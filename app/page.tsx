@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import Image from "next/image";
-import { motion } from "framer-motion";
+import { motion, useInView, animate } from "framer-motion";
 import {
   Users,
   Zap,
@@ -81,11 +81,59 @@ const HOW_IT_WORKS = [
 
 // ── Stats ────────────────────────────────────────────────────────────────────
 const STATS = [
-  { value: "$2.4M+",  label: "Saved by buyers"        },
-  { value: "847",     label: "Successful group buys"   },
-  { value: "12,000+", label: "Happy buyers"            },
-  { value: "70%",     label: "Max discount achieved"   },
+  { numeric: 2.4,   prefix: "$", suffix: "M+", decimals: 1, label: "Saved by buyers"       },
+  { numeric: 847,   prefix: "",  suffix: "",    decimals: 0, label: "Successful group buys" },
+  { numeric: 12000, prefix: "",  suffix: "+",   decimals: 0, label: "Happy buyers"          },
+  { numeric: 70,    prefix: "",  suffix: "%",   decimals: 0, label: "Max discount achieved" },
 ] as const;
+
+// ── Animated stat counter ────────────────────────────────────────────────────
+function StatCounter({
+  numeric,
+  prefix,
+  suffix,
+  decimals,
+  label,
+  custom,
+}: {
+  numeric:  number;
+  prefix:   string;
+  suffix:   string;
+  decimals: number;
+  label:    string;
+  custom:   number;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+  const isInView = useInView(ref, { once: true });
+  const [count, setCount] = useState(0);
+
+  useEffect(() => {
+    if (!isInView) return;
+    const controls = animate(0, numeric, {
+      duration: 2,
+      ease: "easeOut",
+      onUpdate(value) { setCount(value); },
+    });
+    return () => controls.stop();
+  }, [isInView, numeric]);
+
+  const formatted =
+    decimals > 0
+      ? count.toFixed(decimals)
+      : Math.round(count).toLocaleString("en-US");
+
+  return (
+    <motion.div ref={ref} variants={fadeUp} custom={custom} className="text-center">
+      <div
+        className="font-heading font-extrabold tabular-nums mb-1"
+        style={{ color: "#eaad00", fontSize: "clamp(2rem, 4vw, 3rem)", lineHeight: 1 }}
+      >
+        {prefix}{formatted}{suffix}
+      </div>
+      <div className="text-sm font-medium text-white/60">{label}</div>
+    </motion.div>
+  );
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -108,7 +156,14 @@ export default function HomePage() {
       <section className="py-16 md:py-20 bg-[#f8fafc]" id="deals">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           {/* Section header */}
-          <div className="flex items-center justify-between mb-8">
+          <motion.div
+            className="flex items-center justify-between mb-8"
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, margin: "-60px" }}
+            variants={fadeUp}
+            custom={0}
+          >
             <div>
               <div className="flex items-center gap-2 mb-2">
                 <Zap className="h-7 w-7 text-groupal-orange fill-groupal-orange" />
@@ -127,7 +182,7 @@ export default function HomePage() {
               View all deals
               <ChevronRight className="h-4 w-4" />
             </Button>
-          </div>
+          </motion.div>
 
           {/* Grid */}
           {loadingDeals ? (
@@ -175,7 +230,14 @@ export default function HomePage() {
       <section className="pb-16 md:pb-24 bg-white" id="how-it-works">
         {/* Full-width navy banner — flush with section top */}
         <div className="w-full py-16" style={{ backgroundColor: "#002356" }}>
-          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 text-center">
+          <motion.div
+            className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 text-center"
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true }}
+            variants={fadeUp}
+            custom={0}
+          >
             <h2
               className="font-heading font-extrabold text-white mb-3"
               style={{ fontSize: "clamp(1.5rem, 3vw, 2.25rem)" }}
@@ -185,7 +247,7 @@ export default function HomePage() {
             <p className="text-white/60 max-w-xl mx-auto">
               <span className="font-bold" style={{ color: "#eaad00" }}>Four simple</span> steps from browsing to receiving your product with an <span className="font-bold" style={{ color: "#eaad00" }}>incredible group discount.</span>
             </p>
-          </div>
+          </motion.div>
         </div>
 
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pt-12">
@@ -196,8 +258,7 @@ export default function HomePage() {
             viewport={{ once: true, margin: "-60px" }}
             variants={stagger}
           >
-
-            {HOW_IT_WORKS.map(({ step, img, title, desc }, i) => (
+{HOW_IT_WORKS.map(({ step, img, title, desc }, i) => (
               <motion.div
                 key={step}
                 variants={fadeUp}
@@ -237,7 +298,14 @@ export default function HomePage() {
       ══════════════════════════════════════════════════════ */}
       <section className="py-16 md:py-20" style={{ backgroundColor: "#002356" }}>
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-10">
+          <motion.div
+            className="text-center mb-10"
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true }}
+            variants={fadeUp}
+            custom={0}
+          >
             <h2
               className="font-heading font-extrabold text-white mb-2"
               style={{ fontSize: "clamp(1.5rem, 3vw, 2.25rem)" }}
@@ -247,7 +315,7 @@ export default function HomePage() {
             <p className="text-white/50 text-sm">
               Group buys across every big-ticket category
             </p>
-          </div>
+          </motion.div>
 
           <motion.div
             className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3"
@@ -302,25 +370,16 @@ export default function HomePage() {
             viewport={{ once: true }}
             variants={stagger}
           >
-            {STATS.map(({ value, label }, i) => (
-              <motion.div
+            {STATS.map(({ numeric, prefix, suffix, decimals, label }, i) => (
+              <StatCounter
                 key={label}
-                variants={fadeUp}
+                numeric={numeric}
+                prefix={prefix}
+                suffix={suffix}
+                decimals={decimals}
+                label={label}
                 custom={i}
-                className="text-center"
-              >
-                <div
-                  className="font-heading font-extrabold tabular-nums mb-1"
-                  style={{
-                    color: "#eaad00",
-                    fontSize: "clamp(2rem, 4vw, 3rem)",
-                    lineHeight: 1,
-                  }}
-                >
-                  {value}
-                </div>
-                <div className="text-sm font-medium text-white/60">{label}</div>
-              </motion.div>
+              />
             ))}
           </motion.div>
         </div>
@@ -331,7 +390,14 @@ export default function HomePage() {
       ══════════════════════════════════════════════════════ */}
       <section className="py-16 md:py-20 bg-[#f8fafc]">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-10">
+          <motion.div
+            className="text-center mb-10"
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true }}
+            variants={fadeUp}
+            custom={0}
+          >
             <div className="flex items-center justify-center gap-2 mb-2">
               <CheckCircle2 className="h-7 w-7" style={{ fill: "#048943", color: "white" }} />
               <h2
@@ -344,7 +410,7 @@ export default function HomePage() {
             <p className="text-gray-500 text-sm">
               Real group buys that reached their target — and changed the price.
             </p>
-          </div>
+          </motion.div>
 
           <motion.div
             className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5"
@@ -369,22 +435,32 @@ export default function HomePage() {
       >
         <div className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8 text-center">
           <motion.div
-            initial={{ opacity: 0, y: 24 }}
-            whileInView={{ opacity: 1, y: 0 }}
+            initial="hidden"
+            whileInView="visible"
             viewport={{ once: true }}
-            transition={{ duration: 0.5 }}
+            variants={stagger}
           >
-            <h2
+            <motion.h2
+              variants={fadeUp}
+              custom={0}
               className="font-heading font-extrabold text-white mb-4 leading-tight"
               style={{ fontSize: "clamp(1.75rem, 4vw, 3rem)" }}
             >
               Ready to save massive?
-            </h2>
-            <p className="text-white/60 text-lg mb-8 max-w-lg mx-auto">
+            </motion.h2>
+            <motion.p
+              variants={fadeUp}
+              custom={1}
+              className="text-white/60 text-lg mb-8 max-w-lg mx-auto"
+            >
               Join thousands of buyers who are already saving big on the things
               they love.
-            </p>
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+            </motion.p>
+            <motion.div
+              variants={fadeUp}
+              custom={2}
+              className="flex flex-col sm:flex-row items-center justify-center gap-3"
+            >
               <Button variant="gold" size="xl" className="w-full sm:w-auto font-bold text-base">
                 Browse Live Deals
                 <ArrowRight className="h-5 w-5" />
@@ -392,7 +468,7 @@ export default function HomePage() {
               <Button variant="outline" size="xl" className="w-full sm:w-auto font-bold text-base">
                 Create Free Account
               </Button>
-            </div>
+            </motion.div>
           </motion.div>
         </div>
       </section>

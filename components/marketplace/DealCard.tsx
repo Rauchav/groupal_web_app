@@ -86,7 +86,8 @@ function GroupalPricing({
             className="h-full rounded-full"
             style={{ backgroundColor: zoneColor }}
             initial={{ width: 0 }}
-            animate={{ width: `${Math.min(computed.progressPercent, 100)}%` }}
+            whileInView={{ width: `${Math.min(computed.progressPercent, 100)}%` }}
+            viewport={{ once: true }}
             transition={{ duration: 0.8, ease: "easeOut" }}
           />
         </div>
