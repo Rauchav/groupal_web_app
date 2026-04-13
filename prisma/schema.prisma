@@ -1,13 +1,196 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Get a free hosted Postgres database in seconds: `npx create-db`
-
 generator client {
-  provider = "prisma-client"
+  provider = "prisma-client-js"
   output   = "../lib/generated/prisma"
 }
 
 datasource db {
   provider = "postgresql"
+}
+
+model User {
+  id        String   @id @default(cuid())
+  clerkId   String   @unique
+  email     String   @unique
+  role      UserRole @default(BUYER)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  buyerProfile   BuyerProfile?
+  sellerProfile  SellerProfile?
+  participations GroupBuyParticipation[]
+  notifications  Notification[]
+}
+
+enum UserRole {
+  BUYER
+  SELLER
+  ADMIN
+}
+
+model BuyerProfile {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  firstName String?
+  lastName  String?
+  phone     String?
+  avatarUrl String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  addresses DeliveryAddress[]
+}
+
+model SellerProfile {
+  id              String   @id @default(cuid())
+  userId          String   @unique
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  companyName     String
+  description     String?
+  logoUrl         String?
+  website         String?
+  phone           String?
+  apiKey          String   @unique @default(cuid())
+  verified        Boolean  @default(false)
+  stripeAccountId String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  deals Deal[]
+}
+
+model DeliveryAddress {
+  id             String       @id @default(cuid())
+  buyerProfileId String
+  buyerProfile   BuyerProfile @relation(fields: [buyerProfileId], references: [id], onDelete: Cascade)
+  label          String
+  street         String
+  city           String
+  state          String
+  country        String
+  zipCode        String?
+  isDefault      Boolean      @default(false)
+  createdAt      DateTime     @default(now())
+}
+
+model Deal {
+  id                 String        @id @default(cuid())
+  sellerId           String
+  seller             SellerProfile @relation(fields: [sellerId], references: [id], onDelete: Cascade)
+  productName        String
+  productDescription String?
+  productImages      String[]
+  category           String
+  originalPrice      Float
+  maxDiscountPercent Float
+  maxBuyersRequired  Int
+  currentBuyerCount  Int           @default(0)
+  deadlineAt         DateTime
+  deliveryType       DeliveryType  @default(DELIVERY)
+  deliveryCost       Float         @default(0)
+  region             String
+  platformFeePercent Float         @default(1.5)
+  status             DealStatus    @default(ACTIVE)
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
+
+  milestones     DealMilestone[]
+  participations GroupBuyParticipation[]
+}
+
+enum DealStatus {
+  ACTIVE
+  COMPLETED
+  CANCELLED
+}
+
+enum DeliveryType {
+  DELIVERY
+  PICKUP
+}
+
+model DealMilestone {
+  id              String @id @default(cuid())
+  dealId          String
+  deal            Deal   @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  buyerCount      Int
+  discountPercent Float
+  label           String
+}
+
+model GroupBuyParticipation {
+  id                    String        @id @default(cuid())
+  dealId                String
+  deal                  Deal          @relation(fields: [dealId], references: [id])
+  buyerId               String
+  buyer                 User          @relation(fields: [buyerId], references: [id])
+  reservationAmount     Float
+  platformFee           Float
+  deliveryCost          Float         @default(0)
+  status                PaymentStatus @default(RESERVATION_PAID)
+  stripePaymentIntentId String?
+  finalDiscountPercent  Float?
+  finalPrice            Float?
+  deliveryAddress       String?
+  createdAt             DateTime      @default(now())
+  updatedAt             DateTime      @updatedAt
+
+  payments Payment[]
+
+  @@unique([dealId, buyerId])
+}
+
+enum PaymentStatus {
+  RESERVATION_PAID
+  AWAITING_FINAL_PAYMENT
+  FINAL_PAYMENT_PAID
+  PAYMENT_FAILED
+  IN_GRACE_PERIOD
+  FORFEITED
+  REFUNDED
+}
+
+model Payment {
+  id              String                @id @default(cuid())
+  participationId String
+  participation   GroupBuyParticipation @relation(fields: [participationId], references: [id])
+  amount          Float
+  type            PaymentType
+  status          PaymentStatus
+  stripeId        String?
+  failureReason   String?
+  createdAt       DateTime              @default(now())
+}
+
+enum PaymentType {
+  RESERVATION
+  FINAL_PAYMENT
+  REFUND
+  PAYOUT
+}
+
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      NotificationType
+  title     String
+  message   String
+  read      Boolean          @default(false)
+  data      Json?
+  createdAt DateTime         @default(now())
+}
+
+enum NotificationType {
+  DEAL_JOINED
+  DEAL_PROGRESS
+  DEAL_ENDING_SOON
+  DEAL_COMPLETED
+  PAYMENT_SUCCESS
+  PAYMENT_FAILED
+  PAYMENT_REMINDER
+  RESERVATION_FORFEITED
+  SELLER_NEW_BUYER
+  SELLER_DEAL_COMPLETED
+  SELLER_PAYOUT_SENT
 }

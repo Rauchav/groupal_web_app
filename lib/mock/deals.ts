@@ -24,6 +24,57 @@ function milestones(maxBuyers: number, maxDiscount: number): DiscountMilestone[]
 // 8 deals at different progress stages — covers all 4 color states
 // ─────────────────────────────────────────────────────────────────────────────
 
+export const COMPLETED_DEALS = [
+  {
+    id:               "comp-001",
+    productName:      "LG C3 OLED 55\" TV",
+    productImage:     "https://images.unsplash.com/photo-1461151304267-38535e780c79?w=400&q=75",
+    sellerName:       "LG Official Store",
+    buyersJoined:     150,
+    buyersTarget:     150,
+    originalPrice:    1499,
+    finalPrice:       749,
+    discountAchieved: 50,
+    category:         "Electronics",
+  },
+  {
+    id:               "comp-002",
+    productName:      "Apple AirPods Pro 2nd Gen",
+    productImage:     "https://images.unsplash.com/photo-1600294037681-c80b4cb5b434?w=400&q=75",
+    sellerName:       "Apple Authorized",
+    buyersJoined:     200,
+    buyersTarget:     200,
+    originalPrice:    249,
+    finalPrice:       149,
+    discountAchieved: 40,
+    category:         "Electronics",
+  },
+  {
+    id:               "comp-003",
+    productName:      "Bali Round-Trip Flight Tickets",
+    productImage:     "https://images.unsplash.com/photo-1537996194471-e657df975ab4?w=400&q=75",
+    sellerName:       "Traveloka Official",
+    buyersJoined:     80,
+    buyersTarget:     80,
+    originalPrice:    1200,
+    finalPrice:       480,
+    discountAchieved: 60,
+    category:         "Travel",
+  },
+  {
+    id:               "comp-004",
+    productName:      "Samsung Galaxy S24 Ultra",
+    productImage:     "https://images.unsplash.com/photo-1610945265064-0e34e5519bbf?w=400&q=75",
+    sellerName:       "Samsung Official",
+    buyersJoined:     120,
+    buyersTarget:     120,
+    originalPrice:    1299,
+    finalPrice:       779,
+    discountAchieved: 40,
+    category:         "Cell Phones",
+  },
+] as const
+
 export const MOCK_DEALS: Deal[] = [
   // Deal 1 — 12.5% progress → slate (neutral)
   {

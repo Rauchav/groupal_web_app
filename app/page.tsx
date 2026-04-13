@@ -22,8 +22,7 @@ import { Badge } from "@/components/ui/badge";
 import { DealCard, DealCardSkeleton } from "@/components/marketplace/DealCard";
 import { CompletedDealCard } from "@/components/marketplace/CompletedDealCard";
 import { HeroCarousel } from "@/components/marketplace/HeroCarousel";
-import { COMPLETED_DEALS } from "@/lib/mockDeals";
-import { MOCK_DEALS } from "@/lib/mock/deals";
+import { COMPLETED_DEALS, MOCK_DEALS } from "@/lib/mock/deals";
 
 // ── Animation variants ──────────────────────────────────────────────────────
 const fadeUp = {
