@@ -59,7 +59,7 @@ export function CompletedDealCard({
         <div className="absolute top-3 left-3 z-10">
           <span
             className="inline-flex items-center rounded-lg px-2.5 py-1 text-sm font-extrabold shadow-md text-white"
-            style={{ backgroundColor: "#048943" }}
+            style={{ backgroundColor: "#DA1200" }}
           >
             -{deal.discountAchieved}%
           </span>
@@ -80,7 +80,7 @@ export function CompletedDealCard({
           className="absolute bottom-0 inset-x-0 flex items-center justify-center py-1.5 gap-1.5"
           style={{ backgroundColor: "#1b4487" }}
         >
-          <span className="text-xs font-bold" style={{ color: "#eaad00" }}>Deal closed with massive savings!</span>
+          <span className="text-xs font-bold" style={{ color: "#ffffff" }}>Deal closed with massive savings!</span>
         </div>
       </div>
 
@@ -129,11 +129,11 @@ export function CompletedDealCard({
         <div className="px-3 pt-1.5 pb-0">
           <span
             className="font-semibold uppercase tracking-wider"
-            style={{ color: "rgba(255,255,255,0.45)", fontSize: "0.55rem" }}
+            style={{ color: "rgb(255, 255, 255)", fontSize: "0.65rem" }}
           >
             Priced Payed
           </span>
-          <div className="font-heading font-extrabold tabular-nums leading-none text-3xl text-white mt-0.5">
+          <div className="font-heading font-extrabold tabular-nums leading-none text-3xl text-white mt-0.5" >
             {fmt(deal.finalPrice)}
           </div>
         </div>
@@ -143,9 +143,9 @@ export function CompletedDealCard({
           <div className="flex flex-col gap-0.5">
             <span
               className="font-semibold uppercase tracking-wider"
-              style={{ color: "rgba(255,255,255,0.45)", fontSize: "0.55rem" }}
+              style={{ color: "rgb(255, 255, 255)", fontSize: "0.65rem" }}
             >
-              Each buyer savings
+              Each buyer <span style={{ color: "#eaad00", fontSize: "0.65rem", fontWeight: "bold" }}>saved</span>
             </span>
             <span
               className="font-heading font-extrabold tabular-nums leading-none text-3xl"

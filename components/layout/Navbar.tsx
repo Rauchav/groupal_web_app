@@ -97,12 +97,12 @@ export function Navbar() {
 
           {/* Right actions */}
           <div className="hidden sm:flex items-center gap-2 flex-shrink-0">
-            <Button variant="ghost" size="sm" className="text-white/80 hover:text-white">
+            <Button variant="ghost-white" size="sm">
               Sign In
             </Button>
             <Button
               size="sm"
-              className="bg-groupal-green hover:bg-[#059c4f] text-white font-bold"
+              className="bg-groupal-green hover:bg-[#059c4f] text-white font-bold rounded-xl"
             >
               Join Now
             </Button>
@@ -176,7 +176,7 @@ export function Navbar() {
             </div>
             {/* Mobile CTA buttons */}
             <div className="flex gap-2 pt-1">
-              <Button variant="ghost" size="sm" className="flex-1 text-white/80">
+              <Button variant="ghost-white" size="sm" className="flex-1">
                 Sign In
               </Button>
               <Button

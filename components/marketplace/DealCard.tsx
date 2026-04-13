@@ -116,7 +116,7 @@ function GroupalPricing({
       <div className="px-3 pb-2.5">
         <span
           className="font-semibold uppercase tracking-wider"
-          style={{ color: "rgba(255,255,255,0.45)", fontSize: "0.55rem" }}
+          style={{ color: "rgb(255, 255, 255)", fontSize: "0.65rem" }}
         >
           Current price
         </span>
@@ -308,7 +308,7 @@ export function DealCard({
             <Button
               variant="default"
               size="default"
-              className="w-full font-bold text-sm bg-[#1b4487] hover:bg-[#e86300] active:bg-[#e86300]/90"
+              className="w-full font-bold text-sm bg-[#1b4487] hover:bg-[#eaad00] active:bg-[#e86300]/90"
               onClick={() => onJoin?.(deal.id)}
             >
               Join Group Buy
