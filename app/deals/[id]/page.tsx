@@ -9,8 +9,6 @@ import {
 } from "lucide-react"
 import { motion } from "framer-motion"
 import { toast } from "sonner"
-import { Navbar } from "@/components/layout/Navbar"
-import { Footer } from "@/components/layout/Footer"
 import { DealCard } from "@/components/marketplace/DealCard"
 import { LikeButton } from "@/components/marketplace/LikeButton"
 import { CountdownTimer } from "@/components/marketplace/CountdownTimer"
@@ -50,24 +48,20 @@ export default function DealDetailPage({ params }: { params: { id: string } }) {
 
   if (!deal) {
     return (
-      <>
-        <Navbar />
-        <main className="min-h-screen bg-gray-50 flex items-center justify-center">
-          <div className="text-center space-y-4">
-            <p className="text-6xl">😕</p>
-            <h1 className="text-2xl font-bold text-gray-700">Deal not found</h1>
-            <p className="text-gray-400">This deal may have expired or doesn&apos;t exist.</p>
-            <Link
-              href="/deals"
-              className="inline-flex items-center gap-2 mt-4 px-6 py-3 rounded-xl bg-[#002356] text-white font-semibold text-sm hover:bg-[#1b4487] transition-colors"
-            >
-              <ArrowLeft className="h-4 w-4" />
-              Back to deals
-            </Link>
-          </div>
-        </main>
-        <Footer />
-      </>
+      <main className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center space-y-4">
+          <p className="text-6xl">😕</p>
+          <h1 className="text-2xl font-bold text-gray-700">Deal not found</h1>
+          <p className="text-gray-400">This deal may have expired or doesn&apos;t exist.</p>
+          <Link
+            href="/deals"
+            className="inline-flex items-center gap-2 mt-4 px-6 py-3 rounded-xl bg-[#002356] text-white font-semibold text-sm hover:bg-[#1b4487] transition-colors"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Back to deals
+          </Link>
+        </div>
+      </main>
     )
   }
 
@@ -100,7 +94,6 @@ export default function DealDetailPage({ params }: { params: { id: string } }) {
 
   return (
     <>
-      <Navbar />
       <main className="min-h-screen bg-gray-50">
 
         {/* ── Back link ──────────────────────────────────── */}
@@ -476,7 +469,6 @@ export default function DealDetailPage({ params }: { params: { id: string } }) {
 
         </div>
       </main>
-      <Footer />
     </>
   )
 }

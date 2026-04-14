@@ -2,8 +2,6 @@
 
 import Link from "next/link"
 import { Heart } from "lucide-react"
-import { Navbar } from "@/components/layout/Navbar"
-import { Footer } from "@/components/layout/Footer"
 import { DealCard } from "@/components/marketplace/DealCard"
 import { LikeButton } from "@/components/marketplace/LikeButton"
 import { MOCK_DEALS } from "@/lib/mock/deals"
@@ -15,7 +13,6 @@ export default function LikedDealsPage() {
 
   return (
     <>
-      <Navbar />
       <main className="min-h-screen bg-gray-50">
 
         {/* Header */}
@@ -68,7 +65,6 @@ export default function LikedDealsPage() {
           )}
         </div>
       </main>
-      <Footer />
     </>
   )
 }

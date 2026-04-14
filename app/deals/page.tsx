@@ -4,8 +4,6 @@ import { useState, useEffect, useMemo } from "react"
 import { Search, Zap, ChevronDown } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
 import { toast } from "sonner"
-import { Navbar } from "@/components/layout/Navbar"
-import { Footer } from "@/components/layout/Footer"
 import { DealCard, DealCardSkeleton } from "@/components/marketplace/DealCard"
 import { LikeButton } from "@/components/marketplace/LikeButton"
 import { MOCK_DEALS } from "@/lib/mock/deals"
@@ -97,7 +95,6 @@ export default function DealsPage() {
 
   return (
     <>
-      <Navbar />
       <main className="min-h-screen bg-gray-50">
 
         {/* ── Page Header ─────────────────────────────────── */}
@@ -260,7 +257,6 @@ export default function DealsPage() {
           )}
         </div>
       </main>
-      <Footer />
     </>
   )
 }
