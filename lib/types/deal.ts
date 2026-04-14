@@ -31,6 +31,7 @@ export interface DealComputedValues {
   currentPrice:           number   // originalPrice × (1 - currentDiscount)
   savingsAmount:          number   // originalPrice - currentPrice
   progressPercent:        number   // currentBuyerCount / maxBuyersRequired × 100
-  reservationAmount:      number   // currentPrice × 0.10
-  remainingAmount:        number   // currentPrice × 0.90
+  reservationAmount:      number   // originalPrice × 0.10 — fixed, based on store price
+  platformFeeAmount:      number   // originalPrice × 0.015 — fixed, based on store price
+  remainingAmount:        number   // currentPrice - reservationAmount (varies with discount)
 }

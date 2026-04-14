@@ -67,8 +67,7 @@ export default function DealDetailPage({ params }: { params: { id: string } }) {
 
   const computed = computeDealValues(deal)
   const progressBarColor = getProgressBarColor(computed.progressPercent)
-  const platformFeeAmount = computed.reservationAmount * 0.015
-  const totalDueAtCheckout = computed.reservationAmount + platformFeeAmount
+  const totalDueAtCheckout = computed.reservationAmount + computed.platformFeeAmount
   const tableRows = milestoneTableRows(deal.maxBuyersRequired, deal.maxDiscountPercent, deal.originalPrice)
 
   const similarDeals = MOCK_DEALS.filter((d) => d.id !== deal.id).slice(0, 3)
@@ -303,9 +302,9 @@ export default function DealDetailPage({ params }: { params: { id: string } }) {
                       What you pay today (10% reservation)
                     </p>
                     {[
-                      { label: "Group price",        value: formatPrice(computed.currentPrice, deal.currency) },
+                      { label: "Store price",         value: formatPrice(deal.originalPrice, deal.currency) },
                       { label: "Reservation (10%)",  value: formatPrice(computed.reservationAmount, deal.currency) },
-                      { label: "Groupal fee (1.5%)", value: formatPrice(platformFeeAmount, deal.currency) },
+                      { label: "Groupal fee (1.5%)", value: formatPrice(computed.platformFeeAmount, deal.currency) },
                     ].map(({ label, value }) => (
                       <div key={label} className="flex items-center justify-between text-sm">
                         <span className="text-white/50">{label}</span>

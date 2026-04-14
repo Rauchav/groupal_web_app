@@ -6,11 +6,14 @@ export function computeDealValues(deal: Deal): DealComputedValues {
     deal.currentBuyerCount * discountPerBuyer,
     deal.maxDiscountPercent,
   );
-  const currentPrice     = deal.originalPrice * (1 - currentDiscountPercent / 100);
-  const savingsAmount    = deal.originalPrice - currentPrice;
-  const progressPercent  = (deal.currentBuyerCount / deal.maxBuyersRequired) * 100;
-  const reservationAmount = currentPrice * 0.10;
-  const remainingAmount  = currentPrice * 0.90;
+  const currentPrice      = deal.originalPrice * (1 - currentDiscountPercent / 100);
+  const savingsAmount     = deal.originalPrice - currentPrice;
+  const progressPercent   = (deal.currentBuyerCount / deal.maxBuyersRequired) * 100;
+  // Reservation and platform fee are fixed — always calculated from the store (original) price
+  const reservationAmount = deal.originalPrice * (deal.reservationFeePercent / 100);
+  const platformFeeAmount = deal.originalPrice * 0.015;
+  // Remaining balance = final group price minus the reservation already paid
+  const remainingAmount   = currentPrice - reservationAmount;
 
   return {
     discountPerBuyer,
@@ -19,6 +22,7 @@ export function computeDealValues(deal: Deal): DealComputedValues {
     savingsAmount,
     progressPercent,
     reservationAmount,
+    platformFeeAmount,
     remainingAmount,
   };
 }

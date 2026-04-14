@@ -104,9 +104,8 @@ function OrderSummary({
   computed: ReturnType<typeof computeDealValues>
 }) {
   if (!deal) return null
-  const platformFee   = computed.reservationAmount * 0.015
-  const totalToday    = computed.reservationAmount + platformFee
-  const totalClosing  = computed.remainingAmount + 25
+  const totalToday   = computed.reservationAmount + computed.platformFeeAmount
+  const totalClosing = computed.remainingAmount + 25
 
   return (
     <div className="sticky top-24 bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
@@ -120,24 +119,30 @@ function OrderSummary({
       </div>
 
       <div className="p-4 space-y-3">
-        {/* Prices */}
+        {/* Store price → current group price */}
         <div className="flex items-center justify-between text-sm">
-          <span className="text-gray-400 line-through tabular-nums">{fmt(deal.originalPrice, deal.currency)}</span>
-          <span className="font-extrabold text-[#002356] tabular-nums text-lg">{fmt(computed.currentPrice, deal.currency)}</span>
+          <div>
+            <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider">Store price</p>
+            <p className="font-bold text-gray-400 line-through tabular-nums">{fmt(deal.originalPrice, deal.currency)}</p>
+          </div>
+          <div className="text-right">
+            <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider">Group price</p>
+            <p className="font-extrabold text-[#002356] tabular-nums text-lg">{fmt(computed.currentPrice, deal.currency)}</p>
+          </div>
         </div>
 
-        {/* Today total */}
+        {/* Today total — fixed */}
         <div className="rounded-xl p-3" style={{ backgroundColor: "#eaad00" }}>
-          <p className="text-[10px] font-extrabold uppercase tracking-wider text-[#002356]/70 mb-1">Due Today</p>
+          <p className="text-[10px] font-extrabold uppercase tracking-wider text-[#002356]/70 mb-1">Due Today (fixed)</p>
           <p className="font-extrabold text-[#002356] tabular-nums text-xl">{fmt(totalToday, deal.currency)}</p>
-          <p className="text-[10px] text-[#002356]/60 mt-0.5">10% reservation + 1.5% fee</p>
+          <p className="text-[10px] text-[#002356]/60 mt-0.5">10% + 1.5% of store price — won&apos;t change</p>
         </div>
 
         {/* Closing total */}
         <div className="rounded-xl border border-gray-100 p-3 space-y-1.5">
           <p className="text-[10px] font-extrabold uppercase tracking-wider text-gray-400 mb-1">At Deal Close</p>
           <div className="flex justify-between text-sm">
-            <span className="text-gray-500">Remaining (90%)</span>
+            <span className="text-gray-500">Remaining balance</span>
             <span className="font-semibold tabular-nums">{fmt(computed.remainingAmount, deal.currency)}</span>
           </div>
           <div className="flex justify-between text-sm">
@@ -149,10 +154,6 @@ function OrderSummary({
             <span className="text-[#002356] tabular-nums">{fmt(totalClosing, deal.currency)}</span>
           </div>
         </div>
-
-        <p className="text-[10px] text-gray-400 text-center leading-relaxed">
-          Prices may change slightly as more buyers join before you complete checkout
-        </p>
       </div>
     </div>
   )
@@ -170,8 +171,7 @@ function StepReview({
   onContinue: () => void
 }) {
   if (!deal) return null
-  const platformFee  = computed.reservationAmount * 0.015
-  const totalToday   = computed.reservationAmount + platformFee
+  const totalToday   = computed.reservationAmount + computed.platformFeeAmount
   const totalClosing = computed.remainingAmount + 25
 
   return (
@@ -264,9 +264,9 @@ function StepReview({
         </p>
         <div className="space-y-2">
           {[
-            { label: "Current group price",  value: fmt(computed.currentPrice, deal.currency) },
+            { label: "Store price (base)",   value: fmt(deal.originalPrice, deal.currency) },
             { label: "Reservation (10%)",    value: fmt(computed.reservationAmount, deal.currency) },
-            { label: "Groupal fee (1.5%)",   value: fmt(platformFee, deal.currency) },
+            { label: "Groupal fee (1.5%)",   value: fmt(computed.platformFeeAmount, deal.currency) },
           ].map(({ label, value }) => (
             <div key={label} className="flex justify-between text-sm">
               <span className="text-gray-500">{label}</span>
@@ -287,8 +287,8 @@ function StepReview({
         </p>
         <div className="space-y-2">
           {[
-            { label: "Remaining balance (90%)", value: fmt(computed.remainingAmount, deal.currency) },
-            { label: "Delivery",                value: "$25.00" },
+            { label: "Remaining balance",    value: fmt(computed.remainingAmount, deal.currency) },
+            { label: "Delivery",             value: "$25.00" },
           ].map(({ label, value }) => (
             <div key={label} className="flex justify-between text-sm">
               <span className="text-gray-500">{label}</span>
@@ -468,8 +468,7 @@ function StepConfirm({
   loading:      boolean
 }) {
   if (!deal) return null
-  const platformFee = computed.reservationAmount * 0.015
-  const totalToday  = computed.reservationAmount + platformFee
+  const totalToday = computed.reservationAmount + computed.platformFeeAmount
 
   return (
     <div className="space-y-5">
@@ -496,7 +495,7 @@ function StepConfirm({
         <div className="space-y-1.5 border-t border-gray-100 pt-3">
           {[
             { label: "Reservation (10%)",    value: fmt(computed.reservationAmount, deal.currency) },
-            { label: "Groupal fee (1.5%)",   value: fmt(platformFee, deal.currency) },
+            { label: "Groupal fee (1.5%)",   value: fmt(computed.platformFeeAmount, deal.currency) },
           ].map(({ label, value }) => (
             <div key={label} className="flex justify-between text-sm">
               <span className="text-gray-500">{label}</span>
@@ -648,8 +647,6 @@ export default function CheckoutPage() {
     )
   }
 
-  const platformFee = computed.reservationAmount * 0.015
-
   async function handleComplete() {
     setLoading(true)
     await new Promise((r) => setTimeout(r, 2000))
@@ -658,7 +655,7 @@ export default function CheckoutPage() {
       dealId:          deal!.id,
       joinedAt:        new Date().toISOString(),
       reservationPaid: computed!.reservationAmount,
-      platformFee:     platformFee,
+      platformFee:     computed!.platformFeeAmount,
       status:          "active",
       deliveryAddress: {
         street:  deliveryData?.street  ?? "",
