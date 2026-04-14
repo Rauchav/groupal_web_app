@@ -1,16 +1,18 @@
 "use client";
 
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import {
   Share2, ShieldCheck, Heart, Clock, Users,
-  Zap, ExternalLink, TrendingDown,
+  Zap, ExternalLink, TrendingDown, CheckCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CountdownTimer } from "./CountdownTimer";
 import { cn } from "@/lib/utils";
 import { Deal } from "@/lib/types/deal";
 import { computeDealValues } from "@/lib/utils/deal-calculator";
+import { useParticipationStore } from "@/lib/stores/participation-store";
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -161,6 +163,8 @@ export function DealCard({
   onShare?:  (id: string) => void;
   className?: string;
 }) {
+  const router       = useRouter();
+  const hasJoined    = useParticipationStore((s) => s.hasJoined(deal.id));
   const computed     = computeDealValues(deal);
   const hoursLeft    = (deal.deadlineAt.getTime() - Date.now()) / (1000 * 60 * 60);
   const isEndingSoon = hoursLeft > 0 && hoursLeft < 24;
@@ -305,14 +309,29 @@ export function DealCard({
 
           {/* CTAs */}
           <div className="flex flex-col gap-2 mt-auto pt-1">
-            <Button
-              variant="default"
-              size="default"
-              className="w-full font-bold text-sm bg-[#1b4487] hover:bg-[#eaad00] active:bg-[#e86300]/90"
-              onClick={() => onJoin?.(deal.id)}
-            >
-              Join Group Buy
-            </Button>
+            {hasJoined ? (
+              <Button
+                variant="default"
+                size="default"
+                className="w-full font-bold text-sm bg-gray-300 text-gray-500 hover:bg-gray-300 cursor-default"
+                onClick={() => router.push("/dashboard")}
+              >
+                <CheckCircle className="h-4 w-4 mr-1.5" />
+                Already Joined
+              </Button>
+            ) : (
+              <Button
+                variant="default"
+                size="default"
+                className="w-full font-bold text-sm bg-[#1b4487] hover:bg-[#eaad00] active:bg-[#e86300]/90"
+                onClick={() => {
+                  onJoin?.(deal.id);
+                  router.push(`/checkout/${deal.id}`);
+                }}
+              >
+                Join Group Buy
+              </Button>
+            )}
             <button
               onClick={() => onBuyNow?.(deal.id)}
               className="w-full text-center text-xs font-semibold text-gray-400 hover:text-groupal-orange transition-colors duration-150 cursor-pointer py-0.5"
