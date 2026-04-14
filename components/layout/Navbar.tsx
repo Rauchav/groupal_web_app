@@ -1,11 +1,13 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
-import { Search, Menu, X, ShoppingBag } from "lucide-react";
+import { Search, Menu, X, ShoppingBag, Heart, Bell, Settings, LogOut, ChevronDown } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useUser, useClerk } from "@clerk/nextjs";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { useLikesStore } from "@/lib/stores/likes-store";
 
 const CATEGORIES = [
   "All",
@@ -25,6 +27,22 @@ export function Navbar() {
   const [activeCategory, setActiveCategory] = useState("All");
   const [mobileOpen,    setMobileOpen]    = useState(false);
   const [searchFocus,   setSearchFocus]   = useState(false);
+  const [userMenuOpen,  setUserMenuOpen]  = useState(false);
+  const userMenuRef = useRef<HTMLDivElement>(null);
+
+  const { isSignedIn, user } = useUser();
+  const { signOut } = useClerk();
+  const likedCount = useLikesStore((s) => s.likedDealIds.length);
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (userMenuRef.current && !userMenuRef.current.contains(e.target as Node)) {
+        setUserMenuOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   useEffect(() => {
     const handler = () => setScrolled(window.scrollY > 8);
@@ -97,15 +115,79 @@ export function Navbar() {
 
           {/* Right actions */}
           <div className="hidden sm:flex items-center gap-2 flex-shrink-0">
-            <Button variant="ghost-white" size="sm">
-              Sign In
-            </Button>
-            <Button
-              size="sm"
-              className="bg-groupal-green hover:bg-[#059c4f] text-white font-bold rounded-xl"
-            >
-              Join Now
-            </Button>
+            {isSignedIn ? (
+              <div ref={userMenuRef} className="relative">
+                <button
+                  onClick={() => setUserMenuOpen((v) => !v)}
+                  className="flex items-center gap-2 rounded-xl px-2 py-1.5 text-white/80 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+                >
+                  <div className="h-7 w-7 rounded-full bg-groupal-gold flex items-center justify-center text-groupal-navy font-bold text-xs flex-shrink-0 overflow-hidden">
+                    {user?.imageUrl
+                      ? <Image src={user.imageUrl} alt="avatar" width={28} height={28} className="object-cover" />
+                      : (user?.firstName?.[0] ?? "U")}
+                  </div>
+                  <span className="text-sm font-semibold max-w-[80px] truncate">
+                    {user?.firstName ?? "Account"}
+                  </span>
+                  <ChevronDown className="h-3.5 w-3.5" />
+                </button>
+
+                <AnimatePresence>
+                  {userMenuOpen && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 6, scale: 0.97 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: 4, scale: 0.97 }}
+                      transition={{ duration: 0.15 }}
+                      className="absolute right-0 mt-2 w-52 rounded-2xl bg-white shadow-xl border border-gray-100 overflow-hidden z-50"
+                    >
+                      {[
+                        { href: "/dashboard",           icon: ShoppingBag, label: "My Group Buys" },
+                        { href: "/dashboard/liked",     icon: Heart,        label: "Liked Deals",    badge: likedCount > 0 ? likedCount : undefined },
+                        { href: "/dashboard/notifications", icon: Bell,     label: "Notifications" },
+                        { href: "/dashboard/settings",  icon: Settings,     label: "Settings" },
+                      ].map(({ href, icon: Icon, label, badge }) => (
+                        <a
+                          key={href}
+                          href={href}
+                          onClick={() => setUserMenuOpen(false)}
+                          className="flex items-center gap-3 px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+                        >
+                          <Icon className="h-4 w-4 text-gray-400 flex-shrink-0" />
+                          <span className="flex-1">{label}</span>
+                          {badge !== undefined && (
+                            <span className="inline-flex items-center justify-center h-5 min-w-[1.25rem] rounded-full bg-red-500 text-white text-[10px] font-bold px-1">
+                              {badge}
+                            </span>
+                          )}
+                        </a>
+                      ))}
+                      <div className="border-t border-gray-100">
+                        <button
+                          onClick={() => { setUserMenuOpen(false); signOut(); }}
+                          className="flex items-center gap-3 w-full px-4 py-3 text-sm font-medium text-red-500 hover:bg-red-50 transition-colors cursor-pointer"
+                        >
+                          <LogOut className="h-4 w-4 flex-shrink-0" />
+                          Sign Out
+                        </button>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            ) : (
+              <>
+                <Button variant="ghost-white" size="sm">
+                  Sign In
+                </Button>
+                <Button
+                  size="sm"
+                  className="bg-groupal-green hover:bg-[#059c4f] text-white font-bold rounded-xl"
+                >
+                  Join Now
+                </Button>
+              </>
+            )}
           </div>
 
           {/* Mobile menu toggle */}

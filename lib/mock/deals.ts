@@ -244,3 +244,7 @@ export const MOCK_DEALS: Deal[] = [
     createdAt:            new Date(),
   },
 ];
+
+export function getMockDealById(id: string) {
+  return MOCK_DEALS.find((d) => d.id === id) ?? null;
+}
