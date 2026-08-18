@@ -31,26 +31,41 @@ Never issued because "not enough buyers joined."
 ## CRITICAL PAYMENT LOGIC — DO NOT GET THIS WRONG
 
 ### The reservation is based on STORE PRICE (fixed), never the group price
-The 10% upfront reservation AND the Groupal platform fee are
-BOTH calculated from the ORIGINAL STORE PRICE — never from the
-current/fluctuating group price. These two amounts NEVER change
-once a buyer starts checkout, regardless of how many more buyers
-join afterward.
+The 10% upfront reservation is calculated from the ORIGINAL STORE
+PRICE — never from the current/fluctuating group price. This amount
+NEVER changes once a buyer starts checkout, regardless of how many
+more buyers join afterward.
+
+### Buyers pay ONLY the reservation — no platform fee
+The Groupal platform fee is NOT charged to buyers, at checkout or
+at any other point. Buyers only ever pay: the 10% reservation at
+checkout, and the remaining balance at deal close.
 
 ### Correct formulas
 RESERVATION PAYMENT (paid when joining — FIXED, never varies):
-  reservationAmount = originalPrice × 10%
-  platformFee        = originalPrice × platformFeePercent%
-  totalDueAtCheckout = reservationAmount + platformFee
+  reservationAmount  = originalPrice × 10%
+  totalDueAtCheckout = reservationAmount
 
 FINAL PAYMENT (paid when deal closes — VARIABLE, shrinks as group grows):
   earnedDiscount   = originalPrice × currentDiscountPercent%
   remainingAmount  = (originalPrice × 90%) - earnedDiscount
   finalTotal       = remainingAmount + deliveryCost
 
+### The platform fee is a SELLER-side cost, not a buyer-side one
+Groupal charges SELLERS a percentage fee on each item sold through
+the marketplace — this is Groupal's revenue model, not a buyer
+charge. It is deducted from the seller's payout when a deal
+completes and funds are disbursed:
+  sellerPlatformFee = originalPrice × platformFeePercent%
+  sellerPayout      = totalCollectedFromBuyers - sellerPlatformFee
+This fee is never collected from buyers and never shown in any
+buyer-facing total, receipt, or order summary.
+
 ### Rules that must never be broken
-- NEVER calculate the reservation or platform fee from currentPrice
-  or groupPrice — always from originalPrice (store price)
+- NEVER calculate the reservation from currentPrice or groupPrice —
+  always from originalPrice (store price)
+- NEVER charge or display the platform fee to buyers — it is a
+  seller-side cost only
 - NEVER show messaging suggesting the reservation amount "may vary"
   or "may change while more buyers join" — it does not, ever
 - Only the FINAL payment amount varies, because the discount grows
@@ -138,8 +153,8 @@ Light mode primary — navy sections for hero/footer/CTAs.
 - Browse active group buy deals
 - See live current price updating as buyers join
 - Like/save deals (heart icon — see Buyer Features section below)
-- Join deals by paying a FIXED 10% + platform fee reservation
-  (based on store price, never the group price)
+- Join deals by paying a FIXED 10% reservation only — no platform
+  fee (based on store price, never the group price)
 - Share deals socially — every recruit drops the group's final price
 - Track deal progress and countdown to deadline
 - Pay remaining balance at deal close (90% of store price minus
@@ -151,7 +166,8 @@ Light mode primary — navy sections for hero/footer/CTAs.
   max buyers, deadline, milestones, delivery type/cost, region
 - View real-time buyer progress per deal
 - Receive payouts after deal completion (via Stripe Connect,
-  once configured)
+  once configured), minus Groupal's platform fee (see CRITICAL
+  PAYMENT LOGIC section above — this fee is seller-side only)
 
 ## Buyer Features — Likes / Saved Deals
 
@@ -211,6 +227,11 @@ Located over the product image, next to the share button.
   them globally — pages must not import their own)
 - Fixed critical payment calculation bug (see CRITICAL PAYMENT
   LOGIC section above)
+- Fixed platform-fee bug: buyers were being charged a Groupal
+  platform fee at checkout — corrected so buyers pay ONLY the 10%
+  reservation, and the platform fee is now modeled as a seller-side
+  cost deducted from payouts at deal close (computeDealValues()
+  returns sellerPlatformFeeAmount, not a buyer-facing fee)
 
 ### Not yet built
 - Seller Portal (landing, dashboard, deal creator, deal monitoring,

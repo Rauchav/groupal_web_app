@@ -1,5 +1,9 @@
 import { Deal, DealComputedValues } from "@/lib/types/deal";
 
+// Groupal's cut of each sale — a SELLER-side cost only, deducted from the
+// seller's payout when a deal closes. Never charged to or shown to buyers.
+const SELLER_PLATFORM_FEE_PERCENT = 1.5;
+
 export function computeDealValues(deal: Deal): DealComputedValues {
   const discountPerBuyer = deal.maxDiscountPercent / deal.maxBuyersRequired;
   const currentDiscountPercent = Math.min(
@@ -9,11 +13,14 @@ export function computeDealValues(deal: Deal): DealComputedValues {
   const currentPrice      = deal.originalPrice * (1 - currentDiscountPercent / 100);
   const savingsAmount     = deal.originalPrice - currentPrice;
   const progressPercent   = (deal.currentBuyerCount / deal.maxBuyersRequired) * 100;
-  // Reservation and platform fee are fixed — always calculated from the store (original) price
+  // The reservation is fixed — always calculated from the store (original) price.
+  // This is the ONLY amount buyers pay at checkout.
   const reservationAmount = deal.originalPrice * (deal.reservationFeePercent / 100);
-  const platformFeeAmount = deal.originalPrice * 0.015;
-  // Remaining balance = final group price minus the reservation already paid
-  const remainingAmount   = currentPrice - reservationAmount;
+  // Seller-side only — NOT part of what the buyer pays. Deducted from the
+  // seller's payout at deal completion.
+  const sellerPlatformFeeAmount = deal.originalPrice * (SELLER_PLATFORM_FEE_PERCENT / 100);
+  // Remaining balance = store price minus the 10% upfront already paid (90% of store price)
+  const remainingAmount   = deal.originalPrice - reservationAmount;
 
   return {
     discountPerBuyer,
@@ -22,7 +29,7 @@ export function computeDealValues(deal: Deal): DealComputedValues {
     savingsAmount,
     progressPercent,
     reservationAmount,
-    platformFeeAmount,
+    sellerPlatformFeeAmount,
     remainingAmount,
   };
 }

@@ -120,7 +120,7 @@ function ParticipationCard({ p }: { p: MockParticipation }) {
           <StatusBadge status={p.status} />
           <p className="text-xs text-gray-400">Joined {joinedDate}</p>
           <p className="text-xs text-gray-500">
-            Paid: <span className="font-semibold text-gray-700">{fmt(p.reservationPaid + p.platformFee)}</span>
+            Paid: <span className="font-semibold text-gray-700">{fmt(p.reservationPaid)}</span>
           </p>
         </div>
       </div>
@@ -189,7 +189,7 @@ export default function PurchasesPage() {
   const participations = useParticipationStore((s) => s.participations)
 
   return (
-    <main className="min-h-screen pt-24 pb-16" style={{ backgroundColor: "#f8f9fa" }}>
+    <main className="min-h-screen" style={{ backgroundColor: "#f8f9fa", paddingTop: "7.5rem", paddingBottom: "4rem" }}>
       <div className="max-w-[1100px] mx-auto px-4">
         <MobileTabs active="/dashboard/purchases" />
 

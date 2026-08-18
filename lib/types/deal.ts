@@ -31,7 +31,7 @@ export interface DealComputedValues {
   currentPrice:           number   // originalPrice × (1 - currentDiscount)
   savingsAmount:          number   // originalPrice - currentPrice
   progressPercent:        number   // currentBuyerCount / maxBuyersRequired × 100
-  reservationAmount:      number   // originalPrice × 0.10 — fixed, based on store price
-  platformFeeAmount:      number   // originalPrice × 0.015 — fixed, based on store price
-  remainingAmount:        number   // currentPrice - reservationAmount (varies with discount)
+  reservationAmount:      number   // originalPrice × 0.10 — fixed, based on store price — the ONLY amount buyers pay at checkout
+  sellerPlatformFeeAmount: number  // originalPrice × platformFeePercent — SELLER-SIDE ONLY, deducted from the seller's payout at deal close, never charged to or shown to buyers
+  remainingAmount:        number   // originalPrice - reservationAmount = 90% of store price
 }

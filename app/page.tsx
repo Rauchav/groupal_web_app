@@ -174,7 +174,7 @@ export default function HomePage() {
                 </h2>
               </div>
               <p className="text-gray-500 text-sm">
-                Join before time runs out — these deals need you.
+                Join before time runs out, <span style={{ fontWeight: "bold" }}>these deals need you</span>.
               </p>
             </div>
             <Button variant="outline-navy" size="sm" className="hidden sm:flex gap-1.5">

@@ -342,7 +342,7 @@ export default function DashboardSettingsPage() {
   const [tab, setTab] = useState<"profile" | "payment" | "notifications">("profile")
 
   return (
-    <main className="min-h-screen pt-24 pb-16" style={{ backgroundColor: "#f8f9fa" }}>
+    <main className="min-h-screen" style={{ backgroundColor: "#f8f9fa", paddingTop: "7.5rem", paddingBottom: "4rem" }}>
       <div className="max-w-[1100px] mx-auto px-4">
         <MobileTabs active="/dashboard/settings" />
 

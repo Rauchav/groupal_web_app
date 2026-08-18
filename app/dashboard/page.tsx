@@ -154,7 +154,7 @@ function ActiveDealCard({ participation }: { participation: MockParticipation })
           <div className="rounded-xl bg-gray-50 border border-gray-100 p-3">
             <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-0.5">Paid today</p>
             <p className="font-bold text-[#002356] tabular-nums text-sm">
-              {new Intl.NumberFormat("en-US", { style: "currency", currency: deal.currency ?? "USD", minimumFractionDigits: 2 }).format(participation.reservationPaid + participation.platformFee)}
+              {new Intl.NumberFormat("en-US", { style: "currency", currency: deal.currency ?? "USD", minimumFractionDigits: 2 }).format(participation.reservationPaid)}
             </p>
           </div>
           <div className="rounded-xl bg-gray-50 border border-gray-100 p-3">
@@ -209,7 +209,7 @@ export default function DashboardPage() {
     : "—"
 
   return (
-    <main className="min-h-screen pt-24 pb-16" style={{ backgroundColor: "#f8f9fa" }}>
+    <main className="min-h-screen" style={{ backgroundColor: "#f8f9fa", paddingTop: "7.5rem", paddingBottom: "4rem" }}>
       <div className="max-w-[1100px] mx-auto px-4">
 
         <MobileTabs active="/dashboard" />

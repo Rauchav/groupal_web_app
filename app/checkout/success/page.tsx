@@ -104,10 +104,11 @@ function CheckoutSuccessInner() {
   }
 
   return (
-    <main className="min-h-screen pt-24 pb-16 bg-gray-50">
+    <main className="min-h-screen bg-gray-50 flex flex-col" style={{ paddingTop: "6.5rem" }}>
       <Confetti />
 
-      <div className="relative z-20 max-w-lg mx-auto px-4 text-center space-y-8">
+      <div className="flex-1 flex items-center justify-center py-12 px-4">
+      <div className="relative z-20 w-full max-w-lg text-center space-y-8">
 
         {/* Checkmark animation */}
         <motion.div
@@ -222,6 +223,7 @@ function CheckoutSuccessInner() {
         </motion.div>
 
       </div>
+      </div>
     </main>
   )
 }
@@ -231,7 +233,7 @@ function CheckoutSuccessInner() {
 export default function CheckoutSuccessPage() {
   return (
     <Suspense fallback={
-      <main className="min-h-screen pt-24 pb-16 bg-gray-50 flex items-center justify-center">
+      <main className="min-h-screen bg-gray-50 flex items-center justify-center" style={{ paddingTop: "6.5rem" }}>
         <div className="text-center text-gray-400 text-sm">Loading...</div>
       </main>
     }>

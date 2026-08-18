@@ -133,11 +133,20 @@ function GroupalPricing({
           className="mt-1 flex items-center gap-1"
           style={{ fontSize: "0.6rem", color: "#eaad00" }}
         >
-          <TrendingDown className="h-2.5 w-2.5 flex-shrink-0" />
+          
           <span className="text-white">
-            Saving{" "}
-            <span style={{ color: "#eaad00" }}>{formatPrice(computed.savingsAmount, deal.currency)}</span>
-            {" · Every new buyer drops the price"}
+            <span
+          className="font-semibold uppercase tracking-wider"
+          style={{ color: "#eaad00", fontSize: "0.65rem" }}
+        >
+          Current savings
+        </span><br/>
+          <div
+          className="font-heading font-extrabold tabular-nums leading-none mt-0.5 text-xl text-groupal-gold"
+        >
+          {formatPrice(computed.savingsAmount, deal.currency)}
+        </div>
+        {"Every new buyer drops the price"}
           </span>
         </div>
       </div>
@@ -299,11 +308,11 @@ export function DealCard({
               <CountdownTimer targetDate={deal.deadlineAt} compact className="text-xs" />
             </div>
             <p className="font-medium text-gray-400" style={{ fontSize: "0.68rem" }}>
-              Reserve your spot · Pay{" "}
+              Reserve your spot with only{" "}
               <span className="font-bold text-groupal-navy">
                 {formatPrice(computed.reservationAmount, deal.currency)}
               </span>{" "}
-              now (10%)
+              now (10% of the store price)
             </p>
           </div>
 

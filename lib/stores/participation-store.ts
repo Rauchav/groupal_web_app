@@ -8,7 +8,6 @@ export interface MockParticipation {
   dealId: string
   joinedAt: string
   reservationPaid: number
-  platformFee: number
   status: "active" | "completed" | "forfeited"
   deliveryAddress: {
     street: string

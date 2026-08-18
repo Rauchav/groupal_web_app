@@ -10,12 +10,12 @@ import { z } from "zod"
 import { toast } from "sonner"
 import { nanoid } from "nanoid"
 import {
-  Check, AlertTriangle, Lock, Users, Clock,
-  TrendingDown, ShieldCheck, CreditCard, ArrowLeft,
-  Info,
+  Check, AlertTriangle, Lock, Users, Clock, MapPin, Truck, Store,
+  ShieldCheck, CreditCard, ArrowLeft, Share2, Copy,
+  Info, ExternalLink,
 } from "lucide-react"
 import { motion } from "framer-motion"
-import { getMockDealById } from "@/lib/mock/deals"
+import { getMockDealById, MOCK_DEALS } from "@/lib/mock/deals"
 import { computeDealValues } from "@/lib/utils/deal-calculator"
 import { useParticipationStore } from "@/lib/stores/participation-store"
 import { CountdownTimer } from "@/components/marketplace/CountdownTimer"
@@ -29,6 +29,14 @@ function fmt(amount: number, currency = "USD") {
     currency,
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
+  }).format(amount)
+}
+
+function fmtShort(amount: number, currency = "USD") {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency,
+    maximumFractionDigits: 0,
   }).format(amount)
 }
 
@@ -96,69 +104,6 @@ function StepIndicator({ current }: { current: number }) {
 
 // ── Order summary sidebar ─────────────────────────────────────────────────────
 
-function OrderSummary({
-  deal,
-  computed,
-}: {
-  deal:     ReturnType<typeof getMockDealById>
-  computed: ReturnType<typeof computeDealValues>
-}) {
-  if (!deal) return null
-  const totalToday   = computed.reservationAmount + computed.platformFeeAmount
-  const totalClosing = computed.remainingAmount + 25
-
-  return (
-    <div className="sticky top-24 bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-      {/* Deal image + name */}
-      <div className="relative h-36 w-full">
-        <Image src={deal.productImage} alt={deal.productName} fill className="object-cover" sizes="360px" />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-        <p className="absolute bottom-3 left-3 right-3 text-white font-bold text-sm leading-snug line-clamp-2">
-          {deal.productName}
-        </p>
-      </div>
-
-      <div className="p-4 space-y-3">
-        {/* Store price → current group price */}
-        <div className="flex items-center justify-between text-sm">
-          <div>
-            <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider">Store price</p>
-            <p className="font-bold text-gray-400 line-through tabular-nums">{fmt(deal.originalPrice, deal.currency)}</p>
-          </div>
-          <div className="text-right">
-            <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider">Group price</p>
-            <p className="font-extrabold text-[#002356] tabular-nums text-lg">{fmt(computed.currentPrice, deal.currency)}</p>
-          </div>
-        </div>
-
-        {/* Today total — fixed */}
-        <div className="rounded-xl p-3" style={{ backgroundColor: "#eaad00" }}>
-          <p className="text-[10px] font-extrabold uppercase tracking-wider text-[#002356]/70 mb-1">Due Today (fixed)</p>
-          <p className="font-extrabold text-[#002356] tabular-nums text-xl">{fmt(totalToday, deal.currency)}</p>
-          <p className="text-[10px] text-[#002356]/60 mt-0.5">10% + 1.5% of store price — won&apos;t change</p>
-        </div>
-
-        {/* Closing total */}
-        <div className="rounded-xl border border-gray-100 p-3 space-y-1.5">
-          <p className="text-[10px] font-extrabold uppercase tracking-wider text-gray-400 mb-1">At Deal Close</p>
-          <div className="flex justify-between text-sm">
-            <span className="text-gray-500">Remaining balance</span>
-            <span className="font-semibold tabular-nums">{fmt(computed.remainingAmount, deal.currency)}</span>
-          </div>
-          <div className="flex justify-between text-sm">
-            <span className="text-gray-500">Delivery</span>
-            <span className="font-semibold tabular-nums">$25.00</span>
-          </div>
-          <div className="border-t border-gray-100 pt-1.5 flex justify-between text-sm font-bold">
-            <span className="text-gray-700">Total at closing</span>
-            <span className="text-[#002356] tabular-nums">{fmt(totalClosing, deal.currency)}</span>
-          </div>
-        </div>
-      </div>
-    </div>
-  )
-}
-
 // ── Step 1 — Review ───────────────────────────────────────────────────────────
 
 function StepReview({
@@ -171,158 +116,323 @@ function StepReview({
   onContinue: () => void
 }) {
   if (!deal) return null
-  const totalToday   = computed.reservationAmount + computed.platformFeeAmount
-  const totalClosing = computed.remainingAmount + 25
+
+  const totalToday = computed.reservationAmount
+  const maxGroupPrice = deal.originalPrice * (1 - deal.maxDiscountPercent / 100)
+  const nextDiscountPercent = Math.min(
+    (deal.currentBuyerCount + 1) * computed.discountPerBuyer,
+    deal.maxDiscountPercent,
+  )
+  const zoneColor =
+    computed.progressPercent < 33.34
+      ? { bar: "bg-[#EAAD00]", bg: "#EAAD00", pillText: "#002356" }
+      : computed.progressPercent < 66.67
+      ? { bar: "bg-[#E86300]", bg: "#E86300", pillText: "#ffffff" }
+      : { bar: "bg-[#DA1200]", bg: "#DA1200", pillText: "#ffffff" }
+
+  const delivery = 9.99
+  const remaining90 = deal.originalPrice * 0.9
+  const withGroupalRemaining = remaining90 * (1 - nextDiscountPercent / 100)
+  const finalPaymentAmount = withGroupalRemaining + delivery
+  const savingsVsNoGroupal = remaining90 - withGroupalRemaining
+  const saveUpTo = deal.originalPrice - (maxGroupPrice + delivery)
+
+  function shareWhatsApp() {
+    window.open(
+      `https://wa.me/?text=${encodeURIComponent(`Check out this group buy: ${deal!.productName} — ${window.location.href}`)}`,
+      "_blank"
+    )
+  }
+  function shareTwitter() {
+    window.open(
+      `https://twitter.com/intent/tweet?text=${encodeURIComponent(`Joining this group buy for ${deal!.productName} at Groupal! ${window.location.href}`)}`,
+      "_blank"
+    )
+  }
+  function copyLink() {
+    navigator.clipboard.writeText(window.location.href)
+    toast.success("Link copied!")
+  }
 
   return (
-    <div className="space-y-5">
-      {/* Deal summary card */}
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-        <div className="flex gap-4 p-5">
-          <div className="relative h-24 w-24 flex-shrink-0 rounded-xl overflow-hidden">
-            <Image src={deal.productImage} alt={deal.productName} fill className="object-cover" sizes="96px" />
-          </div>
-          <div className="flex-1 min-w-0 space-y-1.5">
-            <div className="flex items-center gap-1.5">
-              <span className="text-xs font-semibold text-gray-400 truncate">{deal.sellerName}</span>
-              {deal.sellerVerified && (
-                <ShieldCheck className="h-3.5 w-3.5 flex-shrink-0 text-[#1b4487]" />
-              )}
-            </div>
-            <h2 className="font-bold text-[#002356] text-sm leading-snug line-clamp-2">
-              {deal.productName}
-            </h2>
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-gray-400 line-through tabular-nums">
-                {fmt(deal.originalPrice, deal.currency)}
-              </span>
-              <span
-                className="font-extrabold tabular-nums text-base"
-                style={{ color: "#eaad00" }}
-              >
-                {fmt(computed.currentPrice, deal.currency)}
-              </span>
-            </div>
-            <span
-              className="inline-block px-2 py-0.5 rounded-full text-xs font-bold text-white"
-              style={{ backgroundColor: "#DA1200" }}
-            >
-              -{computed.currentDiscountPercent.toFixed(1)}% off now
+    <div className="space-y-4">
+
+      {/* ── White product info card ─────────────────────── */}
+      <div className="bg-white rounded-2xl p-5 space-y-4 shadow-sm border border-gray-100">
+
+        <span className="inline-block px-2.5 py-1 rounded-full text-xs font-semibold bg-[#002356]/10 text-[#002356]">
+          {deal.category}
+        </span>
+
+        <h2 className="font-bold text-[#002356] text-xl leading-snug">
+          {deal.productName}
+        </h2>
+
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-semibold text-gray-500">by {deal.sellerName}</span>
+          {deal.sellerVerified && (
+            <span className="inline-flex items-center gap-1 text-xs font-semibold text-[#1b4487]">
+              <ShieldCheck className="h-3.5 w-3.5" />
+              Verified Seller
             </span>
-          </div>
+          )}
         </div>
 
-        {/* Progress */}
-        <div className="px-5 pb-4 space-y-2">
-          <div className="flex justify-between text-xs text-gray-400">
-            <span className="flex items-center gap-1">
-              <Users className="h-3.5 w-3.5" />
-              <span>
-                <span className="font-bold text-gray-700">{deal.currentBuyerCount}</span>
-                {" of "}
-                <span className="font-bold text-gray-700">{deal.maxBuyersRequired}</span>
-                {" buyers joined"}
-              </span>
+        <a
+          href={deal.sellerUrl ?? "#"}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center justify-between w-full rounded-xl border border-gray-200 px-4 py-3 hover:border-gray-400 hover:bg-gray-50 transition-all group"
+        >
+          <div>
+            <p className="text-[10px] font-extrabold uppercase tracking-widest text-gray-400">In Store Price</p>
+            <p className="text-lg font-bold text-gray-400 line-through tabular-nums">
+              {fmtShort(deal.originalPrice, deal.currency)}
+            </p>
+          </div>
+          <ExternalLink className="h-4 w-4 text-gray-300 group-hover:text-gray-500 transition-colors" />
+        </a>
+
+        <div className="flex flex-col gap-2 text-sm text-gray-600">
+          <div className="flex items-center gap-2">
+            <MapPin className="h-4 w-4 text-gray-400 flex-shrink-0" />
+            <span>
+              Available in: <span className="font-semibold text-gray-800">{deal.sellerName.split(" ")[0]} Region</span>
             </span>
           </div>
-          <div className="h-2 rounded-full bg-gray-100 overflow-hidden">
-            <motion.div
-              className="h-full rounded-full bg-[#DA1200]"
-              initial={{ width: 0 }}
-              animate={{ width: `${Math.min(computed.progressPercent, 100)}%` }}
-              transition={{ duration: 0.6, ease: "easeOut" }}
-            />
+          <div className="flex items-center gap-2">
+            {deal.category === "Travel" || deal.category === "Vacations" ? (
+              <>
+                <Store className="h-4 w-4 text-gray-400 flex-shrink-0" />
+                <span>Pickup / In-person</span>
+              </>
+            ) : (
+              <>
+                <Truck className="h-4 w-4 text-gray-400 flex-shrink-0" />
+                <span>Delivery: <span className="font-semibold text-gray-800">$9.99</span></span>
+              </>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* ── Navy CTA card ───────────────────────────────── */}
+      <div className="rounded-2xl overflow-hidden shadow-lg" style={{ backgroundColor: "#002356" }}>
+
+        <div className="px-6 pt-6">
+          <p className="font-bold text-2xl leading-none">
+            <span className="text-white">Current </span>
+            <span className="text-white">grou</span>
+            <span style={{ color: "#eaad00" }}>pal</span>
+            <span className="text-white"> price</span>
+          </p>
+        </div>
+
+        <div className="px-6 py-5 space-y-5">
+
+          {/* Current price hero */}
+          <div className="space-y-1">
+            <p className="font-extrabold text-white tabular-nums" style={{ fontSize: "3rem", lineHeight: 1 }}>
+              {fmtShort(computed.currentPrice, deal.currency)}
+            </p>
+            <div className="flex items-center gap-3 mt-1">
+              <span className="text-sm text-white">
+                Join now and save from{" "}
+                <span className="font-bold" style={{ color: "#eaad00" }}>{fmtShort(computed.savingsAmount, deal.currency)}</span>
+                {" "}up to{" "}
+                <span className="font-bold" style={{ color: "#eaad00" }}>{fmtShort(saveUpTo, deal.currency)}</span>
+              </span>
+            </div>
+          </div>
+
+          {/* Milestone pills */}
+          <div className="flex items-center gap-3 flex-wrap">
+            {deal.milestones.map((m, i) => {
+              const tagColor = i === 0
+                ? "bg-groupal-gold text-groupal-navy"
+                : i === 1
+                ? "bg-groupal-orange text-white"
+                : "bg-groupal-red text-white"
+              return (
+                <span key={i} className="flex items-center gap-1.5 text-[11px] font-bold text-white">
+                  {m.buyerCount} buyers →
+                  <span className={cn("inline-block px-2 py-0.5 rounded-full text-xs font-bold", tagColor)}>
+                    {m.discountPercent}% off
+                  </span>
+                </span>
+              )
+            })}
+          </div>
+
+          {/* Progress bar */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-white/60 flex items-center gap-1">
+                <Users className="h-3.5 w-3.5" />
+                <span>
+                  <span className="text-white font-bold">{deal.currentBuyerCount}</span>
+                  {" of "}
+                  <span className="text-white font-bold">{deal.maxBuyersRequired}</span>
+                  {" buyers joined"}
+                </span>
+              </span>
+              <span
+                className="inline-block px-2.5 py-0.5 rounded-full text-xs font-bold tabular-nums"
+                style={{ backgroundColor: zoneColor.bg, color: zoneColor.pillText }}
+              >
+                {computed.currentDiscountPercent.toFixed(1)}% off
+              </span>
+            </div>
+            <div className="relative h-3 rounded-full overflow-hidden" style={{ backgroundColor: "rgba(255,255,255,0.12)" }}>
+              <motion.div
+                className={cn("h-full rounded-full", zoneColor.bar)}
+                initial={{ width: 0 }}
+                animate={{ width: `${Math.min(computed.progressPercent, 100)}%` }}
+                transition={{ duration: 0.9, ease: "easeOut" }}
+              />
+            </div>
+            <p className="text-white/60 text-xs">
+              Every new buyer adds <span className="font-extrabold text-white">{computed.discountPerBuyer.toFixed(2)}%</span> more discount for everyone
+            </p>
           </div>
 
           {/* Countdown */}
-          <div className="flex items-center gap-1.5 text-xs text-gray-400">
-            <Clock className="h-3.5 w-3.5" style={{ color: "#e86300" }} />
-            <span>Ends in</span>
-            <CountdownTimer targetDate={deal.deadlineAt} compact className="text-xs" />
+          <div className="space-y-2">
+            <div className="flex items-center gap-2 text-white/60 text-sm">
+              <Clock className="h-4 w-4" />
+              <span>Deal ends in:</span>
+            </div>
+            <CountdownTimer targetDate={deal.deadlineAt} />
           </div>
 
-          <p className="text-xs text-gray-400 flex items-center gap-1">
-            <TrendingDown className="h-3.5 w-3.5 text-[#eaad00]" />
-            Every new buyer drops the price further!
-          </p>
+          {/* 3-part pricing breakdown */}
+          <div className="rounded-xl p-4" style={{ backgroundColor: "rgba(255,255,255,0.07)" }}>
 
-          {/* Milestones */}
-          <div className="flex items-center gap-3 pt-1">
-            {deal.milestones.map((m, i) => (
-              <span key={i} className="text-[11px] text-gray-400">
-                {m.buyerCount} buyers → <span className="font-semibold text-gray-600">{m.discountPercent}% off</span>
+            {/* Part 2 — What you pay today */}
+            <p className="text-white text-xs font-extrabold uppercase tracking-widest mb-2.5 mt-4">
+              First you pay 10% upfront to <span className="font-extrabold" style={{ color: "#eaad00" }}>join the group</span>
+            </p>
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-white">Store price</span>
+                <span className="text-white font-semibold tabular-nums">{fmt(deal.originalPrice, deal.currency)}</span>
+              </div>
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-white">Reservation (10%)</span>
+                <span className="text-white font-semibold tabular-nums">{fmt(computed.reservationAmount, deal.currency)}</span>
+              </div>
+            </div>
+              <div className="mt-2.5 flex items-center justify-between rounded-xl px-3 py-2" style={{ border: "2px solid #eaad00" }}>
+                <span className="text-white font-bold text-sm">You pay today</span>
+              <span className="font-extrabold tabular-nums text-base" style={{ color: "#eaad00" }}>
+                {fmt(totalToday, deal.currency)}
               </span>
-            ))}
-          </div>
-        </div>
-      </div>
+              </div>
 
-      {/* What you pay today */}
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-        <p className="text-xs font-extrabold uppercase tracking-wider text-gray-400 mb-3">
-          What You Pay Today
-        </p>
-        <div className="space-y-2">
-          {[
-            { label: "Store price (base)",   value: fmt(deal.originalPrice, deal.currency) },
-            { label: "Reservation (10%)",    value: fmt(computed.reservationAmount, deal.currency) },
-            { label: "Groupal fee (1.5%)",   value: fmt(computed.platformFeeAmount, deal.currency) },
-          ].map(({ label, value }) => (
-            <div key={label} className="flex justify-between text-sm">
-              <span className="text-gray-500">{label}</span>
-              <span className="font-semibold tabular-nums text-gray-700">{value}</span>
+            {/* Part 3 — After deal closes */}
+            <div className="mt-4 pt-4 border-t border-white/10">
+              <p className="text-white text-xs font-extrabold uppercase tracking-widest mb-2.5">
+                Then when the deal closes,{" "}
+                <span className="text-xs font-extrabold uppercase tracking-widest" style={{ color: "#eaad00" }}>
+                  you pay the rest
+                </span>
+              </p>
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between text-sm pt-1.5">
+                  <span className="text-white">Remaining (90%)</span>
+                  <span className="text-white font-semibold tabular-nums">{fmt(remaining90, deal.currency)}</span>
+                </div>
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-white">+ Delivery</span>
+                  <span className="text-white font-semibold tabular-nums">{fmt(delivery, deal.currency)}</span>
+                </div>
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-white">- Accumulated Groupal discount (Right now)</span>
+                  <span
+                    className="inline-block px-2.5 py-0.5 rounded-full text-xs font-bold tabular-nums"
+                    style={{ backgroundColor: zoneColor.bg, color: zoneColor.pillText }}
+                  >
+                    {nextDiscountPercent.toFixed(1)}%
+                  </span>
+                </div>
+              </div>
+              <div className="mt-2.5 flex items-center justify-between rounded-xl px-3 py-2" style={{ border: "2px solid #eaad00" }}>
+                 <span className="text-white font-bold text-sm">Your final payment starts from</span>
+                <span className="font-extrabold tabular-nums" style={{ color: "#eaad00" }}>
+                  {fmt(finalPaymentAmount, deal.currency)}
+                </span>
+              </div>
+
+              {/* Current savings */}
+              <div className="mt-2.5 flex items-center justify-between rounded-xl px-3 py-2">
+                <span className="text-white text-sm">And you start saving from</span>
+                <span className="font-extrabold tabular-nums" style={{ color: "#eaad00" }}>
+                  {fmt(savingsVsNoGroupal, deal.currency)}
+                </span>
+              </div>
             </div>
-          ))}
-          <div className="border-t border-gray-100 pt-2 flex justify-between">
-            <span className="font-bold text-gray-900">Total today</span>
-            <span className="font-extrabold tabular-nums text-[#002356] text-base">{fmt(totalToday, deal.currency)}</span>
           </div>
-        </div>
-      </div>
 
-      {/* What you pay at close */}
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-        <p className="text-xs font-extrabold uppercase tracking-wider text-gray-400 mb-3">
-          What You Pay When Deal Closes
-        </p>
-        <div className="space-y-2">
-          {[
-            { label: "Remaining balance",    value: fmt(computed.remainingAmount, deal.currency) },
-            { label: "Delivery",             value: "$25.00" },
-          ].map(({ label, value }) => (
-            <div key={label} className="flex justify-between text-sm">
-              <span className="text-gray-500">{label}</span>
-              <span className="font-semibold tabular-nums text-gray-700">{value}</span>
+           {/* Social share */}
+          <div className="space-y-2">
+            <p className="text-white/80 text-xs pb-2 text-center font-medium">
+              So start sharing with everybody to make the price drop for everyone 👥
+            </p>
+            <div className="flex gap-2">
+              <button
+                onClick={shareWhatsApp}
+                className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-semibold text-white/70 hover:text-white border border-white/10 hover:bg-white/10 transition-colors cursor-pointer"
+              >
+                <Share2 className="h-3.5 w-3.5" />
+                WhatsApp
+              </button>
+              <button
+                onClick={shareTwitter}
+                className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-semibold text-white/70 hover:text-white border border-white/10 hover:bg-white/10 transition-colors cursor-pointer"
+              >
+                <Share2 className="h-3.5 w-3.5" />
+                X / Twitter
+              </button>
+              <button
+                onClick={copyLink}
+                className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-semibold text-white/70 hover:text-white border border-white/10 hover:bg-white/10 transition-colors cursor-pointer"
+              >
+                <Copy className="h-3.5 w-3.5" />
+                Copy Link
+              </button>
             </div>
-          ))}
-          <div className="border-t border-gray-100 pt-2 flex justify-between">
-            <span className="font-bold text-gray-900">Total at closing</span>
-            <span className="font-extrabold tabular-nums text-[#002356] text-base">{fmt(totalClosing, deal.currency)}</span>
           </div>
+
+          {/* Warning box */}
+          <div className="rounded-2xl border-2 border-[#e86300] bg-white p-4 flex gap-3">
+            <AlertTriangle className="h-5 w-5 flex-shrink-0 mt-0.5 text-[#e86300]" />
+            <div className="text-sm text-gray-700 leading-relaxed space-y-2">
+              <p>
+                <span className="font-bold text-[#e86300]">Important:</span>{" "}
+                Be 100% sure that you are going to buy this product. The upfront payment is your commitment to make the final payment when the deal closes. Make sure that money is available in your payment method. If it isn&apos;t, you will have{" "}
+                <span className="font-bold">3 days</span> after the deal ends to update your payment method, after that, your upfront payment is forfeited.
+              </p>
+              <p>
+                <span className="font-bold text-[#e86300]">Every deal will make you save money:</span>{" "}
+                Even if you are the only buyer, you will save at least{" "}
+                <span className="font-bold">{computed.discountPerBuyer.toFixed(2)}%</span> off the store price. The more buyers join, the bigger discount the group enjoys.
+              </p>
+            </div>
+          </div>
+
+          {/* CTA */}
+          <button
+            onClick={onContinue}
+            className="w-full py-4 rounded-xl font-extrabold text-white text-base cursor-pointer transition-colors"
+            style={{ backgroundColor: "#048943" }}
+            onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#059c4f")}
+            onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "#048943")}
+          >
+            Secure your spot with just {fmt(totalToday, deal.currency)}
+          </button>
+
         </div>
       </div>
-
-      {/* Warning box */}
-      <div className="rounded-2xl border-2 border-[#e86300] bg-[#e86300]/5 p-4 flex gap-3">
-        <AlertTriangle className="h-5 w-5 flex-shrink-0 mt-0.5 text-[#e86300]" />
-        <p className="text-sm text-gray-700 leading-relaxed">
-          <span className="font-bold text-[#e86300]">Important:</span>{" "}
-          If your final payment cannot be processed when the deal closes, you will have{" "}
-          <span className="font-bold">3 days</span> to update your payment method. After this
-          period, your reservation will be forfeited and your initial payment will not be refunded.
-          Please ensure your payment method is valid.
-        </p>
-      </div>
-
-      <button
-        onClick={onContinue}
-        className="w-full py-4 rounded-2xl font-extrabold text-white text-base cursor-pointer transition-colors"
-        style={{ backgroundColor: "#002356" }}
-        onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#1b4487")}
-        onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "#002356")}
-      >
-        Continue to Delivery
-      </button>
     </div>
   )
 }
@@ -468,7 +578,7 @@ function StepConfirm({
   loading:      boolean
 }) {
   if (!deal) return null
-  const totalToday = computed.reservationAmount + computed.platformFeeAmount
+  const totalToday = computed.reservationAmount
 
   return (
     <div className="space-y-5">
@@ -493,15 +603,10 @@ function StepConfirm({
           </div>
         </div>
         <div className="space-y-1.5 border-t border-gray-100 pt-3">
-          {[
-            { label: "Reservation (10%)",    value: fmt(computed.reservationAmount, deal.currency) },
-            { label: "Groupal fee (1.5%)",   value: fmt(computed.platformFeeAmount, deal.currency) },
-          ].map(({ label, value }) => (
-            <div key={label} className="flex justify-between text-sm">
-              <span className="text-gray-500">{label}</span>
-              <span className="tabular-nums text-gray-700">{value}</span>
-            </div>
-          ))}
+          <div className="flex justify-between text-sm">
+            <span className="text-gray-500">Reservation (10%)</span>
+            <span className="tabular-nums text-gray-700">{fmt(computed.reservationAmount, deal.currency)}</span>
+          </div>
           <div className="border-t border-gray-100 pt-1.5 flex justify-between font-bold">
             <span className="text-gray-900">Total due today</span>
             <span className="text-[#002356] tabular-nums text-base">{fmt(totalToday, deal.currency)}</span>
@@ -626,16 +731,20 @@ export default function CheckoutPage() {
   const router     = useRouter()
   const { addParticipation } = useParticipationStore()
 
-  const [step,         setStep]         = useState(0)
-  const [deliveryData, setDeliveryData] = useState<DeliveryForm | null>(null)
-  const [loading,      setLoading]      = useState(false)
+  const [step,            setStep]            = useState(0)
+  const [deliveryData,    setDeliveryData]    = useState<DeliveryForm | null>(null)
+  const [loading,         setLoading]         = useState(false)
+  const [selectedImgIdx,  setSelectedImgIdx]  = useState(0)
 
   const deal     = getMockDealById(dealId)
   const computed = deal ? computeDealValues(deal) : null
 
+  const mockImages    = deal ? [deal.productImage, deal.productImage, deal.productImage] : []
+  const relatedDeals  = MOCK_DEALS.filter(d => d.id !== dealId).slice(0, 3)
+
   if (!deal || !computed) {
     return (
-      <main className="min-h-screen bg-gray-50 flex items-center justify-center pt-20">
+      <main className="min-h-screen bg-gray-50 flex items-center justify-center" style={{ paddingTop: "6.5rem" }}>
         <div className="text-center space-y-4">
           <p className="text-5xl">😕</p>
           <h1 className="text-xl font-bold text-gray-700">Deal not found</h1>
@@ -655,7 +764,6 @@ export default function CheckoutPage() {
       dealId:          deal!.id,
       joinedAt:        new Date().toISOString(),
       reservationPaid: computed!.reservationAmount,
-      platformFee:     computed!.platformFeeAmount,
       status:          "active",
       deliveryAddress: {
         street:  deliveryData?.street  ?? "",
@@ -669,8 +777,14 @@ export default function CheckoutPage() {
     router.push(`/checkout/success?dealId=${deal!.id}`)
   }
 
+  const stickyTotal = computed.reservationAmount
+
   return (
-    <main className="min-h-screen pt-24 pb-16" style={{ backgroundColor: "#f8f9fa" }}>
+    <>
+    <main
+      className={cn("min-h-screen", step === 0 ? "pb-28 lg:pb-16" : "pb-16")}
+      style={{ backgroundColor: "#f8f9fa", paddingTop: "7.5rem" }}
+    >
       <div className="max-w-[1100px] mx-auto px-4">
 
         {/* Back link */}
@@ -685,17 +799,90 @@ export default function CheckoutPage() {
         {/* Progress indicator */}
         <StepIndicator current={step} />
 
-        {/* Two-column layout */}
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-6">
+        {/* Mobile/tablet: horizontal image slider */}
+        <div className="lg:hidden -mx-4 mb-5">
+          <div className="flex gap-3 overflow-x-auto px-4 pb-3 snap-x snap-mandatory">
+            {mockImages.map((img, i) => (
+              <div key={i} className="relative h-64 w-[85vw] flex-shrink-0 rounded-2xl overflow-hidden snap-start">
+                <Image src={img} alt={`${deal.productName} view ${i + 1}`} fill className="object-cover" sizes="85vw" />
+              </div>
+            ))}
+          </div>
+        </div>
 
-          {/* Main content */}
+        {/* Two-column on desktop */}
+        <div className="lg:grid lg:grid-cols-[2fr_3fr] lg:gap-8 lg:items-start">
+
+          {/* LEFT — Gallery + Related (desktop only) */}
+          <div className="hidden lg:flex lg:flex-col lg:sticky lg:top-24 gap-3">
+            {/* Main image */}
+            <div className="relative aspect-[4/3] w-full rounded-2xl overflow-hidden">
+              <Image
+                src={mockImages[selectedImgIdx]}
+                alt={deal.productName}
+                fill
+                className="object-cover transition-all duration-300"
+                sizes="420px"
+              />
+            </div>
+            {/* Thumbnails */}
+            <div className="flex gap-2">
+              {mockImages.map((img, i) => (
+                <button
+                  key={i}
+                  onClick={() => setSelectedImgIdx(i)}
+                  className={cn(
+                    "relative h-20 w-20 rounded-xl overflow-hidden border-2 flex-shrink-0 transition-all duration-150",
+                    selectedImgIdx === i
+                      ? "border-[#002356] scale-95"
+                      : "border-gray-200 hover:border-gray-400"
+                  )}
+                >
+                  <Image src={img} alt="" fill className="object-cover" sizes="80px" />
+                </button>
+              ))}
+            </div>
+
+            {/* Related products — desktop */}
+            {relatedDeals.length > 0 && (
+              <div className="pt-2 space-y-3">
+                <h3 className="font-bold text-[#002356] text-sm">You might also like</h3>
+                <div className="space-y-2">
+                  {relatedDeals.map((rd) => {
+                    const rc = computeDealValues(rd)
+                    const tagBg = rc.progressPercent < 33.34 ? "bg-groupal-gold" : rc.progressPercent < 66.67 ? "bg-groupal-orange" : "bg-groupal-red"
+                    const tagText = rc.progressPercent < 33.34 ? "text-groupal-navy" : "text-white"
+                    return (
+                      <Link
+                        key={rd.id}
+                        href={`/deals/${rd.id}`}
+                        className="flex gap-3 bg-white rounded-xl border border-gray-100 p-3 hover:border-gray-300 hover:shadow-sm transition-all"
+                      >
+                        <div className="relative h-14 w-14 flex-shrink-0 rounded-lg overflow-hidden">
+                          <Image src={rd.productImage} alt={rd.productName} fill className="object-cover" sizes="56px" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-semibold text-[#002356] line-clamp-2 leading-snug">{rd.productName}</p>
+                          <div className="flex items-center gap-2 mt-1">
+                            <span className="text-xs text-gray-400 line-through tabular-nums">{fmt(rd.originalPrice, rd.currency)}</span>
+                            <span className="text-xs font-bold text-[#002356] tabular-nums">{fmt(rc.currentPrice, rd.currency)}</span>
+                          </div>
+                        </div>
+                        <span className={cn("self-start inline-block px-1.5 py-0.5 rounded-full text-[10px] font-bold flex-shrink-0", tagBg, tagText)}>
+                          -{rc.currentDiscountPercent.toFixed(0)}%
+                        </span>
+                      </Link>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* RIGHT — Checkout steps */}
           <div>
             {step === 0 && (
-              <StepReview
-                deal={deal}
-                computed={computed}
-                onContinue={() => setStep(1)}
-              />
+              <StepReview deal={deal} computed={computed} onContinue={() => setStep(1)} />
             )}
             {step === 1 && (
               <StepDelivery
@@ -714,14 +901,68 @@ export default function CheckoutPage() {
                 loading={loading}
               />
             )}
-          </div>
 
-          {/* Sidebar */}
-          <div className="hidden lg:block">
-            <OrderSummary deal={deal} computed={computed} />
+            {/* Related products — mobile/tablet */}
+            {relatedDeals.length > 0 && (
+              <div className="lg:hidden mt-8 space-y-3">
+                <h3 className="font-bold text-[#002356] text-sm">You might also like</h3>
+                <div className="grid grid-cols-2 gap-3">
+                  {relatedDeals.map((rd) => {
+                    const rc = computeDealValues(rd)
+                    const tagBg = rc.progressPercent < 33.34 ? "bg-groupal-gold" : rc.progressPercent < 66.67 ? "bg-groupal-orange" : "bg-groupal-red"
+                    const tagText = rc.progressPercent < 33.34 ? "text-groupal-navy" : "text-white"
+                    return (
+                      <Link
+                        key={rd.id}
+                        href={`/deals/${rd.id}`}
+                        className="bg-white rounded-xl border border-gray-100 overflow-hidden hover:border-gray-300 hover:shadow-sm transition-all"
+                      >
+                        <div className="relative h-28 w-full">
+                          <Image src={rd.productImage} alt={rd.productName} fill className="object-cover" sizes="200px" />
+                        </div>
+                        <div className="p-2.5">
+                          <p className="text-xs font-semibold text-[#002356] line-clamp-2 leading-snug">{rd.productName}</p>
+                          <div className="flex items-center justify-between mt-1.5">
+                            <span className="text-xs font-bold text-[#002356] tabular-nums">{fmt(rc.currentPrice, rd.currency)}</span>
+                            <span className={cn("inline-block px-1.5 py-0.5 rounded-full text-[10px] font-bold", tagBg, tagText)}>
+                              -{rc.currentDiscountPercent.toFixed(0)}%
+                            </span>
+                          </div>
+                        </div>
+                      </Link>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
     </main>
+
+    {/* ── Sticky mobile CTA — step 0 only ─────────────── */}
+    {step === 0 && (
+      <div className="fixed bottom-0 left-0 right-0 z-50 lg:hidden bg-white border-t border-gray-200 shadow-[0_-4px_16px_rgba(0,0,0,0.08)] px-4 py-3">
+        <div className="flex items-center gap-3 max-w-lg mx-auto">
+          <div className="flex-shrink-0">
+            <p className="text-xs text-gray-500 leading-none mb-0.5">Join today for just</p>
+            <p className="font-extrabold tabular-nums text-lg leading-tight" style={{ color: "#002356" }}>
+              {fmt(stickyTotal, deal.currency)}
+            </p>
+            <p className="text-[10px] text-gray-400 leading-none mt-0.5">10% reservation · pay rest at closing</p>
+          </div>
+          <button
+            onClick={() => setStep(1)}
+            className="flex-1 py-3.5 rounded-xl font-extrabold text-white text-sm cursor-pointer transition-colors"
+            style={{ backgroundColor: "#048943" }}
+            onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#059c4f")}
+            onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "#048943")}
+          >
+            Join Now
+          </button>
+        </div>
+      </div>
+    )}
+    </>
   )
 }
