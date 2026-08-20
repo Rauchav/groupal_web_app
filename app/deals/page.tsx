@@ -225,10 +225,10 @@ export default function DealsPage() {
               >
                 {filtered.map((deal) => (
                   <div key={deal.id} className="relative">
-                    <a href={`/deals/${deal.id}`} className="block h-full">
+                    <a href={`/checkout/${deal.id}`} className="block h-full">
                       <DealCard
                         deal={deal}
-                        onJoin={() => window.location.href = `/deals/${deal.id}`}
+                        onJoin={() => window.location.href = `/checkout/${deal.id}`}
                       />
                     </a>
                     {/* LikeButton overlaid on card image */}

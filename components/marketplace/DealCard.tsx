@@ -53,7 +53,7 @@ function GroupalPricing({
       {/* "groopal price" heading */}
       <div className="px-3 pt-2.5 pb-0">
         <span className="font-heading font-extrabold leading-none" style={{ fontSize: "0.85rem" }}>
-          <span className="text-white">groo</span>
+          <span className="text-white">grou</span>
           <span style={{ color: "#eaad00" }}>pal</span>
           <span className="text-white"> price</span>
         </span>
@@ -120,7 +120,7 @@ function GroupalPricing({
           className="font-semibold uppercase tracking-wider"
           style={{ color: "rgb(255, 255, 255)", fontSize: "0.65rem" }}
         >
-          Current price
+          The price right now is
         </span>
         <div
           className="font-heading font-extrabold tabular-nums leading-none mt-0.5 text-3xl text-white"
@@ -133,20 +133,24 @@ function GroupalPricing({
           className="mt-1 flex items-center gap-1"
           style={{ fontSize: "0.6rem", color: "#eaad00" }}
         >
-          
           <span className="text-white">
             <span
           className="font-semibold uppercase tracking-wider"
           style={{ color: "#eaad00", fontSize: "0.65rem" }}
         >
-          Current savings
+          each buyer is saving
         </span><br/>
           <div
           className="font-heading font-extrabold tabular-nums leading-none mt-0.5 text-xl text-groupal-gold"
         >
           {formatPrice(computed.savingsAmount, deal.currency)}
         </div>
-        {"Every new buyer drops the price"}
+         <span
+          className="font-semibold tracking-wider"
+          style={{ color: "rgb(255, 255, 255)", fontSize: "0.65rem" }}
+        >
+          Each new buyer, <span style={{ color: "#eaad00" }}>lowers the price</span>, for all the group.
+        </span>
           </span>
         </div>
       </div>
@@ -304,7 +308,7 @@ export function DealCard({
           <div className="space-y-0.5">
             <div className="flex items-center gap-1.5">
               <Clock className="h-3.5 w-3.5 flex-shrink-0" style={{ color: "#e86300" }} />
-              <span className="text-xs font-medium text-gray-400">Ends in</span>
+              <span className="text-xs font-medium text-gray-400">This deal close in</span>
               <CountdownTimer targetDate={deal.deadlineAt} compact className="text-xs" />
             </div>
             <p className="font-medium text-gray-400" style={{ fontSize: "0.68rem" }}>

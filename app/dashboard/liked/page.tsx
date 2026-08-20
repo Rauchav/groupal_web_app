@@ -50,10 +50,10 @@ export default function LikedDealsPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
               {likedDeals.map((deal) => (
                 <div key={deal.id} className="relative">
-                  <a href={`/deals/${deal.id}`} className="block h-full">
+                  <a href={`/checkout/${deal.id}`} className="block h-full">
                     <DealCard
                       deal={deal}
-                      onJoin={() => window.location.href = `/deals/${deal.id}`}
+                      onJoin={() => window.location.href = `/checkout/${deal.id}`}
                     />
                   </a>
                   <div className="absolute top-3 right-3 z-20">

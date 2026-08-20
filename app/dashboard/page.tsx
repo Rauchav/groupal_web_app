@@ -92,8 +92,8 @@ function ActiveDealCard({ participation }: { participation: MockParticipation })
 
   function shareLink() {
     const url = typeof window !== "undefined"
-      ? `${window.location.origin}/deals/${deal!.id}`
-      : `/deals/${deal!.id}`
+      ? `${window.location.origin}/checkout/${deal!.id}`
+      : `/checkout/${deal!.id}`
     navigator.clipboard.writeText(url).then(() => toast.success("Share link copied!"))
   }
 

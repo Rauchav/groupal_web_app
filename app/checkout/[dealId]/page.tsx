@@ -10,7 +10,7 @@ import { z } from "zod"
 import { toast } from "sonner"
 import { nanoid } from "nanoid"
 import {
-  Check, AlertTriangle, Lock, Users, Clock, MapPin, Truck, Store,
+  Check, AlertTriangle, Lock, Clock, MapPin, Truck, Store,
   ShieldCheck, CreditCard, ArrowLeft, Share2, Copy,
   Info, ExternalLink,
 } from "lucide-react"
@@ -118,24 +118,14 @@ function StepReview({
   if (!deal) return null
 
   const totalToday = computed.reservationAmount
-  const maxGroupPrice = deal.originalPrice * (1 - deal.maxDiscountPercent / 100)
-  const nextDiscountPercent = Math.min(
-    (deal.currentBuyerCount + 1) * computed.discountPerBuyer,
-    deal.maxDiscountPercent,
-  )
+  const remaining90 = deal.originalPrice * 0.9
+  const maxSavings = deal.originalPrice * (deal.maxDiscountPercent / 100)
   const zoneColor =
     computed.progressPercent < 33.34
       ? { bar: "bg-[#EAAD00]", bg: "#EAAD00", pillText: "#002356" }
       : computed.progressPercent < 66.67
       ? { bar: "bg-[#E86300]", bg: "#E86300", pillText: "#ffffff" }
       : { bar: "bg-[#DA1200]", bg: "#DA1200", pillText: "#ffffff" }
-
-  const delivery = 9.99
-  const remaining90 = deal.originalPrice * 0.9
-  const withGroupalRemaining = remaining90 * (1 - nextDiscountPercent / 100)
-  const finalPaymentAmount = withGroupalRemaining + delivery
-  const savingsVsNoGroupal = remaining90 - withGroupalRemaining
-  const saveUpTo = deal.originalPrice - (maxGroupPrice + delivery)
 
   function shareWhatsApp() {
     window.open(
@@ -178,21 +168,6 @@ function StepReview({
           )}
         </div>
 
-        <a
-          href={deal.sellerUrl ?? "#"}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex items-center justify-between w-full rounded-xl border border-gray-200 px-4 py-3 hover:border-gray-400 hover:bg-gray-50 transition-all group"
-        >
-          <div>
-            <p className="text-[10px] font-extrabold uppercase tracking-widest text-gray-400">In Store Price</p>
-            <p className="text-lg font-bold text-gray-400 line-through tabular-nums">
-              {fmtShort(deal.originalPrice, deal.currency)}
-            </p>
-          </div>
-          <ExternalLink className="h-4 w-4 text-gray-300 group-hover:text-gray-500 transition-colors" />
-        </a>
-
         <div className="flex flex-col gap-2 text-sm text-gray-600">
           <div className="flex items-center gap-2">
             <MapPin className="h-4 w-4 text-gray-400 flex-shrink-0" />
@@ -219,31 +194,45 @@ function StepReview({
       {/* ── Navy CTA card ───────────────────────────────── */}
       <div className="rounded-2xl overflow-hidden shadow-lg" style={{ backgroundColor: "#002356" }}>
 
-        <div className="px-6 pt-6">
-          <p className="font-bold text-2xl leading-none">
-            <span className="text-white">Current </span>
-            <span className="text-white">grou</span>
-            <span style={{ color: "#eaad00" }}>pal</span>
-            <span className="text-white"> price</span>
-          </p>
-        </div>
-
         <div className="px-6 py-5 space-y-5">
 
-          {/* Current price hero */}
-          <div className="space-y-1">
-            <p className="font-extrabold text-white tabular-nums" style={{ fontSize: "3rem", lineHeight: 1 }}>
-              {fmtShort(computed.currentPrice, deal.currency)}
-            </p>
-            <div className="flex items-center gap-3 mt-1">
-              <span className="text-sm text-white">
-                Join now and save from{" "}
-                <span className="font-bold" style={{ color: "#eaad00" }}>{fmtShort(computed.savingsAmount, deal.currency)}</span>
-                {" "}up to{" "}
-                <span className="font-bold" style={{ color: "#eaad00" }}>{fmtShort(saveUpTo, deal.currency)}</span>
-              </span>
+          {/* Store price vs Groupal price */}
+          <div className="flex flex-col gap-5">
+            <div>
+              <p className="text-white/50 text-xs font-extrabold uppercase tracking-widest mb-1">
+                Regular Store Price
+              </p>
+              <a
+                href={deal.sellerUrl ?? "#"}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="group inline-flex items-center gap-1.5 cursor-pointer"
+              >
+                <span
+                  className="font-bold text-white/60 tabular-nums line-through leading-none"
+                  style={{ fontSize: "1.5rem" }}
+                >
+                  {fmtShort(deal.originalPrice, deal.currency)}
+                </span>
+                <ExternalLink className="h-4 w-4 text-white/40 transition-colors group-hover:text-groupal-gold flex-shrink-0" />
+              </a>
+            </div>
+            <div>
+              <p className="font-heading font-extrabold leading-none mb-1 text-white">
+                Current grou<span className="text-groupal-gold">pal</span> price
+              </p>
+              <p className="font-extrabold text-white tabular-nums leading-none" style={{ fontSize: "3rem" }}>
+                {fmtShort(computed.currentPrice, deal.currency)}
+              </p>
             </div>
           </div>
+
+          <p className="text-sm text-white">
+            Join now and save from{" "}
+            <span className="font-bold" style={{ color: "#eaad00" }}>{fmtShort(computed.savingsAmount, deal.currency)}</span>
+            {" "}up to{" "}
+            <span className="font-bold" style={{ color: "#eaad00" }}>{fmtShort(maxSavings, deal.currency)}</span>
+          </p>
 
           {/* Milestone pills */}
           <div className="flex items-center gap-3 flex-wrap">
@@ -266,23 +255,6 @@ function StepReview({
 
           {/* Progress bar */}
           <div className="space-y-2">
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-white/60 flex items-center gap-1">
-                <Users className="h-3.5 w-3.5" />
-                <span>
-                  <span className="text-white font-bold">{deal.currentBuyerCount}</span>
-                  {" of "}
-                  <span className="text-white font-bold">{deal.maxBuyersRequired}</span>
-                  {" buyers joined"}
-                </span>
-              </span>
-              <span
-                className="inline-block px-2.5 py-0.5 rounded-full text-xs font-bold tabular-nums"
-                style={{ backgroundColor: zoneColor.bg, color: zoneColor.pillText }}
-              >
-                {computed.currentDiscountPercent.toFixed(1)}% off
-              </span>
-            </div>
             <div className="relative h-3 rounded-full overflow-hidden" style={{ backgroundColor: "rgba(255,255,255,0.12)" }}>
               <motion.div
                 className={cn("h-full rounded-full", zoneColor.bar)}
@@ -292,91 +264,92 @@ function StepReview({
               />
             </div>
             <p className="text-white/60 text-xs">
-              Every new buyer adds <span className="font-extrabold text-white">{computed.discountPerBuyer.toFixed(2)}%</span> more discount for everyone
+              Every new buyer adds <span className="font-extrabold text-white">{computed.discountPerBuyer.toFixed(2)}%</span> more discount for everyone in the group
             </p>
           </div>
 
-          {/* Countdown */}
-          <div className="space-y-2">
-            <div className="flex items-center gap-2 text-white/60 text-sm">
-              <Clock className="h-4 w-4" />
-              <span>Deal ends in:</span>
-            </div>
-            <CountdownTimer targetDate={deal.deadlineAt} />
-          </div>
-
-          {/* 3-part pricing breakdown */}
-          <div className="rounded-xl p-4" style={{ backgroundColor: "rgba(255,255,255,0.07)" }}>
-
-            {/* Part 2 — What you pay today */}
-            <p className="text-white text-xs font-extrabold uppercase tracking-widest mb-2.5 mt-4">
-              First you pay 10% upfront to <span className="font-extrabold" style={{ color: "#eaad00" }}>join the group</span>
-            </p>
-            <div className="space-y-1.5">
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-white">Store price</span>
-                <span className="text-white font-semibold tabular-nums">{fmt(deal.originalPrice, deal.currency)}</span>
-              </div>
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-white">Reservation (10%)</span>
-                <span className="text-white font-semibold tabular-nums">{fmt(computed.reservationAmount, deal.currency)}</span>
-              </div>
-            </div>
-              <div className="mt-2.5 flex items-center justify-between rounded-xl px-3 py-2" style={{ border: "2px solid #eaad00" }}>
-                <span className="text-white font-bold text-sm">You pay today</span>
-              <span className="font-extrabold tabular-nums text-base" style={{ color: "#eaad00" }}>
-                {fmt(totalToday, deal.currency)}
+          {/* Now vs. max scenario comparison */}
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between gap-3 text-sm">
+              <span className="text-white">
+                Right now, <span className="font-bold" style={{ color: "#eaad00" }}>{deal.currentBuyerCount}</span> of <span className="font-bold" style={{ color: "#eaad00" }}>{deal.maxBuyersRequired}</span> buyers joined
               </span>
-              </div>
+              <span
+                className="inline-block px-2.5 py-0.5 rounded-full text-xs font-bold tabular-nums flex-shrink-0"
+                style={{ backgroundColor: zoneColor.bg, color: zoneColor.pillText }}
+              >
+                {computed.currentDiscountPercent.toFixed(1)}% off
+              </span>
+            </div>
+            <div className="flex items-center justify-between gap-3 rounded-lg px-3 py-1.5" style={{ backgroundColor: "rgba(255,255,255,0.12)" }}>
+              <span className="font-semibold text-sm" style={{ color: "white" }}><span style={{ color: "#eaad00" }}>Current savings</span> for each buyer participating</span>
+              <span className="font-extrabold tabular-nums flex-shrink-0" style={{ color: "#eaad00" }}>
+                {fmtShort(computed.savingsAmount, deal.currency)}
+              </span>
+            </div>
 
-            {/* Part 3 — After deal closes */}
-            <div className="mt-4 pt-4 border-t border-white/10">
-              <p className="text-white text-xs font-extrabold uppercase tracking-widest mb-2.5">
-                Then when the deal closes,{" "}
-                <span className="text-xs font-extrabold uppercase tracking-widest" style={{ color: "#eaad00" }}>
-                  you pay the rest
-                </span>
-              </p>
-              <div className="space-y-1.5">
-                <div className="flex items-center justify-between text-sm pt-1.5">
-                  <span className="text-white">Remaining (90%)</span>
-                  <span className="text-white font-semibold tabular-nums">{fmt(remaining90, deal.currency)}</span>
-                </div>
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-white">+ Delivery</span>
-                  <span className="text-white font-semibold tabular-nums">{fmt(delivery, deal.currency)}</span>
-                </div>
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-white">- Accumulated Groupal discount (Right now)</span>
-                  <span
-                    className="inline-block px-2.5 py-0.5 rounded-full text-xs font-bold tabular-nums"
-                    style={{ backgroundColor: zoneColor.bg, color: zoneColor.pillText }}
-                  >
-                    {nextDiscountPercent.toFixed(1)}%
-                  </span>
-                </div>
-              </div>
-              <div className="mt-2.5 flex items-center justify-between rounded-xl px-3 py-2" style={{ border: "2px solid #eaad00" }}>
-                 <span className="text-white font-bold text-sm">Your final payment starts from</span>
-                <span className="font-extrabold tabular-nums" style={{ color: "#eaad00" }}>
-                  {fmt(finalPaymentAmount, deal.currency)}
-                </span>
-              </div>
-
-              {/* Current savings */}
-              <div className="mt-2.5 flex items-center justify-between rounded-xl px-3 py-2">
-                <span className="text-white text-sm">And you start saving from</span>
-                <span className="font-extrabold tabular-nums" style={{ color: "#eaad00" }}>
-                  {fmt(savingsVsNoGroupal, deal.currency)}
-                </span>
-              </div>
+            <div className="flex items-center justify-between gap-3 text-sm pt-1">
+              <span className="text-white">
+                If <span className="font-bold" style={{ color: "#eaad00" }}>{deal.maxBuyersRequired}</span> of <span className="font-bold" style={{ color: "#eaad00" }}>{deal.maxBuyersRequired}</span> buyers join
+              </span>
+              <span className="inline-block px-2.5 py-0.5 rounded-full text-xs font-bold tabular-nums flex-shrink-0 bg-groupal-red text-white">
+                {deal.maxDiscountPercent}% off
+              </span>
+            </div>
+            <div className="flex items-center justify-between gap-3 rounded-lg px-3 py-1.5" style={{ backgroundColor: "rgba(255,255,255,0.12)" }}>
+              <span className="font-semibold text-sm" style={{ color: "white" }}>Each buyer participating <span style={{ color: "#eaad00" }}>can save up to</span></span>
+              <span className="font-extrabold tabular-nums flex-shrink-0" style={{ color: "#eaad00" }}>
+                {fmtShort(maxSavings, deal.currency)}
+              </span>
             </div>
           </div>
 
-           {/* Social share */}
+          {/* ── Ready to join in? ──────────────────────── */}
+          <div className="pt-2 border-t border-white/10 space-y-4">
+            <p className="text-center font-extrabold text-white tracking-wide" style={{ fontSize: "1.1rem" }}>
+              Ready to join in?
+            </p>
+
+            <div className="rounded-xl p-4 space-y-4" style={{ backgroundColor: "rgba(255,255,255,0.07)" }}>
+
+              <div>
+                <p className="text-xs font-extrabold uppercase tracking-widest mb-2.5" style={{ color: "#eaad00" }}>
+                  Secure your spot in the group buy
+                </p>
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between gap-3 text-sm">
+                    <span className="text-white">Join in by paying in advance 10% of the store price</span>
+                    <span className="text-white font-semibold tabular-nums flex-shrink-0">{fmt(totalToday, deal.currency)}</span>
+                  </div>
+                  <div className="flex items-center justify-between gap-3 text-sm">
+                    <span className="text-white">And wait to see how much discount this group accumulates</span>
+                    <span className="font-extrabold flex-shrink-0" style={{ color: "#eaad00" }}>?%</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="pt-3 border-t border-white/10">
+                <p className="font-heading text-xs font-extrabold uppercase tracking-widest mb-2.5" style={{ color: "#eaad00" }}>
+                  When the deal closes
+                </p>
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between gap-3 text-sm">
+                    <span className="text-white">You pay the remaining 90%</span>
+                    <span className="text-white font-semibold tabular-nums flex-shrink-0">{fmt(remaining90, deal.currency)}</span>
+                  </div>
+                  <div className="flex items-center justify-between gap-3 text-sm">
+                    <span className="text-white">Minus (-) <span style={{ color: "#eaad00", fontWeight: "Bold"}}>the accumulated groupal discount</span></span>
+                    <span className="text-white font-semibold tabular-nums flex-shrink-0">Now at <span className="font-bold" style={{ color: "#eaad00" }}>{fmtShort(computed.savingsAmount, deal.currency)}</span> up to <span className="font-bold" style={{ color: "#eaad00" }}>{fmtShort(maxSavings, deal.currency)}</span></span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+          {/* Social share */}
           <div className="space-y-2">
             <p className="text-white/80 text-xs pb-2 text-center font-medium">
-              So start sharing with everybody to make the price drop for everyone 👥
+              <span style={{ color: "#eaad00", fontWeight: "Bold" }}>Every new buyer </span>who joins<span style={{ color: "#eaad00", fontWeight: "Bold"}}> increases the group discount</span>, lowering this item final price,<br/>
+               so <span style={{ color: "#eaad00", fontWeight: "Bold"}}>join now</span> and start <span style={{ color: "#eaad00", fontWeight: "Bold"}}>sharing this deal</span> with all your contacts 👥
             </p>
             <div className="flex gap-2">
               <button
@@ -402,6 +375,16 @@ function StepReview({
               </button>
             </div>
           </div>
+          </div>
+
+           {/* Countdown */}
+          <div className="flex flex-col items-center gap-2">
+            <div className="flex items-center gap-2 text-white/60 text-sm" style={{marginBottom: "10px"}}>
+              <Clock className="h-4 w-4" />
+              <span style={{color: "white",fontWeight: "Bold"}}>Deal ends in:</span>
+            </div>
+            <CountdownTimer targetDate={deal.deadlineAt} />
+          </div>
 
           {/* Warning box */}
           <div className="rounded-2xl border-2 border-[#e86300] bg-white p-4 flex gap-3">
@@ -409,8 +392,7 @@ function StepReview({
             <div className="text-sm text-gray-700 leading-relaxed space-y-2">
               <p>
                 <span className="font-bold text-[#e86300]">Important:</span>{" "}
-                Be 100% sure that you are going to buy this product. The upfront payment is your commitment to make the final payment when the deal closes. Make sure that money is available in your payment method. If it isn&apos;t, you will have{" "}
-                <span className="font-bold">3 days</span> after the deal ends to update your payment method, after that, your upfront payment is forfeited.
+                You pay only 10% of the store price today, and when the deal closes we'll automatically charge the rest (remmaining 90% minus your the accumulated group discount) to the same payment method. Please make sure to have the sufficient funds to fulfill the second payment. If you don't have enough funds in your initial payment method, don't worry, you will have enough time to update it until the final payment go trough. Please be aware that avoiding to fulfill the final payment could compromise your 10% upfront payment.
               </p>
               <p>
                 <span className="font-bold text-[#e86300]">Every deal will make you save money:</span>{" "}
@@ -789,11 +771,11 @@ export default function CheckoutPage() {
 
         {/* Back link */}
         <Link
-          href={`/deals/${deal.id}`}
+          href="/deals"
           className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-[#002356] transition-colors font-medium mb-6"
         >
           <ArrowLeft className="h-4 w-4" />
-          Back to deal
+          Back to deals
         </Link>
 
         {/* Progress indicator */}
@@ -855,7 +837,7 @@ export default function CheckoutPage() {
                     return (
                       <Link
                         key={rd.id}
-                        href={`/deals/${rd.id}`}
+                        href={`/checkout/${rd.id}`}
                         className="flex gap-3 bg-white rounded-xl border border-gray-100 p-3 hover:border-gray-300 hover:shadow-sm transition-all"
                       >
                         <div className="relative h-14 w-14 flex-shrink-0 rounded-lg overflow-hidden">
@@ -914,7 +896,7 @@ export default function CheckoutPage() {
                     return (
                       <Link
                         key={rd.id}
-                        href={`/deals/${rd.id}`}
+                        href={`/checkout/${rd.id}`}
                         className="bg-white rounded-xl border border-gray-100 overflow-hidden hover:border-gray-300 hover:shadow-sm transition-all"
                       >
                         <div className="relative h-28 w-full">

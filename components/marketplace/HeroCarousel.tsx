@@ -98,9 +98,8 @@ export function HeroCarousel() {
               className="text-base md:text-lg text-white/70 leading-relaxed mb-8 max-w-md mx-auto md:mx-0"
               variants={{ hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0, transition: { duration: 0.55, ease: "easeOut" } } }}
             >
-              Join group buys on big-ticket items and unlock discounts of{" "}
-              <strong className="text-white">up to 70%</strong>. The more who
-              join, the more you save.
+              Join group buys on premium items and unlock discounts of{" "}
+              <strong className="text-white">up to 60%</strong>. The more buyers join the group, the greater the discount for each one.
             </motion.p>
 
             {/* CTAs */}

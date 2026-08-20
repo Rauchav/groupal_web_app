@@ -232,6 +232,19 @@ Located over the product image, next to the share button.
   reservation, and the platform fee is now modeled as a seller-side
   cost deducted from payouts at deal close (computeDealValues()
   returns sellerPlatformFeeAmount, not a buyer-facing fee)
+- Removed the standalone deal detail page (/deals/[id]) — it
+  duplicated the checkout page and added an unnecessary click.
+  "Join Group Buy" now goes straight to /checkout/[dealId], whose
+  Review Deal step (step 1 of 3) is the single pre-purchase deal
+  info + pricing page. All deal-card links, share links, and
+  related-deal links across the app now point to /checkout/[id]
+  instead of /deals/[id]. Redesigned that step's navy pricing card:
+  regular store price vs current Groupal price header, a "right now
+  vs if the group reaches max" savings comparison, and a simplified
+  "Reserve your spot" / "When the deal closes" breakdown that shows
+  the unknown final discount as "?%" and a happy-icon graphic
+  (public/brand/happy-icon.svg) instead of a computed number, to
+  build anticipation rather than front-loading every derived figure
 
 ### Not yet built
 - Seller Portal (landing, dashboard, deal creator, deal monitoring,

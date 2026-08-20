@@ -96,8 +96,8 @@ function CheckoutSuccessInner() {
 
   function handleShare() {
     const url = typeof window !== "undefined"
-      ? `${window.location.origin}/deals/${dealId}`
-      : `/deals/${dealId}`
+      ? `${window.location.origin}/checkout/${dealId}`
+      : `/checkout/${dealId}`
     navigator.clipboard.writeText(url).then(() => {
       toast.success("Share link copied to clipboard!")
     })
