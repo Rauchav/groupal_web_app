@@ -1,87 +1,21 @@
 "use client"
 
+import { useEffect } from "react"
 import Link from "next/link"
 import Image from "next/image"
 import { useUser } from "@clerk/nextjs"
 import { useParticipationStore, MockParticipation } from "@/lib/stores/participation-store"
+import { syncDealClosures } from "@/lib/payments/sync-deal-closures"
 import { MOCK_DEALS } from "@/lib/mock/deals"
 import { computeDealValues } from "@/lib/utils/deal-calculator"
+import { OpenDealPaymentSummary, MilestoneScale } from "@/components/dashboard/DealPaymentSummary"
+import { DashboardSidebar, DashboardMobileTabs } from "@/components/dashboard/DashboardNav"
 import { CountdownTimer } from "@/components/marketplace/CountdownTimer"
 import { motion } from "framer-motion"
 import { toast } from "sonner"
 import {
-  ShoppingBag, Heart, Settings, LayoutList,
-  Share2, Users, TrendingDown, ShoppingCart,
+  ShoppingBag, Users, TrendingDown, Clock,
 } from "lucide-react"
-
-// ── Sidebar nav ───────────────────────────────────────────────────────────────
-
-function Sidebar({ active }: { active: string }) {
-  const items = [
-    { href: "/dashboard",            icon: ShoppingBag, label: "My Group Buys" },
-    { href: "/dashboard/liked",      icon: Heart,       label: "Liked Deals" },
-    { href: "/dashboard/purchases",  icon: LayoutList,  label: "Purchases" },
-    { href: "/dashboard/settings",   icon: Settings,    label: "Settings" },
-  ]
-
-  return (
-    <aside className="hidden lg:flex flex-col w-60 flex-shrink-0">
-      <nav className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-        {items.map(({ href, icon: Icon, label }) => (
-          <Link
-            key={href}
-            href={href}
-            className={`flex items-center gap-3 px-4 py-3.5 text-sm font-medium transition-colors ${
-              active === href
-                ? "bg-[#002356] text-white"
-                : "text-gray-600 hover:bg-gray-50"
-            }`}
-          >
-            <Icon className="h-4 w-4 flex-shrink-0" />
-            {label}
-          </Link>
-        ))}
-        <div className="border-t border-gray-100">
-          <Link
-            href="/deals"
-            className="flex items-center gap-3 px-4 py-3.5 text-sm font-medium text-gray-400 hover:bg-gray-50 transition-colors"
-          >
-            <ShoppingCart className="h-4 w-4 flex-shrink-0" />
-            Back to Marketplace
-          </Link>
-        </div>
-      </nav>
-    </aside>
-  )
-}
-
-// ── Mobile tabs ───────────────────────────────────────────────────────────────
-
-function MobileTabs({ active }: { active: string }) {
-  const tabs = [
-    { href: "/dashboard",           label: "Buys" },
-    { href: "/dashboard/liked",     label: "Liked" },
-    { href: "/dashboard/purchases", label: "Purchases" },
-    { href: "/dashboard/settings",  label: "Settings" },
-  ]
-  return (
-    <div className="flex lg:hidden gap-1 bg-white rounded-2xl border border-gray-100 shadow-sm p-1 mb-4 overflow-x-auto">
-      {tabs.map(({ href, label }) => (
-        <Link
-          key={href}
-          href={href}
-          className={`flex-1 text-center py-2 rounded-xl text-sm font-semibold transition-colors whitespace-nowrap px-3 ${
-            active === href
-              ? "bg-[#002356] text-white"
-              : "text-gray-500 hover:text-[#002356]"
-          }`}
-        >
-          {label}
-        </Link>
-      ))}
-    </div>
-  )
-}
 
 // ── Dashboard deal card ───────────────────────────────────────────────────────
 
@@ -89,6 +23,7 @@ function ActiveDealCard({ participation }: { participation: MockParticipation })
   const deal = MOCK_DEALS.find((d) => d.id === participation.dealId)
   if (!deal) return null
   const computed = computeDealValues(deal)
+  const isDealOpen = deal.currentBuyerCount < deal.maxBuyersRequired && new Date() < deal.deadlineAt
 
   function shareLink() {
     const url = typeof window !== "undefined"
@@ -111,68 +46,43 @@ function ActiveDealCard({ participation }: { participation: MockParticipation })
         <div className="flex-1 min-w-0 space-y-1">
           <h3 className="font-bold text-[#002356] text-sm leading-snug line-clamp-2">{deal.productName}</h3>
           <div className="flex items-center gap-1.5">
-            <span className="inline-block px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 text-[11px] font-bold">
-              Active — Awaiting deal close
+            <span
+              className={`inline-block px-2 py-0.5 rounded-full text-[11px] font-bold ${
+                isDealOpen ? "bg-green-100 text-green-700" : "bg-blue-100 text-blue-700"
+              }`}
+            >
+              {isDealOpen ? "Open Deal" : "Deal Closed"}
             </span>
           </div>
         </div>
       </div>
 
-      <div className="px-4 pb-4 space-y-3">
-        {/* Progress */}
-        <div className="space-y-1.5">
-          <div className="flex justify-between text-xs text-gray-400">
-            <span className="flex items-center gap-1">
-              <Users className="h-3 w-3" />
-              <span>
-                <span className="font-bold text-gray-700">{deal.currentBuyerCount}</span>
-                {" / "}
-                <span className="font-bold text-gray-700">{deal.maxBuyersRequired}</span>
-                {" buyers"}
-              </span>
-            </span>
-            <span className="font-bold" style={{ color: "#DA1200" }}>
-              {computed.currentDiscountPercent.toFixed(1)}% off
-            </span>
-          </div>
-          <div className="h-2 rounded-full bg-gray-100 overflow-hidden">
-            <div
-              className="h-full rounded-full bg-[#DA1200] transition-all"
-              style={{ width: `${Math.min(computed.progressPercent, 100)}%` }}
-            />
-          </div>
+      <div className="px-4 pb-3 space-y-3">
+        <MilestoneScale deal={deal} />
+
+        <div className="flex items-center gap-1.5 text-xs text-gray-400">
+          <Users className="h-3.5 w-3.5" />
+          <span>
+            <span className="font-bold text-gray-700">{deal.currentBuyerCount}</span>
+            {" of "}
+            <span className="font-bold text-gray-700">{deal.maxBuyersRequired}</span>
+            {" buyers participated"}
+          </span>
+          <span className="font-bold ml-auto" style={{ color: "#DA1200" }}>
+            {computed.currentDiscountPercent.toFixed(1)}% off
+          </span>
         </div>
 
         {/* Countdown */}
         <div className="flex items-center gap-1.5 text-xs text-gray-400">
+          <Clock className="h-3.5 w-3.5" style={{ color: "#e86300" }} />
           <span>Ends in:</span>
           <CountdownTimer targetDate={deal.deadlineAt} compact className="text-xs" />
         </div>
-
-        {/* Payments */}
-        <div className="grid grid-cols-2 gap-3">
-          <div className="rounded-xl bg-gray-50 border border-gray-100 p-3">
-            <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-0.5">Paid today</p>
-            <p className="font-bold text-[#002356] tabular-nums text-sm">
-              {new Intl.NumberFormat("en-US", { style: "currency", currency: deal.currency ?? "USD", minimumFractionDigits: 2 }).format(participation.reservationPaid)}
-            </p>
-          </div>
-          <div className="rounded-xl bg-gray-50 border border-gray-100 p-3">
-            <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-0.5">Est. final</p>
-            <p className="font-bold text-[#002356] tabular-nums text-sm">
-              {new Intl.NumberFormat("en-US", { style: "currency", currency: deal.currency ?? "USD", minimumFractionDigits: 2 }).format(computed.remainingAmount + 25)}
-            </p>
-          </div>
-        </div>
-
-        <button
-          onClick={shareLink}
-          className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border border-gray-200 text-sm font-semibold text-gray-600 hover:border-[#eaad00] hover:text-[#002356] hover:bg-[#eaad00]/5 transition-colors cursor-pointer"
-        >
-          <Share2 className="h-4 w-4" />
-          Share Deal — drop the price for everyone!
-        </button>
       </div>
+
+      {/* Payments */}
+      <OpenDealPaymentSummary deal={deal} reservationPaid={participation.reservationPaid} onShare={shareLink} />
     </motion.div>
   )
 }
@@ -193,9 +103,21 @@ function StatCard({ label, value, sub }: { label: string; value: string | number
 
 export default function DashboardPage() {
   const { user } = useUser()
+  // Gate on hasHydrated so the first client render matches the server's
+  // always-empty SSR state — otherwise the real (persisted) list vs. the
+  // empty state below diverge and React throws a hydration mismatch.
+  const hasHydrated = useParticipationStore((s) => s.hasHydrated)
   const participations = useParticipationStore((s) => s.participations)
-  const active    = participations.filter((p) => p.status === "active")
-  const completed = participations.filter((p) => p.status === "completed")
+  const effectiveParticipations = hasHydrated ? participations : []
+  const active    = effectiveParticipations.filter((p) => p.status === "active")
+
+  // No real job scheduler yet (see lib/jobs/scheduler.ts) — check on every
+  // load whether any of this buyer's active deals are ready to close, and
+  // if so run the close job and reflect the outcome here.
+  useEffect(() => {
+    if (hasHydrated && user?.id) void syncDealClosures(user.id)
+  }, [hasHydrated, user?.id])
+  const completed = effectiveParticipations.filter((p) => p.status === "completed")
 
   const totalSaved = completed.reduce((sum, p) => {
     const deal = MOCK_DEALS.find((d) => d.id === p.dealId)
@@ -212,10 +134,10 @@ export default function DashboardPage() {
     <main className="min-h-screen" style={{ backgroundColor: "#f8f9fa", paddingTop: "7.5rem", paddingBottom: "4rem" }}>
       <div className="max-w-[1100px] mx-auto px-4">
 
-        <MobileTabs active="/dashboard" />
+        <DashboardMobileTabs active="/dashboard" />
 
         <div className="flex gap-6">
-          <Sidebar active="/dashboard" />
+          <DashboardSidebar active="/dashboard" />
 
           <div className="flex-1 min-w-0 space-y-6">
 

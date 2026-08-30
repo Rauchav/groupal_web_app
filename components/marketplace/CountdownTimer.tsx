@@ -47,6 +47,7 @@ export function CountdownTimer({
   if (compact) {
     return (
       <span
+        suppressHydrationWarning
         className={cn(
           "font-mono font-bold tabular-nums",
           isUrgent ? "text-groupal-orange" : "text-groupal-orange",
@@ -79,6 +80,7 @@ export function CountdownTimer({
             )}
           >
             <span
+              suppressHydrationWarning
               className="font-mono font-extrabold tabular-nums leading-none text-groupal-orange"
               style={{ fontSize: "1.1rem" }}
             >

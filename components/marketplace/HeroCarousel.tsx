@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowRight, Shield, CheckCircle2, BadgePercent, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -19,6 +20,7 @@ const TRUST = [
 ] as const;
 
 export function HeroCarousel() {
+  const router = useRouter();
   const [current, setCurrent] = useState(0);
 
   useEffect(() => {
@@ -107,11 +109,11 @@ export function HeroCarousel() {
               className="flex flex-wrap items-center justify-center md:justify-start gap-3"
               variants={{ hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0, transition: { duration: 0.55, ease: "easeOut" } } }}
             >
-              <Button variant="gold" size="lg" className="font-bold">
+              <Button variant="gold" size="lg" className="font-bold" onClick={() => router.push("/deals")}>
                 Browse Deals
                 <ArrowRight className="h-4 w-4" />
               </Button>
-              <Button variant="outline" size="lg" className="font-bold">
+              <Button variant="outline" size="lg" className="font-bold" onClick={() => router.push("/how-it-works")}>
                 How It Works
               </Button>
             </motion.div>

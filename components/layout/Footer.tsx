@@ -162,7 +162,7 @@ export function Footer() {
             {LINKS.legal.map((link) => (
               <a
                 key={link}
-                href="#"
+                href={link === "Terms of Service" ? "/terms" : "#"}
                 className="text-xs text-white/40 hover:text-white/70 transition-colors cursor-pointer"
               >
                 {link}

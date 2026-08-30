@@ -34,6 +34,16 @@ export function computeDealValues(deal: Deal): DealComputedValues {
   };
 }
 
+// The final-payment estimate shown to a buyer before the deal closes —
+// same formula the deal-close job uses to charge the real final amount
+// (lib/jobs/deal-close-job.ts): remainingAmount minus the discount earned
+// so far, plus delivery. Shrinks as more buyers join.
+export function computeEstimatedFinalPrice(deal: Deal, deliveryCost: number): number {
+  const computed = computeDealValues(deal);
+  const earnedDiscount = deal.originalPrice * (computed.currentDiscountPercent / 100);
+  return computed.remainingAmount - earnedDiscount + deliveryCost;
+}
+
 // ── Color scale: reflects reward progression — red is NEVER used here ─────────
 // < 25%  neutral blue-gray · 25–50%  gold · 50–75%  orange · 75–100%  green
 

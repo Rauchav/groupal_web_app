@@ -3,12 +3,14 @@
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
+import { toast } from "sonner";
 import {
-  Share2, ShieldCheck, Heart, Clock, Users,
-  Zap, ExternalLink, TrendingDown, CheckCircle,
+  Share2, ShieldCheck, Clock, Users,
+  Zap, ExternalLink, CheckCircle,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { CTA_BUTTON_CLASS } from "@/components/dashboard/DealPaymentSummary";
 import { CountdownTimer } from "./CountdownTimer";
+import { LikeButton } from "./LikeButton";
 import { cn } from "@/lib/utils";
 import { Deal } from "@/lib/types/deal";
 import { computeDealValues } from "@/lib/utils/deal-calculator";
@@ -46,10 +48,10 @@ function GroupalPricing({
   const m1Pct = (deal.milestones[0].buyerCount / deal.maxBuyersRequired) * 100;
   const m2Pct = (deal.milestones[1].buyerCount / deal.maxBuyersRequired) * 100;
   const zoneColor = getZoneColor(computed.progressPercent, m1Pct, m2Pct);
+  const maxSavings = deal.originalPrice * (deal.maxDiscountPercent / 100);
 
   return (
     <div style={{ backgroundColor: "#002356", borderRadius: 0 }}>
-
       {/* "groopal price" heading */}
       <div className="px-3 pt-2.5 pb-0">
         <span className="font-heading font-extrabold leading-none" style={{ fontSize: "0.85rem" }}>
@@ -57,6 +59,38 @@ function GroupalPricing({
           <span style={{ color: "#eaad00" }}>pal</span>
           <span className="text-white"> price</span>
         </span>
+      </div>
+       
+       {/* ── Current price — the hero ── */}
+       <div className="px-3 pt-2.5 pb-0">
+        <div
+          className="font-heading font-extrabold tabular-nums leading-none mt-0.5 text-3xl text-white"
+        >
+          {formatPrice(computed.currentPrice, deal.currency)}
+        </div>  
+      </div>
+
+      {/* Savings callout */}
+      <div className="px-3 pt-2.5 pb-3.5 flex flex-col justify-center gap-1">
+        {/*Current savings*/}
+        <div className="flex items-center justify-between gap-2" style={{ fontSize: "0.6rem", color: "#eaad00" }}>
+          <span className="font-semibold tracking-wider text-white" style={{ fontSize: "0.65rem" }}>
+            Right now each buyer is saving
+          </span>
+          <div className="font-heading font-extrabold tabular-nums leading-none text-xl text-groupal-gold">
+            {formatPrice(computed.savingsAmount, deal.currency)}
+          </div>
+        </div>
+
+        {/*Potential savings*/}
+        <div className="flex items-center justify-between gap-2" style={{ fontSize: "0.6rem", color: "#eaad00" }}>
+          <span className="font-semibold tracking-wider text-white" style={{ fontSize: "0.65rem" }}>
+            If the group fills up, they will save
+          </span>
+          <div className="font-heading font-extrabold tabular-nums leading-none text-xl text-groupal-gold">
+            {formatPrice(maxSavings, deal.currency)}
+          </div>
+        </div>
       </div>
 
       {/* ── Scale row: discount% · buyer count per milestone ── */}
@@ -112,47 +146,19 @@ function GroupalPricing({
             {computed.currentDiscountPercent.toFixed(1)}% off
           </span>
         </div>
-      </div>
-
-      {/* ── Current price — the hero ── */}
-      <div className="px-3 pb-2.5">
-        <span
-          className="font-semibold uppercase tracking-wider"
-          style={{ color: "rgb(255, 255, 255)", fontSize: "0.65rem" }}
-        >
-          The price right now is
-        </span>
-        <div
-          className="font-heading font-extrabold tabular-nums leading-none mt-0.5 text-3xl text-white"
-        >
-          {formatPrice(computed.currentPrice, deal.currency)}
-        </div>
 
         {/* Savings callout */}
-        <div
-          className="mt-1 flex items-center gap-1"
-          style={{ fontSize: "0.6rem", color: "#eaad00" }}
-        >
+        <div className="mt-2 mb-1.5 flex items-center gap-1" style={{ fontSize: "0.6rem", color: "#eaad00" }}>
           <span className="text-white">
-            <span
-          className="font-semibold uppercase tracking-wider"
-          style={{ color: "#eaad00", fontSize: "0.65rem" }}
-        >
-          each buyer is saving
-        </span><br/>
-          <div
-          className="font-heading font-extrabold tabular-nums leading-none mt-0.5 text-xl text-groupal-gold"
-        >
-          {formatPrice(computed.savingsAmount, deal.currency)}
-        </div>
-         <span
-          className="font-semibold tracking-wider"
-          style={{ color: "rgb(255, 255, 255)", fontSize: "0.65rem" }}
-        >
-          Each new buyer, <span style={{ color: "#eaad00" }}>lowers the price</span>, for all the group.
-        </span>
+              <span
+              className="font-semibold tracking-wider"
+              style={{ color: "rgb(255, 255, 255)", fontSize: "0.65rem" }}
+              >
+              Each new buyer, <span style={{ color: "#eaad00", fontWeight: "bold"}}>lowers the price</span>, for all the group.
+              </span>
           </span>
         </div>
+
       </div>
 
     </div>
@@ -164,22 +170,49 @@ function GroupalPricing({
 export function DealCard({
   deal,
   onJoin,
-  onBuyNow,
-  onSave,
   onShare,
   className,
 }: {
   deal:      Deal;
   onJoin?:   (id: string) => void;
-  onBuyNow?: (id: string) => void;
-  onSave?:   (id: string) => void;
   onShare?:  (id: string) => void;
   className?: string;
 }) {
   const router       = useRouter();
-  const hasJoined    = useParticipationStore((s) => s.hasJoined(deal.id));
+  // Gate on hasHydrated — the store persists to localStorage, which isn't
+  // available during SSR. Reading it before hydration completes would make
+  // the CTA button's structure (icon + label) diverge from what the server
+  // rendered, breaking hydration.
+  const hasHydrated  = useParticipationStore((s) => s.hasHydrated);
+  const hasJoinedStore = useParticipationStore((s) => s.hasJoined(deal.id));
+  const hasJoined    = hasHydrated && hasJoinedStore;
   const computed     = computeDealValues(deal);
   const hoursLeft    = (deal.deadlineAt.getTime() - Date.now()) / (1000 * 60 * 60);
+
+  // Native share sheet (Messages, Mail, AirDrop, installed social apps,
+  // etc.) when the platform supports it; clipboard copy otherwise. Sharing
+  // is core to the discount mechanic — every new buyer drops the price for
+  // the whole group — so this lives on every deal card, not just checkout.
+  async function handleShare(e: React.MouseEvent) {
+    // Cards on /deals and /dashboard/liked are wrapped in a full-card
+    // <a href="/checkout/...">, whose native navigation still fires on a
+    // descendant click even after stopPropagation — only preventDefault
+    // stops that activation behavior.
+    e.preventDefault();
+    e.stopPropagation();
+    const url = `${window.location.origin}/checkout/${deal.id}`;
+    if (typeof navigator !== "undefined" && navigator.share) {
+      try {
+        await navigator.share({ title: deal.productName, text: "Join this group buy on Groupal and drop the price for everyone!", url });
+      } catch {
+        // user dismissed the native share sheet — nothing to do
+      }
+    } else {
+      await navigator.clipboard.writeText(url);
+      toast.success("Share link copied!");
+    }
+    onShare?.(deal.id);
+  }
   const isEndingSoon = hoursLeft > 0 && hoursLeft < 24;
   const isAlmostFull = computed.progressPercent >= 80 && computed.progressPercent < 100;
 
@@ -216,22 +249,9 @@ export function DealCard({
             </span>
           </div>
 
-          {/* Heart + Share — top right */}
+          {/* Heart — top right (Share moved below the CTAs — see handleShare) */}
           <div className="absolute top-3 right-3 z-10 flex items-center gap-1.5">
-            <button
-              onClick={(e) => { e.stopPropagation(); onSave?.(deal.id); }}
-              aria-label="Save to favourites"
-              className="flex h-8 w-8 items-center justify-center rounded-full bg-white/80 backdrop-blur-sm text-gray-400 hover:text-red-500 hover:bg-white transition-colors duration-150 shadow-sm cursor-pointer"
-            >
-              <Heart className="h-3.5 w-3.5" />
-            </button>
-            <button
-              onClick={(e) => { e.stopPropagation(); onShare?.(deal.id); }}
-              aria-label="Share this deal"
-              className="flex h-8 w-8 items-center justify-center rounded-full bg-white/80 backdrop-blur-sm text-gray-500 hover:text-groupal-navy hover:bg-white transition-colors duration-150 shadow-sm cursor-pointer"
-            >
-              <Share2 className="h-3.5 w-3.5" />
-            </button>
+            <LikeButton dealId={deal.id} />
           </div>
 
           {/* Status tags — bottom left — #1b4487 bg, white text, #EC0000 dot */}
@@ -323,33 +343,29 @@ export function DealCard({
           {/* CTAs */}
           <div className="flex flex-col gap-2 mt-auto pt-1">
             {hasJoined ? (
-              <Button
-                variant="default"
-                size="default"
-                className="w-full font-bold text-sm bg-gray-300 text-gray-500 hover:bg-gray-300 cursor-default"
+              <button
                 onClick={() => router.push("/dashboard")}
+                className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl text-sm font-bold bg-gray-300 text-gray-500 cursor-default"
               >
-                <CheckCircle className="h-4 w-4 mr-1.5" />
+                <CheckCircle className="h-4 w-4" />
                 Already Joined
-              </Button>
+              </button>
             ) : (
-              <Button
-                variant="default"
-                size="default"
-                className="w-full font-bold text-sm bg-[#1b4487] hover:bg-[#eaad00] active:bg-[#e86300]/90"
+              <button
                 onClick={() => {
                   onJoin?.(deal.id);
                   router.push(`/checkout/${deal.id}`);
                 }}
+                className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl text-sm font-extrabold text-white transition-transform duration-150 cursor-pointer border-[3px] border-[#eaad00] shadow-[0_4px_4px_rgba(0,35,86,0.4)] hover:scale-[1.01]"
+                style={{ backgroundColor: "#1b4487" }}
               >
+                <Image src="/brand/happy-icon.svg" alt="" width={16} height={16} className="h-4 w-4" />
                 Join Group Buy
-              </Button>
+              </button>
             )}
-            <button
-              onClick={() => onBuyNow?.(deal.id)}
-              className="w-full text-center text-xs font-semibold text-gray-400 hover:text-groupal-orange transition-colors duration-150 cursor-pointer py-0.5"
-            >
-              Buy now at store price →
+            <button onClick={handleShare} className={CTA_BUTTON_CLASS} style={{ backgroundColor: "#eaad00" }}>
+              <Share2 className="h-4 w-4" style={{ color: "#002356" }} />
+              Share this deal
             </button>
           </div>
 

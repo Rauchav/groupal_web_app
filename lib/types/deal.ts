@@ -4,6 +4,19 @@ export interface DiscountMilestone {
   label:           string   // e.g. "Getting started", "Halfway", "Max deal"
 }
 
+// Set by the seller when uploading the product / creating the deal.
+// Required whenever isPickup is true.
+export interface PickupDetails {
+  location:          string   // address / place name where the item is picked up
+  hours:              string   // e.g. "Mon–Sat, 9:00 AM – 6:00 PM"
+  instructions:       string   // free-text explanation of how the pickup process works
+  codeRequired:       string   // what code the buyer must present (e.g. order confirmation code)
+  documentsRequired:  string   // what documents the buyer must present (e.g. valid photo ID)
+  contactName:        string
+  contactPhone:       string
+  contactEmail:       string
+}
+
 export interface Deal {
   id:                   string
   sellerId:             string
@@ -21,6 +34,8 @@ export interface Deal {
   deadlineAt:           Date
   milestones:           DiscountMilestone[]
   reservationFeePercent: number  // always 10
+  isPickup:             boolean          // seller-defined at deal creation: true = pick up in store, false = delivered
+  pickupDetails?:       PickupDetails    // required when isPickup is true
   status:               "active" | "completed" | "cancelled"
   createdAt:            Date
 }

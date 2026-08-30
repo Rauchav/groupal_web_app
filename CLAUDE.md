@@ -72,13 +72,70 @@ buyer-facing total, receipt, or order summary.
 - This is implemented in lib/utils/deal-calculator.ts — treat that
   file's computeDealValues() function as the single source of truth
 
-### If a final payment fails
-- Buyer gets a grace period (a few days) to update their payment
-  method or add funds
-- Gentle reminder notifications sent during the grace period
-- If payment still fails after the grace period: reservation is
-  forfeited (not refunded), and the buyer's spot is released
-- Communicate this to users in warm, friendly, non-punitive language
+### The two-charge flow — full lifecycle
+Implemented in lib/payments/ (reservation-service.ts, gateway.ts,
+constants.ts) and lib/jobs/ (card-health-check-job.ts,
+deal-close-job.ts, scheduler.ts), against the mock persistence layer
+in lib/mock/payments-db.ts (mirrors the Prisma GroupBuyParticipation /
+Payment / Notification models field-for-field so it's a drop-in swap
+for real Prisma calls later — see file header comments). The mock
+Stripe gateway (lib/payments/gateway.ts) is the only module to swap
+for real Stripe off-session PaymentIntents; the mock scheduler
+(lib/jobs/scheduler.ts) is the only module to swap for real BullMQ
+jobs. Every payment attempt — reservation, each final-charge attempt,
+each retry — creates its own Payment row for a full audit trail.
+
+1. **Reservation charge (checkout, today):** chargeReservation()
+   mock-charges 10% of originalPrice off-session, saves a reusable
+   mock payment-method reference on the participation
+   (paymentMethodRef), sets status → RESERVATION_PAID, creates a
+   Payment row (type RESERVATION), and a DEAL_JOINED notification.
+
+2. **Card health-check job:** runs 4–5 days before a deal's
+   deadlineAt (HEALTH_CHECK_WINDOW_DAYS), for every participation
+   still at RESERVATION_PAID on that deal. Simulates a lightweight
+   validity check on the saved payment method. On failure it sends a
+   PAYMENT_REMINDER notification asking the buyer to update their
+   card — this step is purely proactive and NEVER changes status.
+
+3. **Deal-close job:** triggers once, when deadlineAt is reached OR
+   currentBuyerCount hits maxBuyersRequired (whichever first —
+   isDealReadyToClose()). For each RESERVATION_PAID participation:
+   computes finalPrice via computeDealValues() (remainingAmount minus
+   the earned discount, plus delivery — no platform fee), sets status
+   → AWAITING_FINAL_PAYMENT, then attempts the final off-session
+   charge.
+   - **On success:** status → FINAL_PAYMENT_PAID, creates a Payment
+     row (type FINAL_PAYMENT), a PAYMENT_SUCCESS notification, and
+     hands off to fulfillment (triggerFulfillment() — stubbed until
+     the fulfillment pipeline exists).
+   - **On failure:** status → IN_GRACE_PERIOD. Grace period is
+     DEFAULT_GRACE_PERIOD_DAYS = 3 days by default, or
+     HIGH_TICKET_GRACE_PERIOD_DAYS = 5 days for deals with
+     originalPrice ≥ HIGH_TICKET_PRICE_THRESHOLD (currently $1500) —
+     see lib/payments/constants.ts. The chosen value is snapshotted
+     onto the participation (gracePeriodDays, graceDeadline) so a
+     later change to the constants never alters an in-flight grace
+     period. Sends one warm, non-punitive PAYMENT_FAILED
+     notification immediately.
+   - **Auto-retries:** the final charge is retried automatically at
+     day 1 and day 2 of the grace period
+     (GRACE_PERIOD_RETRY_OFFSETS_DAYS). Each failed auto-retry sends
+     one PAYMENT_REMINDER notification with a link to update the
+     payment method and trigger an immediate manual retry
+     (manualRetryFinalCharge()) — a successful manual retry needs no
+     extra notification since the buyer is already on that page. Any
+     successful retry (auto or manual) resolves the same as a normal
+     success above.
+   - **End of grace period, still unresolved:** status → FORFEITED.
+     The reservation is kept, NOT refunded. The spot is released back
+     to the group (releaseDealSpot() decrements the deal's live
+     buyer count). Buyer gets one final, kind RESERVATION_FORFEITED
+     notification explaining what happened. This is the ONLY way a
+     buyer loses their reservation — never because "not enough
+     buyers joined."
+- Always communicate every step of this to users in warm, friendly,
+  non-punitive language — never threatening, never implying fault.
 
 ## Brand Identity
 
@@ -245,14 +302,34 @@ Located over the product image, next to the share button.
   the unknown final discount as "?%" and a happy-icon graphic
   (public/brand/happy-icon.svg) instead of a computed number, to
   build anticipation rather than front-loading every derived figure
+- Full two-charge payment mechanic (see CRITICAL PAYMENT LOGIC → "The
+  two-charge flow" above): reservation charge wired into checkout
+  (lib/payments/reservation-service.ts), card health-check job, and
+  deal-close job with grace-period auto-retries and forfeiture
+  (lib/jobs/). All built as isolated, swappable mock modules — mock
+  Stripe gateway (lib/payments/gateway.ts) and mock scheduler
+  (lib/jobs/scheduler.ts) — against a mock persistence layer
+  (lib/mock/payments-db.ts) shaped exactly like the Prisma
+  GroupBuyParticipation/Payment/Notification models, so swapping in
+  real Stripe + BullMQ + Prisma later touches only those three files.
+  Rewrote the checkout warning copy to explain the full flow (today's
+  charge, the automatic final charge, grace period, and forfeiture)
+  in warm, non-punitive language. Added paymentMethodRef,
+  gracePeriodDays, graceDeadline, and retryAttempts fields to
+  GroupBuyParticipation in prisma/schema.prisma to support it.
 
 ### Not yet built
 - Seller Portal (landing, dashboard, deal creator, deal monitoring,
   settings, API docs page) — NEXT MILESTONE
 - Real Stripe Connect integration (deferred to Germany move, ~May 2026)
+  — the payment engine above is fully mocked and ready to swap in
+  lib/payments/gateway.ts once Connect is configured
 - Real API routes backed by Prisma/Supabase (currently using
-  mock data from lib/mock/deals.ts)
-- Notification/email system (React Email templates, BullMQ jobs)
+  mock data from lib/mock/deals.ts and lib/mock/payments-db.ts)
+- Real job scheduling (BullMQ/Upstash) and email delivery
+  (React Email/Resend) — job logic and notification content already
+  exist as isolated functions in lib/jobs/, just not wired to a real
+  queue or an email send step yet
 - Seller inventory sync API
 - Testing (Playwright E2E) and security audit
 - Production polish and launch prep

@@ -1,12 +1,12 @@
 "use client"
 
-import { Suspense } from "react"
+import { Suspense, useState } from "react"
 import { useSearchParams, useRouter } from "next/navigation"
-import Image from "next/image"
 import { motion } from "framer-motion"
-import { toast } from "sonner"
 import { getMockDealById } from "@/lib/mock/deals"
-import { Check, Share2, LayoutDashboard } from "lucide-react"
+import { Check, ArrowRight } from "lucide-react"
+
+const REDIRECT_TARGET = "/dashboard" // "My Group Buys"
 
 // ── Confetti ──────────────────────────────────────────────────────────────────
 
@@ -76,16 +76,6 @@ function AnimatedCheck() {
   )
 }
 
-// ── Timeline ──────────────────────────────────────────────────────────────────
-
-const TIMELINE = [
-  { icon: "✅", label: "Spot reserved",        done: true,  note: "Done!" },
-  { icon: "📢", label: "Share the deal",       done: false, note: "Get more buyers to drop the price" },
-  { icon: "⏰", label: "Wait for deal to close", done: false, note: "Deal closes at deadline" },
-  { icon: "💳", label: "Final payment",        done: false, note: "Processed automatically" },
-  { icon: "📦", label: "Receive your item",    done: false, note: "Delivered to your address" },
-]
-
 // ── Inner page (uses useSearchParams, must be inside Suspense) ───────────────
 
 function CheckoutSuccessInner() {
@@ -94,136 +84,64 @@ function CheckoutSuccessInner() {
   const dealId       = searchParams.get("dealId") ?? ""
   const deal         = getMockDealById(dealId)
 
-  function handleShare() {
-    const url = typeof window !== "undefined"
-      ? `${window.location.origin}/checkout/${dealId}`
-      : `/checkout/${dealId}`
-    navigator.clipboard.writeText(url).then(() => {
-      toast.success("Share link copied to clipboard!")
-    })
+  const [closing, setClosing] = useState(false)
+
+  function handleContinue() {
+    // Fire the exit animation slightly before navigating so the window
+    // reads as closing, not as an abrupt page swap.
+    setClosing(true)
+    setTimeout(() => router.push(REDIRECT_TARGET), 250)
   }
 
   return (
-    <main className="min-h-screen bg-gray-50 flex flex-col" style={{ paddingTop: "6.5rem" }}>
+    <main className="fixed inset-0 z-50 flex items-center justify-center bg-[#002356]/60 backdrop-blur-sm px-4">
       <Confetti />
 
-      <div className="flex-1 flex items-center justify-center py-12 px-4">
-      <div className="relative z-20 w-full max-w-lg text-center space-y-8">
-
-        {/* Checkmark animation */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4 }}
-          className="flex flex-col items-center gap-4"
-        >
+      <motion.div
+        className="relative z-20 w-full max-w-sm rounded-3xl bg-white shadow-2xl px-8 py-10 text-center"
+        initial={{ opacity: 0, scale: 0.92, y: 12 }}
+        animate={closing ? { opacity: 0, scale: 0.95, y: -8 } : { opacity: 1, scale: 1, y: 0 }}
+        transition={{ duration: closing ? 0.25 : 0.4, ease: "easeOut" }}
+      >
+        <div className="flex flex-col items-center gap-4">
           <AnimatedCheck />
 
-          <div>
-            <motion.h1
-              className="font-heading font-extrabold text-[#002356] text-3xl"
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.6 }}
-            >
-              {"You're in! 🎉"}
-            </motion.h1>
-            <motion.p
-              className="text-gray-500 mt-1.5 text-base"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.8 }}
-            >
-              Your spot is reserved. Watch the price drop as more buyers join!
-            </motion.p>
-          </div>
-        </motion.div>
-
-        {/* Deal summary card */}
-        {deal && (
-          <motion.div
-            className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden text-left"
-            initial={{ opacity: 0, y: 16 }}
+          <motion.h1
+            className="font-heading font-extrabold text-[#002356] text-2xl"
+            initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.7 }}
+            transition={{ delay: 0.6 }}
           >
-            <div className="relative h-40 w-full">
-              <Image
-                src={deal.productImage}
-                alt={deal.productName}
-                fill
-                className="object-cover"
-                sizes="500px"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-              <p className="absolute bottom-3 left-4 right-4 text-white font-bold text-base leading-snug line-clamp-2">
-                {deal.productName}
-              </p>
-            </div>
-            <div className="p-4 flex items-center justify-between">
-              <span className="text-sm text-gray-500">by {deal.sellerName}</span>
-              <span className="font-extrabold text-[#048943]">Reservation confirmed!</span>
-            </div>
-          </motion.div>
-        )}
+            Congratulations on your purchase!
+          </motion.h1>
 
-        {/* What happens next */}
-        <motion.div
-          className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 text-left"
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.85 }}
-        >
-          <h2 className="font-bold text-[#002356] text-base mb-4">What happens next</h2>
-          <div className="space-y-3">
-            {TIMELINE.map((item, i) => (
-              <div key={i} className="flex items-start gap-3">
-                <span className="text-xl flex-shrink-0">{item.icon}</span>
-                <div className="flex-1">
-                  <p className={`font-semibold text-sm ${item.done ? "text-[#048943]" : "text-gray-700"}`}>
-                    {item.label}
-                    {item.done && (
-                      <span className="ml-2 inline-block px-1.5 py-0.5 rounded-full bg-[#048943]/10 text-[#048943] text-[10px] font-bold">
-                        Done!
-                      </span>
-                    )}
-                  </p>
-                  <p className="text-xs text-gray-400 mt-0.5">{item.note}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </motion.div>
+          <motion.p
+            className="text-gray-500 text-sm leading-relaxed"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.8 }}
+          >
+            {deal
+              ? `Your spot for ${deal.productName} is reserved. `
+              : "Your spot is reserved. "}
+            Now wait for the deal to close and see how much you saved with Groupal.
+          </motion.p>
+        </div>
 
-        {/* Action buttons */}
-        <motion.div
-          className="flex flex-col gap-3"
+        <motion.button
+          onClick={handleContinue}
+          className="mt-8 w-full py-3.5 rounded-xl font-extrabold text-[#002356] text-sm cursor-pointer transition-colors flex items-center justify-center gap-2"
+          style={{ backgroundColor: "#eaad00" }}
+          onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#d49c00")}
+          onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "#eaad00")}
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 1 }}
         >
-          <button
-            onClick={handleShare}
-            className="w-full py-4 rounded-2xl font-extrabold text-[#002356] text-base cursor-pointer transition-colors flex items-center justify-center gap-2"
-            style={{ backgroundColor: "#eaad00" }}
-            onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#d49c00")}
-            onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "#eaad00")}
-          >
-            <Share2 className="h-5 w-5" />
-            Share This Deal
-          </button>
-
-          <button
-            onClick={() => router.push("/dashboard")}
-            className="w-full py-4 rounded-2xl font-extrabold text-[#002356] text-base cursor-pointer border-2 border-[#002356] hover:bg-[#002356] hover:text-white transition-colors flex items-center justify-center gap-2"
-          >
-            <LayoutDashboard className="h-5 w-5" />
-            View My Dashboard
-          </button>
-        </motion.div>
-
-      </div>
-      </div>
+          Let&apos;s see my deal status
+          <ArrowRight className="h-4 w-4" />
+        </motion.button>
+      </motion.div>
     </main>
   )
 }
@@ -233,8 +151,8 @@ function CheckoutSuccessInner() {
 export default function CheckoutSuccessPage() {
   return (
     <Suspense fallback={
-      <main className="min-h-screen bg-gray-50 flex items-center justify-center" style={{ paddingTop: "6.5rem" }}>
-        <div className="text-center text-gray-400 text-sm">Loading...</div>
+      <main className="fixed inset-0 z-50 flex items-center justify-center bg-[#002356]/60 backdrop-blur-sm">
+        <div className="text-center text-white text-sm">Loading...</div>
       </main>
     }>
       <CheckoutSuccessInner />

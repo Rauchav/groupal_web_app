@@ -1,82 +1,19 @@
 "use client"
 
+import { useEffect } from "react"
 import Link from "next/link"
 import Image from "next/image"
-import {
-  ShoppingBag, Heart, Settings, LayoutList,
-  ShoppingCart, Clock, Users,
-} from "lucide-react"
+import { useUser } from "@clerk/nextjs"
+import { Clock, Users, LayoutList } from "lucide-react"
+import { toast } from "sonner"
 import { useParticipationStore, MockParticipation } from "@/lib/stores/participation-store"
+import { syncDealClosures } from "@/lib/payments/sync-deal-closures"
 import { MOCK_DEALS } from "@/lib/mock/deals"
 import { computeDealValues } from "@/lib/utils/deal-calculator"
+import { OpenDealPaymentSummary, ClosedDealPaymentSummary, MilestoneScale } from "@/components/dashboard/DealPaymentSummary"
+import { DashboardSidebar, DashboardMobileTabs } from "@/components/dashboard/DashboardNav"
 import { CountdownTimer } from "@/components/marketplace/CountdownTimer"
 import { format } from "date-fns"
-
-// ── Sidebar ───────────────────────────────────────────────────────────────────
-
-function Sidebar({ active }: { active: string }) {
-  const items = [
-    { href: "/dashboard",            icon: ShoppingBag, label: "My Group Buys" },
-    { href: "/dashboard/liked",      icon: Heart,       label: "Liked Deals" },
-    { href: "/dashboard/purchases",  icon: LayoutList,  label: "Purchases" },
-    { href: "/dashboard/settings",   icon: Settings,    label: "Settings" },
-  ]
-  return (
-    <aside className="hidden lg:flex flex-col w-60 flex-shrink-0">
-      <nav className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-        {items.map(({ href, icon: Icon, label }) => (
-          <Link
-            key={href}
-            href={href}
-            className={`flex items-center gap-3 px-4 py-3.5 text-sm font-medium transition-colors ${
-              active === href
-                ? "bg-[#002356] text-white"
-                : "text-gray-600 hover:bg-gray-50"
-            }`}
-          >
-            <Icon className="h-4 w-4 flex-shrink-0" />
-            {label}
-          </Link>
-        ))}
-        <div className="border-t border-gray-100">
-          <Link
-            href="/deals"
-            className="flex items-center gap-3 px-4 py-3.5 text-sm font-medium text-gray-400 hover:bg-gray-50 transition-colors"
-          >
-            <ShoppingCart className="h-4 w-4 flex-shrink-0" />
-            Back to Marketplace
-          </Link>
-        </div>
-      </nav>
-    </aside>
-  )
-}
-
-function MobileTabs({ active }: { active: string }) {
-  const tabs = [
-    { href: "/dashboard",           label: "Buys" },
-    { href: "/dashboard/liked",     label: "Liked" },
-    { href: "/dashboard/purchases", label: "Purchases" },
-    { href: "/dashboard/settings",  label: "Settings" },
-  ]
-  return (
-    <div className="flex lg:hidden gap-1 bg-white rounded-2xl border border-gray-100 shadow-sm p-1 mb-4 overflow-x-auto">
-      {tabs.map(({ href, label }) => (
-        <Link
-          key={href}
-          href={href}
-          className={`flex-1 text-center py-2 rounded-xl text-sm font-semibold transition-colors whitespace-nowrap px-3 ${
-            active === href
-              ? "bg-[#002356] text-white"
-              : "text-gray-500 hover:text-[#002356]"
-          }`}
-        >
-          {label}
-        </Link>
-      ))}
-    </div>
-  )
-}
 
 // ── Status badge ──────────────────────────────────────────────────────────────
 
@@ -105,7 +42,13 @@ function ParticipationCard({ p }: { p: MockParticipation }) {
   if (!deal) return null
   const computed = computeDealValues(deal)
   const fmt = (n: number) => new Intl.NumberFormat("en-US", { style: "currency", currency: deal.currency ?? "USD", minimumFractionDigits: 2 }).format(n)
-  const joinedDate = format(new Date(p.joinedAt), "MMM d, yyyy")
+
+  function shareLink() {
+    const url = typeof window !== "undefined"
+      ? `${window.location.origin}/checkout/${deal!.id}`
+      : `/checkout/${deal!.id}`
+    navigator.clipboard.writeText(url).then(() => toast.success("Share link copied!"))
+  }
 
   return (
     <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
@@ -118,55 +61,52 @@ function ParticipationCard({ p }: { p: MockParticipation }) {
             {deal.productName}
           </h3>
           <StatusBadge status={p.status} />
-          <p className="text-xs text-gray-400">Joined {joinedDate}</p>
-          <p className="text-xs text-gray-500">
-            Paid: <span className="font-semibold text-gray-700">{fmt(p.reservationPaid)}</span>
-          </p>
+          {p.status === "completed" && (
+            <p className="text-xs text-gray-400">Joined in {format(new Date(p.joinedAt), "MMMM d, yyyy")}</p>
+          )}
+          {p.status === "forfeited" && (
+            <>
+              <p className="text-xs text-gray-400">Joined {format(new Date(p.joinedAt), "MMM d, yyyy")}</p>
+              <p className="text-xs text-gray-500">
+                Paid: <span className="font-semibold text-gray-700">{fmt(p.reservationPaid)}</span>
+              </p>
+            </>
+          )}
         </div>
       </div>
 
-      <div className="border-t border-gray-100 px-4 py-3">
+      <div className="border-t border-gray-100">
         {p.status === "active" && (
-          <div className="space-y-2">
-            <div className="flex items-center gap-1.5 text-xs text-gray-400">
-              <Users className="h-3.5 w-3.5" />
-              <span>
-                <span className="font-bold text-gray-700">{deal.currentBuyerCount}</span>
-                {" / "}
-                <span className="font-bold text-gray-700">{deal.maxBuyersRequired}</span>
-                {" buyers"}
-              </span>
-              <span className="font-bold text-[#DA1200] ml-auto">{computed.currentDiscountPercent.toFixed(1)}% off</span>
+          <>
+            <div className="px-4 pt-3 pb-3 space-y-3">
+              <MilestoneScale deal={deal} />
+
+              <div className="flex items-center gap-1.5 text-xs text-gray-400">
+                <Users className="h-3.5 w-3.5" />
+                <span>
+                  <span className="font-bold text-gray-700">{deal.currentBuyerCount}</span>
+                  {" of "}
+                  <span className="font-bold text-gray-700">{deal.maxBuyersRequired}</span>
+                  {" buyers participated"}
+                </span>
+                <span className="font-bold text-[#DA1200] ml-auto">{computed.currentDiscountPercent.toFixed(1)}% off</span>
+              </div>
+              <div className="flex items-center gap-1.5 text-xs text-gray-400">
+                <Clock className="h-3.5 w-3.5 text-[#e86300]" />
+                <span>Ends in:</span>
+                <CountdownTimer targetDate={deal.deadlineAt} compact className="text-xs" />
+              </div>
             </div>
-            <div className="h-1.5 rounded-full bg-gray-100 overflow-hidden">
-              <div
-                className="h-full rounded-full bg-[#DA1200]"
-                style={{ width: `${Math.min(computed.progressPercent, 100)}%` }}
-              />
-            </div>
-            <div className="flex items-center gap-1.5 text-xs text-gray-400">
-              <Clock className="h-3.5 w-3.5 text-[#e86300]" />
-              <span>Ends in:</span>
-              <CountdownTimer targetDate={deal.deadlineAt} compact className="text-xs" />
-            </div>
-          </div>
+            <OpenDealPaymentSummary deal={deal} reservationPaid={p.reservationPaid} onShare={shareLink} />
+          </>
         )}
 
         {p.status === "completed" && (
-          <div className="flex gap-4 text-sm">
-            <div>
-              <p className="text-xs text-gray-400">Final price paid</p>
-              <p className="font-bold text-[#002356]">{fmt(computed.currentPrice + 25)}</p>
-            </div>
-            <div>
-              <p className="text-xs text-gray-400">Discount achieved</p>
-              <p className="font-bold text-[#048943]">{computed.currentDiscountPercent.toFixed(1)}% off</p>
-            </div>
-          </div>
+          <ClosedDealPaymentSummary deal={deal} reservationPaid={p.reservationPaid} />
         )}
 
         {p.status === "forfeited" && (
-          <div className="space-y-2">
+          <div className="px-4 py-3 space-y-2">
             <p className="text-sm text-gray-500">
               Your reservation was forfeited. We&apos;re sorry it didn&apos;t work out this time.
             </p>
@@ -186,15 +126,28 @@ function ParticipationCard({ p }: { p: MockParticipation }) {
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function PurchasesPage() {
-  const participations = useParticipationStore((s) => s.participations)
+  const { user } = useUser()
+  // Gate on hasHydrated so the first client render matches the server's
+  // always-empty SSR state — otherwise the real (persisted) list vs. the
+  // empty state below diverge and React throws a hydration mismatch.
+  const hasHydrated = useParticipationStore((s) => s.hasHydrated)
+  const participationsStore = useParticipationStore((s) => s.participations)
+  const participations = hasHydrated ? participationsStore : []
+
+  // No real job scheduler yet (see lib/jobs/scheduler.ts) — check on every
+  // load whether any of this buyer's active deals are ready to close, and
+  // if so run the close job and reflect the outcome here.
+  useEffect(() => {
+    if (hasHydrated && user?.id) void syncDealClosures(user.id)
+  }, [hasHydrated, user?.id])
 
   return (
     <main className="min-h-screen" style={{ backgroundColor: "#f8f9fa", paddingTop: "7.5rem", paddingBottom: "4rem" }}>
       <div className="max-w-[1100px] mx-auto px-4">
-        <MobileTabs active="/dashboard/purchases" />
+        <DashboardMobileTabs active="/dashboard/purchases" />
 
         <div className="flex gap-6">
-          <Sidebar active="/dashboard/purchases" />
+          <DashboardSidebar active="/dashboard/purchases" />
 
           <div className="flex-1 min-w-0 space-y-6">
             <div>

@@ -1,25 +1,15 @@
 "use client"
 
-import { useState, useEffect, useMemo } from "react"
+import { Suspense, useState, useEffect, useMemo } from "react"
+import { useSearchParams } from "next/navigation"
 import { Search, Zap, ChevronDown } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
 import { toast } from "sonner"
 import { DealCard, DealCardSkeleton } from "@/components/marketplace/DealCard"
-import { LikeButton } from "@/components/marketplace/LikeButton"
 import { MOCK_DEALS } from "@/lib/mock/deals"
 import { cn } from "@/lib/utils"
 import { Deal } from "@/lib/types/deal"
-
-const CATEGORIES = [
-  "All",
-  "Electronics",
-  "Cars & Motorcycles",
-  "Computers",
-  "Smartphones",
-  "Furniture",
-  "Travel",
-  "Vacations",
-] as const
+import { DEAL_CATEGORIES } from "@/lib/constants/categories"
 
 type SortOption = "ending-soon" | "most-popular" | "biggest-discount" | "newest"
 
@@ -59,7 +49,8 @@ function sortDeals(deals: Deal[], sort: SortOption): Deal[] {
   })
 }
 
-export default function DealsPage() {
+function DealsPageInner() {
+  const searchParams = useSearchParams()
   const [search,   setSearch]   = useState("")
   const [category, setCategory] = useState("All")
   const [sort,     setSort]     = useState<SortOption>("ending-soon")
@@ -69,6 +60,17 @@ export default function DealsPage() {
     const t = setTimeout(() => setLoading(false), 500)
     return () => clearTimeout(t)
   }, [])
+
+  // Picks up ?category=... and ?search=... whenever they change — including
+  // a click on the Navbar's category chips or a Navbar search submit while
+  // already on this page (client-side nav doesn't remount the component,
+  // so this can't just be initial state).
+  useEffect(() => {
+    const fromUrl = searchParams.get("category")
+    const isValid = fromUrl && (DEAL_CATEGORIES as readonly string[]).includes(fromUrl)
+    setCategory(isValid ? fromUrl! : "All")
+    setSearch(searchParams.get("search") ?? "")
+  }, [searchParams])
 
   const endingSoon = useMemo(
     () => MOCK_DEALS.filter((d) => {
@@ -156,7 +158,7 @@ export default function DealsPage() {
 
             {/* Category chips */}
             <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-hide pb-0.5">
-              {CATEGORIES.map((cat) => (
+              {DEAL_CATEGORIES.map((cat) => (
                 <button
                   key={cat}
                   onClick={() => setCategory(cat)}
@@ -224,18 +226,12 @@ export default function DealsPage() {
                 className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
               >
                 {filtered.map((deal) => (
-                  <div key={deal.id} className="relative">
-                    <a href={`/checkout/${deal.id}`} className="block h-full">
-                      <DealCard
-                        deal={deal}
-                        onJoin={() => window.location.href = `/checkout/${deal.id}`}
-                      />
-                    </a>
-                    {/* LikeButton overlaid on card image */}
-                    <div className="absolute top-3 right-3 z-20">
-                      <LikeButton dealId={deal.id} />
-                    </div>
-                  </div>
+                  <a key={deal.id} href={`/checkout/${deal.id}`} className="block h-full">
+                    <DealCard
+                      deal={deal}
+                      onJoin={() => window.location.href = `/checkout/${deal.id}`}
+                    />
+                  </a>
                 ))}
               </motion.div>
             </AnimatePresence>
@@ -258,5 +254,19 @@ export default function DealsPage() {
         </div>
       </main>
     </>
+  )
+}
+
+// ── Page export (wraps inner in Suspense for useSearchParams) ─────────────────
+
+export default function DealsPage() {
+  return (
+    <Suspense fallback={
+      <main className="min-h-screen bg-gray-50 flex items-center justify-center" style={{ paddingTop: "6.5rem" }}>
+        <div className="text-center text-gray-400 text-sm">Loading...</div>
+      </main>
+    }>
+      <DealsPageInner />
+    </Suspense>
   )
 }

@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import { motion, useInView, animate } from "framer-motion";
 import {
   Users,
@@ -21,6 +22,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { DealCard, DealCardSkeleton } from "@/components/marketplace/DealCard";
 import { CompletedDealCard } from "@/components/marketplace/CompletedDealCard";
+import { BuyerReviews } from "@/components/marketplace/BuyerReviews";
 import { HeroCarousel } from "@/components/marketplace/HeroCarousel";
 import { COMPLETED_DEALS, MOCK_DEALS } from "@/lib/mock/deals";
 
@@ -49,6 +51,15 @@ const CATEGORIES = [
   { label: "Travel",       icon: Plane,      count: 53  },
   { label: "Experiences",  icon: Sparkles,   count: 31  },
 ] as const;
+
+// Routes into /deals' real category filter (see lib/constants/categories.ts)
+// wherever this marketing label has a confident match; falls back to the
+// unfiltered marketplace rather than a filter that would show zero deals.
+const CATEGORY_HREF: Partial<Record<(typeof CATEGORIES)[number]["label"], string>> = {
+  Motors: "/deals?category=" + encodeURIComponent("Cars & Motorcycles"),
+  Home:   "/deals?category=Furniture",
+  Travel: "/deals?category=Travel",
+};
 
 // ── How it works ────────────────────────────────────────────────────────────
 const HOW_IT_WORKS = [
@@ -137,6 +148,7 @@ function StatCounter({
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default function HomePage() {
+  const router = useRouter();
   const [loadingDeals] = useState(false);
 
   return (
@@ -177,7 +189,12 @@ export default function HomePage() {
                 Join before time runs out, <span style={{ fontWeight: "bold" }}>these deals need you</span>.
               </p>
             </div>
-            <Button variant="outline-navy" size="sm" className="hidden sm:flex gap-1.5">
+            <Button
+              variant="outline-navy"
+              size="sm"
+              className="hidden sm:flex gap-1.5"
+              onClick={() => router.push("/deals")}
+            >
               View all deals
               <ChevronRight className="h-4 w-4" />
             </Button>
@@ -203,8 +220,6 @@ export default function HomePage() {
                   <DealCard
                     deal={deal}
                     onJoin={(id) => console.log("join", id)}
-                    onBuyNow={(id) => console.log("buy-now", id)}
-                    onSave={(id) => console.log("save", id)}
                     onShare={(id) => console.log("share", id)}
                     className="h-full"
                   />
@@ -215,7 +230,12 @@ export default function HomePage() {
 
           {/* Mobile "View All" */}
           <div className="mt-8 text-center sm:hidden">
-            <Button variant="outline-navy" size="default" className="gap-1.5">
+            <Button
+              variant="outline-navy"
+              size="default"
+              className="gap-1.5"
+              onClick={() => router.push("/deals")}
+            >
               View all deals
               <ChevronRight className="h-4 w-4" />
             </Button>
@@ -326,7 +346,7 @@ export default function HomePage() {
             {CATEGORIES.map(({ label, icon: Icon, count }, i) => (
               <motion.a
                 key={label}
-                href="#"
+                href={CATEGORY_HREF[label] ?? "/deals"}
                 variants={fadeUp}
                 custom={i}
                 className="group flex flex-col items-center gap-2.5 rounded-2xl p-4 cursor-pointer transition-all duration-200"
@@ -422,6 +442,8 @@ export default function HomePage() {
               <CompletedDealCard key={deal.id} deal={deal} variants={fadeUp} custom={i} />
             ))}
           </motion.div>
+
+          <BuyerReviews variants={fadeUp} custom={COMPLETED_DEALS.length} />
         </div>
       </section>
 
@@ -460,11 +482,21 @@ export default function HomePage() {
               custom={2}
               className="flex flex-col sm:flex-row items-center justify-center gap-3"
             >
-              <Button variant="gold" size="xl" className="w-full sm:w-auto font-bold text-base">
+              <Button
+                variant="gold"
+                size="xl"
+                className="w-full sm:w-auto font-bold text-base"
+                onClick={() => router.push("/deals")}
+              >
                 Browse Live Deals
                 <ArrowRight className="h-5 w-5" />
               </Button>
-              <Button variant="outline" size="xl" className="w-full sm:w-auto font-bold text-base">
+              <Button
+                variant="outline"
+                size="xl"
+                className="w-full sm:w-auto font-bold text-base"
+                onClick={() => router.push("/sign-up")}
+              >
                 Create Free Account
               </Button>
             </motion.div>

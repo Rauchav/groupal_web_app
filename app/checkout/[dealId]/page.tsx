@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { useParams, useRouter } from "next/navigation"
 import Image from "next/image"
 import Link from "next/link"
@@ -8,16 +8,17 @@ import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
 import { toast } from "sonner"
-import { nanoid } from "nanoid"
 import {
-  Check, AlertTriangle, Lock, Clock, MapPin, Truck, Store,
+  Check, AlertTriangle, Lock, Clock, MapPin, Truck, ShoppingBag,
   ShieldCheck, CreditCard, ArrowLeft, Share2, Copy,
-  Info, ExternalLink,
+  Info, ExternalLink, Phone, Mail,
 } from "lucide-react"
 import { motion } from "framer-motion"
+import { useUser } from "@clerk/nextjs"
 import { getMockDealById, MOCK_DEALS } from "@/lib/mock/deals"
 import { computeDealValues } from "@/lib/utils/deal-calculator"
 import { useParticipationStore } from "@/lib/stores/participation-store"
+import { chargeReservation } from "@/lib/payments/reservation-service"
 import { CountdownTimer } from "@/components/marketplace/CountdownTimer"
 import { cn } from "@/lib/utils"
 
@@ -176,10 +177,10 @@ function StepReview({
             </span>
           </div>
           <div className="flex items-center gap-2">
-            {deal.category === "Travel" || deal.category === "Vacations" ? (
+            {deal.isPickup ? (
               <>
-                <Store className="h-4 w-4 text-gray-400 flex-shrink-0" />
-                <span>Pickup / In-person</span>
+                <ShoppingBag className="h-4 w-4 text-gray-400 flex-shrink-0" />
+                <span>Pick up in store</span>
               </>
             ) : (
               <>
@@ -297,7 +298,7 @@ function StepReview({
               </span>
             </div>
             <div className="flex items-center justify-between gap-3 rounded-lg px-3 py-1.5" style={{ backgroundColor: "rgba(255,255,255,0.12)" }}>
-              <span className="font-semibold text-sm" style={{ color: "white" }}>Each buyer participating <span style={{ color: "#eaad00" }}>can save up to</span></span>
+              <span className="font-semibold text-sm" style={{ color: "white" }}>Each buyer participating <span style={{ color: "#eaad00" }}>will save</span></span>
               <span className="font-extrabold tabular-nums flex-shrink-0" style={{ color: "#eaad00" }}>
                 {fmtShort(maxSavings, deal.currency)}
               </span>
@@ -392,7 +393,17 @@ function StepReview({
             <div className="text-sm text-gray-700 leading-relaxed space-y-2">
               <p>
                 <span className="font-bold text-[#e86300]">Important:</span>{" "}
-                You pay only 10% of the store price today, and when the deal closes we'll automatically charge the rest (remmaining 90% minus your the accumulated group discount) to the same payment method. Please make sure to have the sufficient funds to fulfill the second payment. If you don't have enough funds in your initial payment method, don't worry, you will have enough time to update it until the final payment go trough. Please be aware that avoiding to fulfill the final payment could compromise your 10% upfront payment.
+                You pay only 10% today. The rest (90% minus this group deal accumulated discount) is
+                charged automatically to the same payment method when the deal closes.
+                If that charge fails, you&apos;ll get a short grace period to update your card before your
+                reservation is affected.{" "}
+                <Link
+                  href="/terms#payments"
+                  className="font-semibold text-[#002356] underline underline-offset-2 hover:text-[#1b4487]"
+                >
+                  Learn more in our Terms &amp; Conditions
+                </Link>
+                .
               </p>
               <p>
                 <span className="font-bold text-[#e86300]">Every deal will make you save money:</span>{" "}
@@ -439,23 +450,58 @@ function StepDelivery({
     defaultValues: { country: "Bolivia" },
   })
 
-  const isPickup = deal?.category === "Travel"
+  const isPickup = deal?.isPickup ?? false
+  const pd = deal?.pickupDetails
 
   if (isPickup) {
     return (
       <div className="space-y-5">
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
-          <p className="text-3xl mb-3">🏪</p>
-          <h3 className="font-bold text-[#002356] text-lg mb-2">
-            This item requires pickup at the seller&apos;s location.
-          </h3>
-          <p className="text-gray-500 text-sm mb-4">
-            No delivery address needed. The seller will contact you with pickup details after the deal closes.
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 space-y-4">
+          <div className="flex items-center gap-2">
+            <ShoppingBag className="h-5 w-5 text-[#1b4487] flex-shrink-0" />
+            <h3 className="font-bold text-[#002356] text-lg">Pick up in store</h3>
+          </div>
+          <p className="text-gray-500 text-sm" style={{fontWeight: "bold"}}>
+            No delivery address needed for this item, you&apos;ll collect it in person once the deal closes.
           </p>
-          <div className="rounded-xl bg-gray-50 border border-gray-100 p-4">
-            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Seller Contact</p>
-            <p className="text-sm text-gray-600 font-medium">{deal?.sellerName}</p>
-            <p className="text-xs text-gray-400 mt-0.5">Contact info will be shared after deal closes</p>
+
+          <div className="space-y-3 text-sm">
+            <div>
+              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Where</p>
+              <p className="text-gray-700">{pd?.location ?? `${deal?.sellerName}'s location`}</p>
+            </div>
+            <div>
+              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">When</p>
+              <p className="text-gray-700">{pd?.hours ?? "During business hours"} — available once the deal closes</p>
+            </div>
+            <div>
+              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">How it works</p>
+              <p className="text-gray-700">
+                {pd?.instructions ?? "The seller will share full pickup instructions with you once the deal closes."}
+              </p>
+            </div>
+            <div>
+              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Bring with you</p>
+              <p className="text-gray-700">{pd?.codeRequired ?? "Your order confirmation code"}</p>
+              <p className="text-gray-700">{pd?.documentsRequired ?? "A valid photo ID"}</p>
+            </div>
+          </div>
+
+          <div className="rounded-xl bg-gray-50 border border-gray-100 p-4 space-y-1.5">
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Seller Contact</p>
+            <p className="text-sm text-gray-700 font-medium">{pd?.contactName ?? deal?.sellerName}</p>
+            {pd?.contactPhone && (
+              <p className="flex items-center gap-1.5 text-xs text-gray-500">
+                <Phone className="h-3.5 w-3.5 flex-shrink-0" />
+                {pd.contactPhone}
+              </p>
+            )}
+            {pd?.contactEmail && (
+              <p className="flex items-center gap-1.5 text-xs text-gray-500">
+                <Mail className="h-3.5 w-3.5 flex-shrink-0" />
+                {pd.contactEmail}
+              </p>
+            )}
           </div>
         </div>
 
@@ -595,20 +641,36 @@ function StepConfirm({
           </div>
         </div>
 
-        {/* Delivery address */}
-        {deliveryData && deliveryData.street !== "N/A (Pickup)" && (
+        {/* Delivery / pickup summary */}
+        {deal.isPickup ? (
           <div className="border-t border-gray-100 pt-3">
-            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1.5">Delivering to</p>
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1.5">Pick up in store item</p>
             <p className="text-sm text-gray-600">
-              {deliveryData.fullName} · {deliveryData.phone}
+              Pick up at {deal.pickupDetails?.location ?? "the seller's location"}, {deal.pickupDetails?.hours ?? "during business hours"}.
             </p>
             <p className="text-sm text-gray-600">
-              {deliveryData.street}, {deliveryData.city}
+              Bring {deal.pickupDetails?.codeRequired ?? "your order confirmation"} and {deal.pickupDetails?.documentsRequired ?? "a valid photo ID"}.
             </p>
-            <p className="text-sm text-gray-600">
-              {deliveryData.state}, {deliveryData.country}
+            <p className="text-xs text-gray-400 mt-1">
+              Need help? Contact {deal.pickupDetails?.contactName ?? deal.sellerName}
+              {deal.pickupDetails?.contactPhone ? ` at ${deal.pickupDetails.contactPhone}` : ""}.
             </p>
           </div>
+        ) : (
+          deliveryData && (
+            <div className="border-t border-gray-100 pt-3">
+              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1.5">Delivering to</p>
+              <p className="text-sm text-gray-600">
+                {deliveryData.fullName} · {deliveryData.phone}
+              </p>
+              <p className="text-sm text-gray-600">
+                {deliveryData.street}, {deliveryData.city}
+              </p>
+              <p className="text-sm text-gray-600">
+                {deliveryData.state}, {deliveryData.country}
+              </p>
+            </div>
+          )
         )}
       </div>
 
@@ -711,7 +773,10 @@ function StepConfirm({
 export default function CheckoutPage() {
   const { dealId } = useParams<{ dealId: string }>()
   const router     = useRouter()
+  const { user }   = useUser()
   const { addParticipation } = useParticipationStore()
+  const hasHydrated = useParticipationStore((s) => s.hasHydrated)
+  const alreadyJoined = useParticipationStore((s) => s.hasJoined(dealId))
 
   const [step,            setStep]            = useState(0)
   const [deliveryData,    setDeliveryData]    = useState<DeliveryForm | null>(null)
@@ -720,6 +785,31 @@ export default function CheckoutPage() {
 
   const deal     = getMockDealById(dealId)
   const computed = deal ? computeDealValues(deal) : null
+
+  // A buyer can only reach checkout for a deal they've already joined by
+  // navigating here directly (the deal card's CTA already routes them to
+  // the dashboard instead) — send them there rather than letting a second
+  // reservation go through. Snapshotted once at hydration rather than
+  // watched reactively: this store also gets written to by this page's own
+  // successful join a few steps later, and a reactive check would fire on
+  // that write too, hijacking the buyer straight to the dashboard and
+  // skipping the success celebration.
+  const alreadyJoinedAtLoad = useRef<boolean | null>(null)
+  useEffect(() => {
+    if (!hasHydrated || alreadyJoinedAtLoad.current !== null) return
+    alreadyJoinedAtLoad.current = alreadyJoined
+    if (alreadyJoined) {
+      toast.info("You've already joined this deal — here's where it's at.")
+      router.replace("/dashboard")
+    }
+  }, [hasHydrated, alreadyJoined, router])
+
+  // Each checkout step swaps in new instructions below the same scroll
+  // position the previous step left off at — jump back to the top so the
+  // buyer actually sees them.
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "smooth" })
+  }, [step])
 
   const mockImages    = deal ? [deal.productImage, deal.productImage, deal.productImage] : []
   const relatedDeals  = MOCK_DEALS.filter(d => d.id !== dealId).slice(0, 3)
@@ -740,12 +830,42 @@ export default function CheckoutPage() {
 
   async function handleComplete() {
     setLoading(true)
-    await new Promise((r) => setTimeout(r, 2000))
+
+    const isPickup = deal!.isPickup
+    const result = await chargeReservation({
+      deal:         deal!,
+      buyerId:      user?.id ?? "guest-buyer",
+      deliveryCost: isPickup ? 0 : 9.99,
+      deliveryAddress: deliveryData
+        ? {
+            street:  deliveryData.street,
+            city:    deliveryData.city,
+            state:   deliveryData.state,
+            country: deliveryData.country,
+            zipCode: deliveryData.zipCode,
+          }
+        : undefined,
+    })
+
+    if (!result.success) {
+      setLoading(false)
+      if (result.failureReason === "already_joined") {
+        toast.info("You've already joined this deal — here's where it's at.")
+        router.replace("/dashboard")
+        return
+      }
+      toast.error("Your card was declined. Please check your details and try again.")
+      return
+    }
+
+    // Kept in sync with the mock payment engine above so the dashboard /
+    // purchases pages (which still read this simplified client-side store)
+    // reflect the same reservation.
     addParticipation({
-      id:              nanoid(),
+      id:              result.participation!.id,
       dealId:          deal!.id,
-      joinedAt:        new Date().toISOString(),
-      reservationPaid: computed!.reservationAmount,
+      joinedAt:        result.participation!.createdAt.toISOString(),
+      reservationPaid: result.participation!.reservationAmount,
       status:          "active",
       deliveryAddress: {
         street:  deliveryData?.street  ?? "",
@@ -927,11 +1047,11 @@ export default function CheckoutPage() {
       <div className="fixed bottom-0 left-0 right-0 z-50 lg:hidden bg-white border-t border-gray-200 shadow-[0_-4px_16px_rgba(0,0,0,0.08)] px-4 py-3">
         <div className="flex items-center gap-3 max-w-lg mx-auto">
           <div className="flex-shrink-0">
-            <p className="text-xs text-gray-500 leading-none mb-0.5">Join today for just</p>
+            <p className="text-xs text-gray-500 leading-none mb-0.5">Join this group deal with just</p>
             <p className="font-extrabold tabular-nums text-lg leading-tight" style={{ color: "#002356" }}>
               {fmt(stickyTotal, deal.currency)}
             </p>
-            <p className="text-[10px] text-gray-400 leading-none mt-0.5">10% reservation · pay rest at closing</p>
+            <p className="text-[10px] text-gray-400 leading-none mt-0.5">10% of the store price</p>
           </div>
           <button
             onClick={() => setStep(1)}
@@ -940,7 +1060,7 @@ export default function CheckoutPage() {
             onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#059c4f")}
             onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "#048943")}
           >
-            Join Now
+            Join now
           </button>
         </div>
       </div>

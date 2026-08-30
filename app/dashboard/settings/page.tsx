@@ -1,86 +1,17 @@
 "use client"
 
 import { useState } from "react"
-import Link from "next/link"
 import Image from "next/image"
 import { useUser } from "@clerk/nextjs"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
 import { toast } from "sonner"
-import {
-  ShoppingBag, Heart, Settings, LayoutList,
-  ShoppingCart, CreditCard, User, Bell, Lock,
-} from "lucide-react"
+import { CreditCard, User, Bell, Lock } from "lucide-react"
 import { Switch } from "@/components/ui/switch"
+import { DashboardSidebar, DashboardMobileTabs } from "@/components/dashboard/DashboardNav"
 import { usePreferencesStore } from "@/lib/stores/preferences-store"
 import { cn } from "@/lib/utils"
-
-// ── Sidebar ───────────────────────────────────────────────────────────────────
-
-function Sidebar({ active }: { active: string }) {
-  const items = [
-    { href: "/dashboard",            icon: ShoppingBag, label: "My Group Buys" },
-    { href: "/dashboard/liked",      icon: Heart,       label: "Liked Deals" },
-    { href: "/dashboard/purchases",  icon: LayoutList,  label: "Purchases" },
-    { href: "/dashboard/settings",   icon: Settings,    label: "Settings" },
-  ]
-  return (
-    <aside className="hidden lg:flex flex-col w-60 flex-shrink-0">
-      <nav className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-        {items.map(({ href, icon: Icon, label }) => (
-          <Link
-            key={href}
-            href={href}
-            className={`flex items-center gap-3 px-4 py-3.5 text-sm font-medium transition-colors ${
-              active === href
-                ? "bg-[#002356] text-white"
-                : "text-gray-600 hover:bg-gray-50"
-            }`}
-          >
-            <Icon className="h-4 w-4 flex-shrink-0" />
-            {label}
-          </Link>
-        ))}
-        <div className="border-t border-gray-100">
-          <Link
-            href="/deals"
-            className="flex items-center gap-3 px-4 py-3.5 text-sm font-medium text-gray-400 hover:bg-gray-50 transition-colors"
-          >
-            <ShoppingCart className="h-4 w-4 flex-shrink-0" />
-            Back to Marketplace
-          </Link>
-        </div>
-      </nav>
-    </aside>
-  )
-}
-
-function MobileTabs({ active }: { active: string }) {
-  const tabs = [
-    { href: "/dashboard",           label: "Buys" },
-    { href: "/dashboard/liked",     label: "Liked" },
-    { href: "/dashboard/purchases", label: "Purchases" },
-    { href: "/dashboard/settings",  label: "Settings" },
-  ]
-  return (
-    <div className="flex lg:hidden gap-1 bg-white rounded-2xl border border-gray-100 shadow-sm p-1 mb-4 overflow-x-auto">
-      {tabs.map(({ href, label }) => (
-        <Link
-          key={href}
-          href={href}
-          className={`flex-1 text-center py-2 rounded-xl text-sm font-semibold transition-colors whitespace-nowrap px-3 ${
-            active === href
-              ? "bg-[#002356] text-white"
-              : "text-gray-500 hover:text-[#002356]"
-          }`}
-        >
-          {label}
-        </Link>
-      ))}
-    </div>
-  )
-}
 
 // ── Profile tab ───────────────────────────────────────────────────────────────
 
@@ -344,10 +275,10 @@ export default function DashboardSettingsPage() {
   return (
     <main className="min-h-screen" style={{ backgroundColor: "#f8f9fa", paddingTop: "7.5rem", paddingBottom: "4rem" }}>
       <div className="max-w-[1100px] mx-auto px-4">
-        <MobileTabs active="/dashboard/settings" />
+        <DashboardMobileTabs active="/dashboard/settings" />
 
         <div className="flex gap-6">
-          <Sidebar active="/dashboard/settings" />
+          <DashboardSidebar active="/dashboard/settings" />
 
           <div className="flex-1 min-w-0 space-y-6">
             <div>

@@ -93,6 +93,7 @@ export const MOCK_DEALS: Deal[] = [
     deadlineAt:           daysFromNow(5),
     milestones:           milestones(40, 50),
     reservationFeePercent: 10,
+    isPickup:             false,
     status:               "active",
     createdAt:            new Date(),
   },
@@ -114,6 +115,7 @@ export const MOCK_DEALS: Deal[] = [
     deadlineAt:           daysFromNow(3),
     milestones:           milestones(40, 50),
     reservationFeePercent: 10,
+    isPickup:             false,
     status:               "active",
     createdAt:            new Date(),
   },
@@ -135,6 +137,7 @@ export const MOCK_DEALS: Deal[] = [
     deadlineAt:           daysFromNow(7),
     milestones:           milestones(40, 40),
     reservationFeePercent: 10,
+    isPickup:             false,
     status:               "active",
     createdAt:            new Date(),
   },
@@ -152,10 +155,21 @@ export const MOCK_DEALS: Deal[] = [
     currency:             "USD",
     maxDiscountPercent:   50,
     maxBuyersRequired:    40,
-    currentBuyerCount:    36,
+    currentBuyerCount:    40, // TEMP: bumped to maxBuyersRequired to force-close for testing — revert to 36 after
     deadlineAt:           daysFromNow(10),
     milestones:           milestones(40, 50),
     reservationFeePercent: 10,
+    isPickup:             true,
+    pickupDetails: {
+      location:         "VacationsPlus Travel Center — Av. Arce 2450, La Paz, Bolivia",
+      hours:             "Mon–Sat, 9:00 AM – 6:00 PM",
+      instructions:      "Once the deal closes, stop by the travel center any time during business hours. Our team will issue your printed vouchers and walk you through your full itinerary on the spot — no appointment needed.",
+      codeRequired:      "Your Groupal order confirmation code (emailed to you once the deal closes)",
+      documentsRequired: "A valid photo ID matching the name on your reservation",
+      contactName:       "VacationsPlus Support",
+      contactPhone:      "+591 2 244 1122",
+      contactEmail:      "support@vacationsplus.example.com",
+    },
     status:               "active",
     createdAt:            new Date(),
   },
@@ -177,6 +191,7 @@ export const MOCK_DEALS: Deal[] = [
     deadlineAt:           daysFromNow(1),
     milestones:           milestones(40, 45),
     reservationFeePercent: 10,
+    isPickup:             false,
     status:               "active",
     createdAt:            new Date(),
   },
@@ -198,6 +213,7 @@ export const MOCK_DEALS: Deal[] = [
     deadlineAt:           hoursFromNow(2),
     milestones:           milestones(40, 40),
     reservationFeePercent: 10,
+    isPickup:             false,
     status:               "active",
     createdAt:            new Date(),
   },
@@ -219,6 +235,7 @@ export const MOCK_DEALS: Deal[] = [
     deadlineAt:           daysFromNow(4),
     milestones:           milestones(50, 45),
     reservationFeePercent: 10,
+    isPickup:             false,
     status:               "active",
     createdAt:            new Date(),
   },
@@ -240,6 +257,7 @@ export const MOCK_DEALS: Deal[] = [
     deadlineAt:           daysFromNow(2),
     milestones:           milestones(30, 35),
     reservationFeePercent: 10,
+    isPickup:             false,
     status:               "active",
     createdAt:            new Date(),
   },
@@ -247,4 +265,13 @@ export const MOCK_DEALS: Deal[] = [
 
 export function getMockDealById(id: string) {
   return MOCK_DEALS.find((d) => d.id === id) ?? null;
+}
+
+// Called when a buyer's reservation is forfeited after the grace period —
+// their spot goes back to the group, so the live buyer count drops by one.
+export function releaseDealSpot(dealId: string): void {
+  const deal = MOCK_DEALS.find((d) => d.id === dealId);
+  if (deal && deal.currentBuyerCount > 0) {
+    deal.currentBuyerCount -= 1;
+  }
 }

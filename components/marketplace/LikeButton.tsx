@@ -16,7 +16,10 @@ export function LikeButton({ dealId, className }: LikeButtonProps) {
   const { isSignedIn } = useUser()
   const router = useRouter()
   const { toggleLike, isLiked } = useLikesStore()
-  const liked = isLiked(dealId)
+  // Same SSR/localStorage timing issue as the participation store — don't
+  // trust the persisted "liked" state until the store has hydrated.
+  const hasHydrated = useLikesStore((s) => s.hasHydrated)
+  const liked = hasHydrated && isLiked(dealId)
 
   function handleClick(e: React.MouseEvent) {
     e.stopPropagation()

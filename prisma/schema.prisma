@@ -89,6 +89,7 @@ model Deal {
   deadlineAt         DateTime
   deliveryType       DeliveryType  @default(DELIVERY)
   deliveryCost       Float         @default(0)
+  pickupDetails      Json?
   region             String
   platformFeePercent Float         @default(1.5)
   status             DealStatus    @default(ACTIVE)
@@ -129,10 +130,14 @@ model GroupBuyParticipation {
   platformFee           Float
   deliveryCost          Float         @default(0)
   status                PaymentStatus @default(RESERVATION_PAID)
+  paymentMethodRef      String?
   stripePaymentIntentId String?
   finalDiscountPercent  Float?
   finalPrice            Float?
   deliveryAddress       String?
+  gracePeriodDays       Int?
+  graceDeadline         DateTime?
+  retryAttempts         Int           @default(0)
   createdAt             DateTime      @default(now())
   updatedAt             DateTime      @updatedAt
 

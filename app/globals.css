@@ -17,8 +17,11 @@
   --groupal-green:  #048943;
 
   /* shadcn/ui compatible */
+  --foreground: 220 47% 11%;
   --card: 0 0% 100%;
   --card-foreground: 220 47% 11%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 220 47% 11%;
   --primary: 213 100% 17%;      /* navy */
   --primary-foreground: 0 0% 100%;
   --secondary: 44 100% 46%;     /* gold */
