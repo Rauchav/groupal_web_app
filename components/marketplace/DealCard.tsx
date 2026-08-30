@@ -77,7 +77,7 @@ function GroupalPricing({
           <span className="font-semibold tracking-wider text-white" style={{ fontSize: "0.65rem" }}>
             Right now each buyer is saving
           </span>
-          <div className="font-heading font-extrabold tabular-nums leading-none text-xl text-groupal-gold">
+          <div className="font-heading font-extrabold tabular-nums leading-none text-xl text-white">
             {formatPrice(computed.savingsAmount, deal.currency)}
           </div>
         </div>

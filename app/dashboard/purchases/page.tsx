@@ -61,7 +61,7 @@ function ParticipationCard({ p }: { p: MockParticipation }) {
             {deal.productName}
           </h3>
           <StatusBadge status={p.status} />
-          {p.status === "completed" && (
+          {(p.status === "active" || p.status === "completed") && (
             <p className="text-xs text-gray-400">Joined in {format(new Date(p.joinedAt), "MMMM d, yyyy")}</p>
           )}
           {p.status === "forfeited" && (

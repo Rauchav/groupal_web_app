@@ -135,7 +135,7 @@ function PricingPanel({
           <>
             <div className="flex items-center justify-between gap-2">
               <span className="text-sm font-semibold text-white">You are currently saving</span>
-              <span className="font-extrabold tabular-nums text-sm flex-shrink-0" style={{ color: "#eaad00" }}>
+              <span className="font-extrabold tabular-nums text-sm flex-shrink-0 text-white">
                 {fmt(computed.savingsAmount, deal.currency)}
               </span>
             </div>

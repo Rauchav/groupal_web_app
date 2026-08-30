@@ -13,6 +13,7 @@ import { DashboardSidebar, DashboardMobileTabs } from "@/components/dashboard/Da
 import { CountdownTimer } from "@/components/marketplace/CountdownTimer"
 import { motion } from "framer-motion"
 import { toast } from "sonner"
+import { format } from "date-fns"
 import {
   ShoppingBag, Users, TrendingDown, Clock,
 } from "lucide-react"
@@ -54,6 +55,7 @@ function ActiveDealCard({ participation }: { participation: MockParticipation })
               {isDealOpen ? "Open Deal" : "Deal Closed"}
             </span>
           </div>
+          <p className="text-xs text-gray-400">Joined in {format(new Date(participation.joinedAt), "MMMM d, yyyy")}</p>
         </div>
       </div>
 
