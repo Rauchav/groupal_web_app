@@ -7,22 +7,23 @@ import { SignIn } from "@clerk/nextjs"
 
 export default function SignInPage() {
   return (
-    <main className="min-h-screen bg-[#002356] flex items-center justify-center py-12 px-4">
+    <main className="min-h-screen bg-[#002356] flex items-center justify-center pt-28 pb-12 px-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <img
-            src="/brand/LOGO FONDO AZUL.png"
+            src="/brand/isologo fondo azul.svg"
             alt="Groupal"
-            className="h-12 mx-auto mb-4"
+            className="h-16 mx-auto mb-4"
           />
-          <p className="text-white/70 text-sm">
+          <p className="font-heading font-bold text-white/70 text-sm">
             Buy together. Save massive.
           </p>
         </div>
         <SignIn
           appearance={{
             elements: {
-              rootBox: "w-full",
+              rootBox: "w-full flex justify-center",
+              cardBox: "mx-auto",
               card: "shadow-2xl rounded-2xl",
               headerTitle: "text-[#002356] font-bold",
               formButtonPrimary:

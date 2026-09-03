@@ -56,19 +56,13 @@ export function Footer() {
           {/* Brand column */}
           <div className="col-span-2 md:col-span-1 space-y-4">
             <a href="/" className="flex items-center gap-2">
-              <div className="relative h-9 w-9">
-                <Image
-                  src="/brand/ICONO AMARILLO.png"
-                  alt="Groupal"
-                  fill
-                  sizes="36px"
-                  className="object-contain"
-                />
-              </div>
-              <span className="font-heading font-extrabold text-xl">
-                <span className="text-white">grou</span>
-                <span style={{ color: "#eaad00" }}>pal</span>
-              </span>
+              <Image
+                src="/brand/logo fondo azul.svg"
+                alt="Groupal"
+                width={1057}
+                height={262}
+                className="h-9 w-auto"
+              />
             </a>
             <p className="text-sm text-white/60 leading-relaxed max-w-[18rem]">
               Buy Together. Save Massive. Join group buys on big-ticket items

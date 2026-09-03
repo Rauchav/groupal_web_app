@@ -12,6 +12,11 @@ const inter = Inter({ subsets: ["latin"], variable: "--font-sans" })
 const nunito = Nunito({ subsets: ["latin"], variable: "--font-display" })
 
 export const metadata: Metadata = {
+  // So shared links (e.g. a /checkout/[dealId] deal card resharing itself)
+  // resolve their og:image to an absolute, correct-domain URL instead of
+  // Next.js guessing one — required for WhatsApp/iMessage/etc. previews to
+  // actually load the image rather than silently failing.
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? "https://groupal-web-app.vercel.app"),
   title: "Groupal — Buy Together. Save Massive.",
   description:
     "Join group buys on big-ticket items and unlock discounts of up to 70%. Electronics, cars, vacations, furniture and more.",
@@ -36,7 +41,7 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <ClerkProvider>
+    <ClerkProvider signInUrl="/sign-in" signUpUrl="/sign-up">
       <html
         lang="en"
         className={cn("font-sans", inter.variable, nunito.variable)}

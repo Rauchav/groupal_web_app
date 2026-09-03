@@ -25,6 +25,8 @@ import { CompletedDealCard } from "@/components/marketplace/CompletedDealCard";
 import { BuyerReviews } from "@/components/marketplace/BuyerReviews";
 import { HeroCarousel } from "@/components/marketplace/HeroCarousel";
 import { COMPLETED_DEALS, MOCK_DEALS } from "@/lib/mock/deals";
+import { closeExpiredDeals } from "@/lib/payments/sync-deal-closures";
+import { computeDealValues } from "@/lib/utils/deal-calculator";
 
 // ── Animation variants ──────────────────────────────────────────────────────
 const fadeUp = {
@@ -150,6 +152,41 @@ function StatCounter({
 export default function HomePage() {
   const router = useRouter();
   const [loadingDeals] = useState(false);
+  // Bumped once the deal-closure sweep resolves — MOCK_DEALS is mutated in
+  // place (no real backend yet), so this forces the grid below and "Deals
+  // That Delivered" to recompute against the fresh status/currentBuyerCount.
+  // Unused directly, but setting it forces a re-render once the sweep
+  // below resolves — liveDeals/dealsThatDelivered read MOCK_DEALS fresh on
+  // every render (it's mutated in place, not observed state), so this is
+  // what makes that mutation actually show up on screen.
+  const [, setClosedTick] = useState(0);
+
+  // No real job scheduler yet — sweep for deals that hit their deadline or
+  // max buyer count on every homepage visit, same as /deals and the
+  // dashboard already do.
+  useEffect(() => {
+    closeExpiredDeals().then(() => setClosedTick((n) => n + 1));
+  }, []);
+
+  const liveDeals = MOCK_DEALS.filter((d) => d.status === "active");
+  const dealsThatDelivered = [
+    ...MOCK_DEALS.filter((d) => d.status === "completed").map((deal) => {
+      const computed = computeDealValues(deal);
+      return {
+        id:               deal.id,
+        productName:      deal.productName,
+        productImage:     deal.productImage,
+        sellerName:       deal.sellerName,
+        buyersJoined:     deal.currentBuyerCount,
+        buyersTarget:     deal.maxBuyersRequired,
+        originalPrice:    deal.originalPrice,
+        finalPrice:       computed.currentPrice,
+        discountAchieved: Math.round(computed.currentDiscountPercent),
+        category:         deal.category,
+      };
+    }),
+    ...COMPLETED_DEALS,
+  ];
 
   return (
     <main
@@ -215,7 +252,7 @@ export default function HomePage() {
               viewport={{ once: true, margin: "-60px" }}
               variants={stagger}
             >
-              {MOCK_DEALS.map((deal, i) => (
+              {liveDeals.map((deal, i) => (
                 <motion.div key={deal.id} variants={fadeUp} custom={i} className="h-full">
                   <DealCard
                     deal={deal}
@@ -438,12 +475,12 @@ export default function HomePage() {
             viewport={{ once: true }}
             variants={stagger}
           >
-            {COMPLETED_DEALS.map((deal, i) => (
+            {dealsThatDelivered.map((deal, i) => (
               <CompletedDealCard key={deal.id} deal={deal} variants={fadeUp} custom={i} />
             ))}
           </motion.div>
 
-          <BuyerReviews variants={fadeUp} custom={COMPLETED_DEALS.length} />
+          <BuyerReviews variants={fadeUp} custom={dealsThatDelivered.length} />
         </div>
       </section>
 

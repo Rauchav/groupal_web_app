@@ -4,6 +4,7 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
+import { useUser } from "@clerk/nextjs";
 import {
   Share2, ShieldCheck, Clock, Users,
   Zap, ExternalLink, CheckCircle,
@@ -179,13 +180,18 @@ export function DealCard({
   className?: string;
 }) {
   const router       = useRouter();
+  const { isSignedIn } = useUser();
   // Gate on hasHydrated — the store persists to localStorage, which isn't
   // available during SSR. Reading it before hydration completes would make
   // the CTA button's structure (icon + label) diverge from what the server
   // rendered, breaking hydration.
   const hasHydrated  = useParticipationStore((s) => s.hasHydrated);
   const hasJoinedStore = useParticipationStore((s) => s.hasJoined(deal.id));
-  const hasJoined    = hasHydrated && hasJoinedStore;
+  // localStorage is scoped to the browser, not to whether there's currently
+  // a signed-in Clerk session — without the isSignedIn check, a previous
+  // (or someone else's, on a shared machine) session's "joined" state would
+  // still show as "Already Joined" to a signed-out visitor.
+  const hasJoined    = hasHydrated && !!isSignedIn && hasJoinedStore;
   const computed     = computeDealValues(deal);
   const hoursLeft    = (deal.deadlineAt.getTime() - Date.now()) / (1000 * 60 * 60);
 
@@ -300,12 +306,20 @@ export function DealCard({
             {deal.productName}
           </h3>
 
-          {/* IN STORE price — clickable link to seller site */}
-          <a
-            href={deal.sellerUrl ?? "#"}
-            target="_blank"
-            rel="noopener noreferrer"
-            onClick={(e) => e.stopPropagation()}
+          {/* IN STORE price — opens the seller site. A plain button, not an
+              <a>: cards on /deals and /dashboard/liked are themselves
+              wrapped in a full-card <a href="/checkout/...">, and a nested
+              <a> is invalid HTML — browsers auto-correct that at parse
+              time (closing the outer anchor early), which corrupts the
+              whole card's layout. stopPropagation alone can't fix that,
+              since it's a markup problem, not an event one. */}
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation()
+              e.preventDefault()
+              if (deal.sellerUrl) window.open(deal.sellerUrl, "_blank", "noopener,noreferrer")
+            }}
             className="inline-flex items-center justify-between gap-2 w-full rounded-lg border border-gray-200 px-3 py-2 hover:border-gray-400 hover:bg-gray-50 transition-all duration-150 cursor-pointer group/store"
           >
             <div className="flex flex-col leading-none">
@@ -317,7 +331,7 @@ export function DealCard({
               </span>
             </div>
             <ExternalLink className="h-3.5 w-3.5 text-gray-300 group-hover/store:text-gray-500 flex-shrink-0 transition-colors" />
-          </a>
+          </button>
 
           {/* Groupal pricing block */}
           <div className="-mx-4">
@@ -352,14 +366,20 @@ export function DealCard({
               </button>
             ) : (
               <button
-                onClick={() => {
+                onClick={(e) => {
+                  e.stopPropagation();
+                  e.preventDefault();
+                  if (!isSignedIn) {
+                    router.push(`/sign-up?redirect_url=${encodeURIComponent(`/checkout/${deal.id}`)}`);
+                    return;
+                  }
                   onJoin?.(deal.id);
                   router.push(`/checkout/${deal.id}`);
                 }}
                 className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl text-sm font-extrabold text-white transition-transform duration-150 cursor-pointer border-[3px] border-[#eaad00] shadow-[0_4px_4px_rgba(0,35,86,0.4)] hover:scale-[1.01]"
                 style={{ backgroundColor: "#1b4487" }}
               >
-                <Image src="/brand/happy-icon.svg" alt="" width={16} height={16} className="h-4 w-4" />
+                <Image src="/brand/isotipo1.svg" alt="" width={16} height={16} className="h-4 w-4" />
                 Join Group Buy
               </button>
             )}

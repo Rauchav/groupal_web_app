@@ -7,6 +7,7 @@ import { motion, AnimatePresence } from "framer-motion"
 import { toast } from "sonner"
 import { DealCard, DealCardSkeleton } from "@/components/marketplace/DealCard"
 import { MOCK_DEALS } from "@/lib/mock/deals"
+import { closeExpiredDeals } from "@/lib/payments/sync-deal-closures"
 import { cn } from "@/lib/utils"
 import { Deal } from "@/lib/types/deal"
 import { DEAL_CATEGORIES } from "@/lib/constants/categories"
@@ -55,10 +56,21 @@ function DealsPageInner() {
   const [category, setCategory] = useState("All")
   const [sort,     setSort]     = useState<SortOption>("ending-soon")
   const [loading,  setLoading]  = useState(true)
+  // Bumped once the deal-closure sweep resolves so the memos below (which
+  // read the mutated MOCK_DEALS array directly) recompute — MOCK_DEALS
+  // itself isn't observed state, so nothing re-renders this page otherwise.
+  const [closedTick, setClosedTick] = useState(0)
 
   useEffect(() => {
     const t = setTimeout(() => setLoading(false), 500)
     return () => clearTimeout(t)
+  }, [])
+
+  // No real job scheduler yet — sweep for deals that hit their deadline or
+  // max buyer count on every visit to the browse page, same as the
+  // dashboard already does for the buyer's own joined deals.
+  useEffect(() => {
+    closeExpiredDeals().then(() => setClosedTick((n) => n + 1))
   }, [])
 
   // Picks up ?category=... and ?search=... whenever they change — including
@@ -72,16 +84,24 @@ function DealsPageInner() {
     setSearch(searchParams.get("search") ?? "")
   }, [searchParams])
 
+  // Deals that filled up or hit their deadline are closed by the sweep
+  // above and no longer belong in the public browse grid — they move to
+  // "Deals That Delivered" on the homepage instead.
+  const activeDeals = useMemo(
+    () => MOCK_DEALS.filter((d) => d.status === "active"),
+    [closedTick]
+  )
+
   const endingSoon = useMemo(
-    () => MOCK_DEALS.filter((d) => {
+    () => activeDeals.filter((d) => {
       const hoursLeft = (d.deadlineAt.getTime() - Date.now()) / (1000 * 60 * 60)
       return hoursLeft > 0 && hoursLeft < 24
     }),
-    []
+    [activeDeals]
   )
 
   const filtered = useMemo(() => {
-    let result = MOCK_DEALS.filter((d) => {
+    let result = activeDeals.filter((d) => {
       const matchesSearch = search.trim() === "" ||
         d.productName.toLowerCase().includes(search.toLowerCase()) ||
         d.category.toLowerCase().includes(search.toLowerCase()) ||
@@ -90,7 +110,7 @@ function DealsPageInner() {
       return matchesSearch && matchesCat
     })
     return sortDeals(result, sort)
-  }, [search, category, sort])
+  }, [activeDeals, search, category, sort])
 
   const activeFilterCount =
     (category !== "All" ? 1 : 0) + (sort !== "ending-soon" ? 1 : 0)
@@ -111,7 +131,7 @@ function DealsPageInner() {
             <div className="mt-4 inline-flex items-center gap-2 bg-white/10 rounded-full px-4 py-1.5">
               <span className="h-2 w-2 rounded-full bg-green-400 animate-pulse" />
               <span className="text-white/80 text-sm font-semibold">
-                {MOCK_DEALS.length} active deals right now
+                {activeDeals.length} active deals right now
               </span>
             </div>
           </div>

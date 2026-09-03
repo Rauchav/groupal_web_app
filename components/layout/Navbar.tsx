@@ -78,28 +78,28 @@ export function Navbar() {
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="flex h-16 items-center gap-4">
 
-          {/* Logo */}
+          {/* Logo — full wordmark at sm+, icon-only once the nav collapses to the hamburger menu */}
           <a
             href="/"
-            className="flex-shrink-0 flex items-center gap-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-groupal-gold rounded-lg"
+            className="flex-shrink-0 flex items-center focus:outline-none focus-visible:ring-2 focus-visible:ring-groupal-gold rounded-lg"
             aria-label="Groupal — home"
           >
-            <div className="relative h-8 w-8">
-              <Image
-                src="/brand/ICONO AMARILLO.png"
-                alt="Groupal icon"
-                fill
-                sizes="32px"
-                className="object-contain"
-              />
-            </div>
-            <span
-              className="hidden sm:block font-heading font-extrabold tracking-tight leading-none select-none"
-              style={{ fontSize: "1.35rem" }}
-            >
-              <span className="text-white">grou</span>
-              <span style={{ color: "#eaad00" }}>pal</span>
-            </span>
+            <Image
+              src="/brand/isotipo1.svg"
+              alt="Groupal"
+              width={1080}
+              height={886.6}
+              priority
+              className="h-7 w-auto sm:hidden"
+            />
+            <Image
+              src="/brand/logo fondo azul.svg"
+              alt="Groupal"
+              width={1057}
+              height={262}
+              priority
+              className="hidden h-7 w-auto sm:block"
+            />
           </a>
 
           {/* Search bar — center */}

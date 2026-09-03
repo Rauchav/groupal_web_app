@@ -72,5 +72,13 @@ export async function chargeReservation({
     data:    { dealId: deal.id, participationId: participation.id },
   })
 
+  // Mirrors releaseDealSpot()'s decrement on forfeiture (lib/mock/deals.ts)
+  // — every successful join grows the live group, which is what lets a
+  // deal actually reach maxBuyersRequired and auto-close (see
+  // closeExpiredDeals in lib/payments/sync-deal-closures.ts).
+  if (deal.currentBuyerCount < deal.maxBuyersRequired) {
+    deal.currentBuyerCount += 1
+  }
+
   return { success: true, participation }
 }

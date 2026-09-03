@@ -174,7 +174,7 @@ export const MOCK_DEALS: Deal[] = [
     createdAt:            new Date(),
   },
 
-  // Deal 5 — 100% progress → green MAX
+  // Deal 5 — 90% progress → green zone, almost full but still active
   {
     id:                   "deal-005",
     sellerId:             "seller-005",
@@ -187,7 +187,7 @@ export const MOCK_DEALS: Deal[] = [
     currency:             "USD",
     maxDiscountPercent:   45,
     maxBuyersRequired:    40,
-    currentBuyerCount:    40,
+    currentBuyerCount:    36,
     deadlineAt:           daysFromNow(1),
     milestones:           milestones(40, 45),
     reservationFeePercent: 10,

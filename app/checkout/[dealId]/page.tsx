@@ -773,7 +773,7 @@ function StepConfirm({
 export default function CheckoutPage() {
   const { dealId } = useParams<{ dealId: string }>()
   const router     = useRouter()
-  const { user }   = useUser()
+  const { user, isSignedIn } = useUser()
   const { addParticipation } = useParticipationStore()
   const hasHydrated = useParticipationStore((s) => s.hasHydrated)
   const alreadyJoined = useParticipationStore((s) => s.hasJoined(dealId))
@@ -798,11 +798,15 @@ export default function CheckoutPage() {
   useEffect(() => {
     if (!hasHydrated || alreadyJoinedAtLoad.current !== null) return
     alreadyJoinedAtLoad.current = alreadyJoined
-    if (alreadyJoined) {
+    // localStorage persists across sign-out, so this only counts as
+    // "already joined" while a Clerk session backs it up — otherwise a
+    // signed-out visitor gets bounced to /dashboard (and from there to
+    // sign-in) for a deal they can't currently prove they joined.
+    if (isSignedIn && alreadyJoined) {
       toast.info("You've already joined this deal — here's where it's at.")
       router.replace("/dashboard")
     }
-  }, [hasHydrated, alreadyJoined, router])
+  }, [hasHydrated, alreadyJoined, isSignedIn, router])
 
   // Each checkout step swaps in new instructions below the same scroll
   // position the previous step left off at — jump back to the top so the
@@ -828,13 +832,27 @@ export default function CheckoutPage() {
     )
   }
 
+  // Visitors can browse this Review Deal step signed out (that's what makes
+  // a shared link's preview work — see opengraph-image.tsx), but must not
+  // be able to advance into delivery/payment or actually reserve a spot
+  // without an account. Sends them to sign-up with a redirect back here so
+  // they land right back on this deal once they're done.
+  function requireAuth(): boolean {
+    if (!isSignedIn) {
+      router.push(`/sign-up?redirect_url=${encodeURIComponent(`/checkout/${dealId}`)}`)
+      return false
+    }
+    return true
+  }
+
   async function handleComplete() {
+    if (!requireAuth() || !user) return
     setLoading(true)
 
     const isPickup = deal!.isPickup
     const result = await chargeReservation({
       deal:         deal!,
-      buyerId:      user?.id ?? "guest-buyer",
+      buyerId:      user.id,
       deliveryCost: isPickup ? 0 : 9.99,
       deliveryAddress: deliveryData
         ? {
@@ -984,7 +1002,7 @@ export default function CheckoutPage() {
           {/* RIGHT — Checkout steps */}
           <div>
             {step === 0 && (
-              <StepReview deal={deal} computed={computed} onContinue={() => setStep(1)} />
+              <StepReview deal={deal} computed={computed} onContinue={() => { if (requireAuth()) setStep(1) }} />
             )}
             {step === 1 && (
               <StepDelivery
@@ -1054,7 +1072,7 @@ export default function CheckoutPage() {
             <p className="text-[10px] text-gray-400 leading-none mt-0.5">10% of the store price</p>
           </div>
           <button
-            onClick={() => setStep(1)}
+            onClick={() => { if (requireAuth()) setStep(1) }}
             className="flex-1 py-3.5 rounded-xl font-extrabold text-white text-sm cursor-pointer transition-colors"
             style={{ backgroundColor: "#048943" }}
             onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#059c4f")}

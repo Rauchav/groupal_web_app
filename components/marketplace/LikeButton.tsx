@@ -19,13 +19,18 @@ export function LikeButton({ dealId, className }: LikeButtonProps) {
   // Same SSR/localStorage timing issue as the participation store — don't
   // trust the persisted "liked" state until the store has hydrated.
   const hasHydrated = useLikesStore((s) => s.hasHydrated)
-  const liked = hasHydrated && isLiked(dealId)
+  // Same reasoning as DealCard's hasJoined — localStorage persists across
+  // sign-out, so without the isSignedIn check a signed-out visitor (or the
+  // next person on a shared machine) would still see the previous
+  // session's likes.
+  const liked = hasHydrated && !!isSignedIn && isLiked(dealId)
 
   function handleClick(e: React.MouseEvent) {
     e.stopPropagation()
     e.preventDefault()
     if (!isSignedIn) {
-      router.push("/sign-in")
+      const here = typeof window !== "undefined" ? window.location.pathname + window.location.search : "/deals"
+      router.push(`/sign-in?redirect_url=${encodeURIComponent(here)}`)
       return
     }
     toggleLike(dealId)
