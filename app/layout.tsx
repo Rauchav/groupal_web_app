@@ -1,7 +1,5 @@
 import type { Metadata } from "next"
 import "./globals.css"
-import { Navbar } from "@/components/layout/Navbar"
-import { Footer } from "@/components/layout/Footer"
 import { Inter, Nunito } from "next/font/google"
 import { cn } from "@/lib/utils"
 import { ClerkProvider } from "@clerk/nextjs"
@@ -35,6 +33,11 @@ export const metadata: Metadata = {
   },
 }
 
+// Deliberately minimal — no portal-specific UI here. The buyer chrome
+// (Navbar/Footer/seller-view-only guard) lives in app/(buyers)/layout.tsx
+// and the seller chrome (SellerNavbar) lives in app/sellers/layout.tsx.
+// Next.js only allows one root layout, so this is just the shared shell
+// (fonts, ClerkProvider, toaster) both portals sit inside.
 export default function RootLayout({
   children,
 }: {
@@ -51,9 +54,7 @@ export default function RootLayout({
         </head>
         <body>
           <Providers>
-            <Navbar />
             {children}
-            <Footer />
             <Toaster />
           </Providers>
         </body>

@@ -1,11 +1,12 @@
+import { PackageCheck } from "lucide-react"
+import { SellerComingSoon } from "@/sellers/components/SellerComingSoon"
+
 export default function SellerDealDetailPage() {
   return (
-    <main className="min-h-screen bg-white">
-      <div className="max-w-7xl mx-auto px-4 py-20 text-center">
-        <h1 className="text-3xl font-bold text-[#002356]">
-          Deal Detail — Coming Soon
-        </h1>
-      </div>
-    </main>
+    <SellerComingSoon
+      icon={PackageCheck}
+      title="Offer Detail"
+      description="Buyer progress, milestones, and edit/cancel controls for a single offer are coming in the next phase."
+    />
   )
 }

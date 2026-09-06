@@ -1,11 +1,12 @@
-export default function NewDealPage() {
+import { PlusCircle } from "lucide-react"
+import { SellerComingSoon } from "@/sellers/components/SellerComingSoon"
+
+export default function NewSellerDealPage() {
   return (
-    <main className="min-h-screen bg-white">
-      <div className="max-w-7xl mx-auto px-4 py-20 text-center">
-        <h1 className="text-3xl font-bold text-[#002356]">
-          New Deal — Coming Soon
-        </h1>
-      </div>
-    </main>
+    <SellerComingSoon
+      icon={PlusCircle}
+      title="Create a Group Buy Offer"
+      description="The guided offer wizard — product details, fulfillment, and group buy terms — is coming in the next phase."
+    />
   )
 }

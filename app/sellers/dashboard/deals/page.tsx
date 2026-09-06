@@ -1,11 +1,12 @@
-export default function SellerDealsPage() {
+import { PackageCheck } from "lucide-react"
+import { SellerComingSoon } from "@/sellers/components/SellerComingSoon"
+
+export default function SellerActiveDealsPage() {
   return (
-    <main className="min-h-screen bg-white">
-      <div className="max-w-7xl mx-auto px-4 py-20 text-center">
-        <h1 className="text-3xl font-bold text-[#002356]">
-          Seller Deals — Coming Soon
-        </h1>
-      </div>
-    </main>
+    <SellerComingSoon
+      icon={PackageCheck}
+      title="Active Offers"
+      description="Your live group buy offers will show up here, with real-time buyer progress. Coming in the next phase."
+    />
   )
 }

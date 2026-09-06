@@ -1,7 +1,7 @@
 import { MOCK_DEALS } from "@/lib/mock/deals"
 import { paymentsDb } from "@/lib/mock/payments-db"
 import { isDealReadyToClose, closeDeal } from "@/lib/jobs/deal-close-job"
-import { useParticipationStore, type MockParticipation } from "@/lib/stores/participation-store"
+import { useParticipationStore, type MockParticipation } from "@/buyers/stores/participation-store"
 import type { Participation, PaymentStatus } from "@/lib/types/payment"
 
 // The engine's richer status machine collapses onto the simple store's

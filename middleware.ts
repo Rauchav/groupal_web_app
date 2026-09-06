@@ -14,15 +14,21 @@ const isPublicRoute = createRouteMatcher([
   "/api/v1(.*)",
 ])
 
+const isSellerRoute = createRouteMatcher(["/sellers/dashboard(.*)"])
+
 export default clerkMiddleware(async (auth, request) => {
   if (!isPublicRoute(request)) {
     // Without an explicit target, auth.protect() falls back to Clerk's
     // hosted Account Portal (an unstyled, off-brand page) rather than our
     // own /sign-in — this runs server-side in middleware, so it can't pick
     // up the signInUrl configured on <ClerkProvider> for client components.
+    // Seller routes get their own gate (/sellers) rather than the buyer
+    // /sign-in, since a seller signing in there also needs the company
+    // onboarding check /sellers itself performs.
+    const signInPath = isSellerRoute(request) ? "/sellers" : "/sign-in"
     await auth.protect({
       unauthenticatedUrl: new URL(
-        `/sign-in?redirect_url=${encodeURIComponent(request.nextUrl.pathname + request.nextUrl.search)}`,
+        `${signInPath}?redirect_url=${encodeURIComponent(request.nextUrl.pathname + request.nextUrl.search)}`,
         request.url
       ).toString(),
     })

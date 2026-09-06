@@ -317,6 +317,52 @@ Located over the product image, next to the share button.
   in warm, non-punitive language. Added paymentMethodRef,
   gracePeriodDays, graceDeadline, and retryAttempts fields to
   GroupBuyParticipation in prisma/schema.prisma to support it.
+- Truly separated the buyer and seller portals into distinct folder
+  trees, fixing both a structural complaint (seller code was being
+  built inside buyer-labeled files/folders) and a real bug (switching
+  Google accounts in the same browser could strand a brand-new buyer
+  identity inside the seller experience with no way back). All buyer
+  routes now live under the route group app/(buyers)/ (URLs unchanged:
+  /, /deals, /checkout/[dealId], /dashboard, /sign-in, /sign-up,
+  /how-it-works, /terms), each with its own layout
+  (app/(buyers)/layout.tsx) rendering the buyer Navbar/Footer/
+  SellerViewOnlyGuard. The seller portal (app/sellers/**) has its own
+  layout (app/sellers/layout.tsx) and its own standalone
+  components/sellers/SellerNavbar.tsx — no shared component branches
+  on pathname to serve both portals anymore. Root app/layout.tsx is
+  now minimal (ClerkProvider + fonts + Providers/Toaster only), with
+  zero portal-specific UI. Moved SellerViewOnlyGuard.tsx and
+  SellerModeModal.tsx out of components/marketplace/ (buyer-named)
+  into components/sellers/. Fixed the actual bug: rewrote
+  lib/stores/seller-store.ts to key seller profiles by Clerk user ID
+  (profilesByUserId map + useSellerProfile(userId) hook) instead of
+  storing one global unscoped profile in localStorage — every call
+  site (app/sellers/page.tsx, app/sellers/dashboard/**,
+  SellerViewOnlyGuard, SellerNavbar) now reads the current signed-in
+  user's own profile, so a different Google account in the same
+  browser is correctly treated as a fresh buyer instead of inheriting
+  someone else's seller identity. Known related limitation, not yet
+  fixed: participation-store.ts, likes-store.ts, and reviews-store.ts
+  have this same not-scoped-to-user-id pattern on the buyer side.
+- Moved every buyer- and seller-specific component and Zustand store out
+  of the shared components/ and lib/stores/ folders into two dedicated
+  top-level trees: buyers/ (components/{layout,marketplace,dashboard}/
+  and stores/ — Navbar, Footer, DealCard, CompletedDealCard,
+  CountdownTimer, HeroCarousel, LikeButton, StarRating, BuyerReviews,
+  DashboardNav, DealPaymentSummary, ReviewModal, and the likes/
+  participation/reviews/preferences stores) and sellers/ (components/
+  and stores/ — SellerNavbar, SellerDashboardNav, SellerViewOnlyGuard,
+  SellerModeModal, SellerComingSoon, and the seller store). components/
+  now holds only components/ui/ (shadcn primitives) and providers.tsx —
+  genuinely shared across both portals — and lib/ holds only shared
+  business logic (types, utils, deal-calculator, mock data, payments,
+  jobs, constants, supabase). app/(buyers)/** and app/sellers/** still
+  hold only route files (page.tsx/layout.tsx), as required by Next.js —
+  those didn't move, only their imports were repointed at the new
+  locations. Every @/* import updated repo-wide (~30 files); no runtime
+  behavior, styling, or text changed. Verified via `npx tsc --noEmit`
+  and a full route smoke test (/, /deals, /checkout/[dealId], /sellers,
+  /sellers/dashboard, /dashboard all resolve exactly as before).
 
 ### Not yet built
 - Seller Portal (landing, dashboard, deal creator, deal monitoring,
