@@ -68,7 +68,7 @@ function ActiveDealCard({ participation }: { participation: MockParticipation })
             <span className="font-bold text-gray-700">{deal.currentBuyerCount}</span>
             {" of "}
             <span className="font-bold text-gray-700">{deal.maxBuyersRequired}</span>
-            {" buyers participated"}
+            {" buyers participating"}
           </span>
           <span className="font-bold ml-auto" style={{ color: "#DA1200" }}>
             {computed.currentDiscountPercent.toFixed(1)}% off

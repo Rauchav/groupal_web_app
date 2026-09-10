@@ -87,7 +87,7 @@ function ParticipationCard({ p }: { p: MockParticipation }) {
                   <span className="font-bold text-gray-700">{deal.currentBuyerCount}</span>
                   {" of "}
                   <span className="font-bold text-gray-700">{deal.maxBuyersRequired}</span>
-                  {" buyers participated"}
+                  {" buyers participating"}
                 </span>
                 <span className="font-bold text-[#DA1200] ml-auto">{computed.currentDiscountPercent.toFixed(1)}% off</span>
               </div>
