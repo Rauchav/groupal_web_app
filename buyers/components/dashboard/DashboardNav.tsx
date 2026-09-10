@@ -1,7 +1,10 @@
 "use client"
 
 import Link from "next/link"
+import { useUser } from "@clerk/nextjs"
 import { ShoppingBag, Heart, Settings, LayoutList, Bell, ShoppingCart } from "lucide-react"
+import { useUnseenGroupBuysCount, useUnseenClosedCount } from "@/buyers/stores/participation-store"
+import { useUnreadNotificationsCount } from "@/lib/mock/payments-db"
 
 const NAV_ITEMS = [
   { href: "/dashboard",               icon: ShoppingBag, label: "My Group Buys" },
@@ -11,9 +14,39 @@ const NAV_ITEMS = [
   { href: "/dashboard/settings",      icon: Settings,     label: "Settings" },
 ] as const
 
+const GROUP_BUYS_HREF   = "/dashboard"
+const PURCHASES_HREF    = "/dashboard/purchases"
+const NOTIFICATIONS_HREF = "/dashboard/notifications"
+
+// Small orange count badge — same mechanic as the seller portal's
+// Active/Closed Deals badges (sellers/components/SellerDashboardNav.tsx).
+// Orange rather than red: CLAUDE.md reserves red specifically for
+// warnings/errors/"ending soon", and none of these three are that.
+function UnseenBadge({ count }: { count: number }) {
+  if (count <= 0) return null
+  return (
+    <span className="inline-flex items-center justify-center h-5 min-w-[1.25rem] rounded-full text-white text-[10px] font-bold px-1" style={{ backgroundColor: "#e86300" }}>
+      {count}
+    </span>
+  )
+}
+
+// The three counts each badge below needs. Pulled into one hook so both
+// nav shells stay in sync without duplicating the useUser() call.
+function useDashboardBadgeCounts() {
+  const { user } = useUser()
+  return {
+    groupBuys:     useUnseenGroupBuysCount(),
+    purchases:     useUnseenClosedCount(),
+    notifications: useUnreadNotificationsCount(user?.id),
+  }
+}
+
 // Desktop sidebar — shown on every page in the /dashboard/* section, always
 // includes a way back out to the marketplace.
 export function DashboardSidebar({ active }: { active: string }) {
+  const counts = useDashboardBadgeCounts()
+
   return (
     <aside className="hidden lg:flex flex-col w-60 flex-shrink-0">
       <nav className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
@@ -28,7 +61,10 @@ export function DashboardSidebar({ active }: { active: string }) {
             }`}
           >
             <Icon className="h-4 w-4 flex-shrink-0" />
-            {label}
+            <span className="flex-1">{label}</span>
+            {href === GROUP_BUYS_HREF && <UnseenBadge count={counts.groupBuys} />}
+            {href === PURCHASES_HREF && <UnseenBadge count={counts.purchases} />}
+            {href === NOTIFICATIONS_HREF && <UnseenBadge count={counts.notifications} />}
           </Link>
         ))}
         <div className="border-t border-gray-100">
@@ -49,19 +85,24 @@ export function DashboardSidebar({ active }: { active: string }) {
 // "Marketplace" tab so there's always an intuitive way out on small screens
 // too (previously only the desktop sidebar had this escape hatch).
 export function DashboardMobileTabs({ active }: { active: string }) {
+  const counts = useDashboardBadgeCounts()
+
   return (
     <div className="flex lg:hidden gap-1 bg-white rounded-2xl border border-gray-100 shadow-sm p-1 mb-4 overflow-x-auto">
       {NAV_ITEMS.map(({ href, label }) => (
         <Link
           key={href}
           href={href}
-          className={`flex-1 text-center py-2 rounded-xl text-sm font-semibold transition-colors whitespace-nowrap px-3 ${
+          className={`flex-1 flex items-center justify-center gap-1.5 text-center py-2 rounded-xl text-sm font-semibold transition-colors whitespace-nowrap px-3 ${
             active === href
               ? "bg-[#002356] text-white"
               : "text-gray-500 hover:text-[#002356]"
           }`}
         >
           {label}
+          {href === GROUP_BUYS_HREF && <UnseenBadge count={counts.groupBuys} />}
+          {href === PURCHASES_HREF && <UnseenBadge count={counts.purchases} />}
+          {href === NOTIFICATIONS_HREF && <UnseenBadge count={counts.notifications} />}
         </Link>
       ))}
       <Link

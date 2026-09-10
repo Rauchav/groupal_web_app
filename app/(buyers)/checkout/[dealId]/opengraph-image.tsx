@@ -59,7 +59,7 @@ export default async function Image({ params }: { params: { dealId: string } }) 
         <div style={{ width: 500, height: "100%", display: "flex", position: "relative" }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src={deal.productImage}
+            src={deal.productImages[0]}
             alt=""
             width={500}
             height={630}

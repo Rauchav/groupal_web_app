@@ -27,6 +27,7 @@ import { HeroCarousel } from "@/buyers/components/marketplace/HeroCarousel";
 import { COMPLETED_DEALS, MOCK_DEALS } from "@/lib/mock/deals";
 import { closeExpiredDeals } from "@/lib/payments/sync-deal-closures";
 import { computeDealValues } from "@/lib/utils/deal-calculator";
+import { useMockDealsSyncStore } from "@/sellers/stores/seller-deals-store";
 
 // ── Animation variants ──────────────────────────────────────────────────────
 const fadeUp = {
@@ -168,14 +169,32 @@ export default function HomePage() {
     closeExpiredDeals().then(() => setClosedTick((n) => n + 1));
   }, []);
 
-  const liveDeals = MOCK_DEALS.filter((d) => d.status === "active");
+  // A seller-created deal only reaches MOCK_DEALS once
+  // sellers/components/SellerViewOnlyGuard.tsx (mounted in this route
+  // group's layout for every buyer) pushes it there, from an effect gated
+  // to strictly after that component's first commit — see that file for
+  // why. If that lands after this component's own first render, nothing
+  // would otherwise trigger a re-render to pick up the newly-injected deal
+  // since liveDeals/dealsThatDelivered below aren't memoized state.
+  // Subscribing to useMockDealsSyncStore's tick (not seller-deals-store's
+  // own hasHydrated — see that store's comment on why a boolean that can
+  // already be true on mount is an unreliable recompute trigger) is what
+  // guarantees this page re-renders once the sync actually happens,
+  // instead of depending on an unrelated effect race to do it by luck.
+  useMockDealsSyncStore((s) => s.tick);
+
+  // Biggest discount first — matches the -X% badge every card leads with,
+  // so the deals buyers save the most on are the first thing they see
+  // instead of being buried wherever they landed in MOCK_DEALS.
+  const liveDeals = MOCK_DEALS.filter((d) => d.status === "active")
+    .sort((a, b) => b.maxDiscountPercent - a.maxDiscountPercent);
   const dealsThatDelivered = [
     ...MOCK_DEALS.filter((d) => d.status === "completed").map((deal) => {
       const computed = computeDealValues(deal);
       return {
         id:               deal.id,
         productName:      deal.productName,
-        productImage:     deal.productImage,
+        productImage:     deal.productImages[0],
         sellerName:       deal.sellerName,
         buyersJoined:     deal.currentBuyerCount,
         buyersTarget:     deal.maxBuyersRequired,

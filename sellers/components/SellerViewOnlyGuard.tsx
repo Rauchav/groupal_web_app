@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation"
 import { useUser } from "@clerk/nextjs"
 import { ArrowLeft } from "lucide-react"
 import { useSellerProfile } from "@/sellers/stores/seller-store"
+import { useSellerDealsStore, useMockDealsSyncStore } from "@/sellers/stores/seller-deals-store"
+import { addMockDeal } from "@/lib/mock/deals"
 import { SellerModeModal } from "./SellerModeModal"
 
 // Mounted once in app/(buyers)/layout.tsx, so it's only ever present on
@@ -26,6 +28,42 @@ export function SellerViewOnlyGuard() {
   const { isSignedIn, user } = useUser()
   const sellerProfile = useSellerProfile(user?.id)
   const [modalOpen, setModalOpen] = useState(false)
+
+  // Nothing else on the buyer side imports seller-deals-store.ts, so
+  // without this, its persist middleware never even rehydrates and
+  // seller-created deals never reach MOCK_DEALS (lib/mock/deals.ts) for a
+  // real buyer to see. This component is the one thing already guaranteed
+  // to mount on every buyer route (app/(buyers)/layout.tsx), for buyers
+  // and view-only sellers alike, so it doubles as the sync point.
+  //
+  // zustand's persist middleware rehydrates from localStorage SYNCHRONOUSLY
+  // (its toThenable helper skips microtask deferral for sync storages) —
+  // so sellerDealsHydrated can already be true, with deals already
+  // populated, on the very first client render, before React has even
+  // started reconciling against the server-rendered HTML. Gating the
+  // MOCK_DEALS mutation on that flag directly mutated the array during
+  // that same first render, so the client's "N active deals" text was
+  // already off from what the server sent — a "Text content does not
+  // match" hydration error. `mounted` here is a plain useState/useEffect
+  // pair instead: React guarantees its initial value is used for the
+  // first render everywhere (server AND client) and only flips true in an
+  // effect strictly after that render commits, so the mutation below can
+  // never land before hydration has already been verified.
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => setMounted(true), [])
+
+  const sellerDeals = useSellerDealsStore((s) => s.deals)
+  const bumpMockDealsSync = useMockDealsSyncStore((s) => s.bump)
+
+  useEffect(() => {
+    if (!mounted) return
+    sellerDeals.forEach(addMockDeal)
+    // Unconditional, even if sellerDeals is empty — buyer pages need a
+    // reliable "the sync attempt has happened" signal to recompute against,
+    // see useMockDealsSyncStore's own comment for why hasHydrated can't be
+    // that signal.
+    bumpMockDealsSync()
+  }, [mounted, sellerDeals, bumpMockDealsSync])
 
   const isSeller = !!isSignedIn && !!sellerProfile
 

@@ -7,11 +7,11 @@ import { useUser, SignIn, SignUp } from "@clerk/nextjs"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
-import { toast } from "sonner"
 import { Building2, ArrowRight } from "lucide-react"
 import { useSellerStore, useSellerProfile } from "@/sellers/stores/seller-store"
 import { DEAL_CATEGORIES } from "@/lib/constants/categories"
 import { cn } from "@/lib/utils"
+import { SuccessCelebration } from "@/components/success-celebration"
 
 // Shared appearance for both the sign-in and sign-up widgets — same
 // treatment as app/sign-in and app/sign-up so switching between the buyer
@@ -40,9 +40,9 @@ type OnboardingForm = z.infer<typeof onboardingSchema>
 // "All" — a seller's primary category, not a filter.
 const COMPANY_CATEGORIES = DEAL_CATEGORIES.filter((c) => c !== "All")
 
-function OnboardingStep({ userId }: { userId: string }) {
-  const router = useRouter()
+function OnboardingStep({ userId, onOnboarded }: { userId: string; onOnboarded: () => void }) {
   const createProfile = useSellerStore((s) => s.createProfile)
+  const [justOnboarded, setJustOnboarded] = useState(false)
 
   const {
     register,
@@ -62,8 +62,22 @@ function OnboardingStep({ userId }: { userId: string }) {
       city:        data.city,
       website:     data.website || undefined,
     })
-    toast.success("Welcome to Groupal for Business!")
-    router.push("/sellers/dashboard")
+    // Tell the parent page first — its own "already onboarded" redirect
+    // effect fires the instant `profile` goes truthy, which would yank us
+    // to /sellers/dashboard before this celebration screen ever painted.
+    onOnboarded()
+    setJustOnboarded(true)
+  }
+
+  if (justOnboarded) {
+    return (
+      <SuccessCelebration
+        title="Welcome to Groupal, the best way to sell fast and sell massive!"
+        description="Start creating your first group buy deal, remember that the more discounts you offer, the faster you sell."
+        ctaLabel="Let's create my first deal"
+        ctaHref="/sellers/dashboard/deals/new"
+      />
+    )
   }
 
   return (
@@ -73,7 +87,7 @@ function OnboardingStep({ userId }: { userId: string }) {
           <Building2 className="h-6 w-6" style={{ color: "#002356" }} />
         </div>
         <h1 className="font-heading font-bold text-[#002356] text-xl">Tell us about your company</h1>
-        <p className="text-gray-500 text-sm">One quick step before you can create your first group buy offer.</p>
+        <p className="text-gray-500 text-sm">One quick step before you can create your first group buy deal.</p>
       </div>
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
@@ -171,17 +185,22 @@ export default function SellersGatePage() {
   const [authMode, setAuthMode] = useState<"sign-in" | "sign-up">("sign-in")
   const profile      = useSellerProfile(user?.id)
   const hasHydrated  = useSellerStore((s) => s.hasHydrated)
+  // Set the instant a seller finishes onboarding, so the checks below stop
+  // treating "profile now exists" as a signal to redirect an ALREADY-
+  // onboarded seller straight to their dashboard — a freshly-onboarded one
+  // needs to see the welcome celebration in OnboardingStep first.
+  const [justOnboarded, setJustOnboarded] = useState(false)
 
   useEffect(() => {
-    if (isSignedIn && hasHydrated && profile) {
+    if (isSignedIn && hasHydrated && profile && !justOnboarded) {
       router.replace("/sellers/dashboard")
     }
-  }, [isSignedIn, hasHydrated, profile, router])
+  }, [isSignedIn, hasHydrated, profile, justOnboarded, router])
 
   // Avoid flashing the sign-in form for a split second while Clerk/the
   // store are still loading, or the onboarding form while we're about to
   // redirect an already-onboarded seller to their dashboard.
-  if (!isLoaded || !hasHydrated || (isSignedIn && profile)) {
+  if (!isLoaded || !hasHydrated || (isSignedIn && profile && !justOnboarded)) {
     return (
       <main className="min-h-screen flex items-center justify-center" style={{ backgroundColor: "#002356" }}>
         <div className="h-8 w-8 rounded-full border-2 border-white/30 border-t-white animate-spin" />
@@ -193,15 +212,15 @@ export default function SellersGatePage() {
     <main className="min-h-screen flex flex-col items-center justify-center pt-28 pb-12 px-4" style={{ backgroundColor: "#002356" }}>
       <div className="text-center mb-8">
         <img src="/brand/isologo fondo azul.svg" alt="Groupal" className="h-16 mx-auto mb-4" />
-        <p className="font-heading font-bold text-white/70 text-sm">Groupal for Business</p>
+        <p className="font-heading font-bold text-white/70 text-sm">The new way to sell like crazy</p>
       </div>
 
       {isSignedIn && user ? (
-        <OnboardingStep userId={user.id} />
+        <OnboardingStep userId={user.id} onOnboarded={() => setJustOnboarded(true)} />
       ) : (
         <div className="w-full max-w-md space-y-5">
           <p className="text-center text-white/70 text-sm max-w-sm mx-auto">
-            Create group buy offers, reach thousands of ready-to-buy customers, and move inventory fast.{" "}
+            Create group buy deals, reach thousands of ready-to-buy customers, and move inventory fast.{" "}
             <Link href="/sellers/docs" className="font-bold text-[#eaad00] hover:underline">
               See how it works →
             </Link>

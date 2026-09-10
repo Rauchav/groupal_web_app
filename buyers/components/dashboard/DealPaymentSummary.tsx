@@ -56,14 +56,15 @@ export const CTA_BUTTON_CLASS =
 function PricingPanel({
   deal,
   reservationPaid,
+  deliveryCost,
   isClosed,
 }: {
   deal:             Deal
   reservationPaid:  number
+  deliveryCost:     number
   isClosed:         boolean
 }) {
   const computed = computeDealValues(deal)
-  const deliveryCost = deal.isPickup ? 0 : 9.99
   const finalPayment = computeEstimatedFinalPrice(deal, deliveryCost)
   const maxDiscountPrice = deal.originalPrice * (1 - deal.maxDiscountPercent / 100)
   const maxSavings = deal.originalPrice - maxDiscountPrice
@@ -164,15 +165,19 @@ function PricingPanel({
 export function OpenDealPaymentSummary({
   deal,
   reservationPaid,
+  deliveryCost = 9.99,
   onShare,
 }: {
   deal:            Deal
   reservationPaid: number
+  // Defaults to the flat legacy rate for a participation saved before
+  // deliveryCost existed on MockParticipation — see that type's comment.
+  deliveryCost?:   number
   onShare:         () => void
 }) {
   return (
     <div>
-      <PricingPanel deal={deal} reservationPaid={reservationPaid} isClosed={false} />
+      <PricingPanel deal={deal} reservationPaid={reservationPaid} deliveryCost={deliveryCost} isClosed={false} />
       <div className="px-4 pt-3 pb-4">
         <button onClick={onShare} className={CTA_BUTTON_CLASS} style={{ backgroundColor: "#eaad00" }}>
           <Share2 className="h-4 w-4" style={{ color: "#002356" }} />
@@ -188,9 +193,11 @@ export function OpenDealPaymentSummary({
 export function ClosedDealPaymentSummary({
   deal,
   reservationPaid,
+  deliveryCost = 9.99,
 }: {
   deal:            Deal
   reservationPaid: number
+  deliveryCost?:   number
 }) {
   const { user } = useUser()
 
@@ -214,7 +221,7 @@ export function ClosedDealPaymentSummary({
 
   return (
     <div>
-      <PricingPanel deal={deal} reservationPaid={reservationPaid} isClosed />
+      <PricingPanel deal={deal} reservationPaid={reservationPaid} deliveryCost={deliveryCost} isClosed />
 
       <div className="px-4 pt-3 pb-4">
         <button onClick={() => setReviewOpen(true)} className={CTA_BUTTON_CLASS} style={{ backgroundColor: "#eaad00" }}>

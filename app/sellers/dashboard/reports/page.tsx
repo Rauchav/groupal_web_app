@@ -6,7 +6,7 @@ export default function SellerReportsPage() {
     <SellerComingSoon
       icon={BarChart3}
       title="Reports"
-      description="Buyers, offers, and revenue charts — filterable by date and city — are coming in a later phase."
+      description="Buyers, deals, and revenue charts — filterable by date and city — are coming in a later phase."
     />
   )
 }

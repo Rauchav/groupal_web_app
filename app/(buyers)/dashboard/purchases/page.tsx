@@ -54,7 +54,7 @@ function ParticipationCard({ p }: { p: MockParticipation }) {
     <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
       <div className="flex gap-4 p-4">
         <div className="relative h-20 w-20 flex-shrink-0 rounded-xl overflow-hidden">
-          <Image src={deal.productImage} alt={deal.productName} fill className="object-cover" sizes="80px" />
+          <Image src={deal.productImages[0]} alt={deal.productName} fill className="object-cover" sizes="80px" />
         </div>
         <div className="flex-1 min-w-0 space-y-1.5">
           <h3 className="font-bold text-[#002356] text-sm leading-snug line-clamp-2">
@@ -97,12 +97,12 @@ function ParticipationCard({ p }: { p: MockParticipation }) {
                 <CountdownTimer targetDate={deal.deadlineAt} compact className="text-xs" />
               </div>
             </div>
-            <OpenDealPaymentSummary deal={deal} reservationPaid={p.reservationPaid} onShare={shareLink} />
+            <OpenDealPaymentSummary deal={deal} reservationPaid={p.reservationPaid} deliveryCost={p.deliveryCost} onShare={shareLink} />
           </>
         )}
 
         {p.status === "completed" && (
-          <ClosedDealPaymentSummary deal={deal} reservationPaid={p.reservationPaid} />
+          <ClosedDealPaymentSummary deal={deal} reservationPaid={p.reservationPaid} deliveryCost={p.deliveryCost} />
         )}
 
         {p.status === "forfeited" && (
@@ -132,6 +132,7 @@ export default function PurchasesPage() {
   // empty state below diverge and React throws a hydration mismatch.
   const hasHydrated = useParticipationStore((s) => s.hasHydrated)
   const participationsStore = useParticipationStore((s) => s.participations)
+  const markClosedViewed = useParticipationStore((s) => s.markClosedViewed)
   const participations = hasHydrated ? participationsStore : []
 
   // No real job scheduler yet (see lib/jobs/scheduler.ts) — check on every
@@ -140,6 +141,12 @@ export default function PurchasesPage() {
   useEffect(() => {
     if (hasHydrated && user?.id) void syncDealClosures(user.id)
   }, [hasHydrated, user?.id])
+
+  // Clears the "Purchases" nav badge — the buyer has now actually looked
+  // at whatever closed since their last visit here.
+  useEffect(() => {
+    if (hasHydrated) markClosedViewed()
+  }, [hasHydrated, markClosedViewed])
 
   return (
     <main className="min-h-screen" style={{ backgroundColor: "#f8f9fa", paddingTop: "7.5rem", paddingBottom: "4rem" }}>

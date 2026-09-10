@@ -2,6 +2,7 @@ import { differenceInCalendarDays } from "date-fns"
 import { paymentsDb } from "@/lib/mock/payments-db"
 import { checkPaymentMethodValidity } from "@/lib/payments/gateway"
 import { HEALTH_CHECK_WINDOW_DAYS } from "@/lib/payments/constants"
+import { paymentReminderCardIssueCopy } from "@/lib/notifications/copy"
 import type { Deal } from "@/lib/types/deal"
 
 // Scheduled to run 4-5 days before a deal's deadlineAt, for every
@@ -24,11 +25,9 @@ export async function runCardHealthCheckForDeal(deal: Deal, now = new Date()): P
     if (valid) continue
 
     paymentsDb.createNotification({
-      userId:  participation.buyerId,
-      type:    "PAYMENT_REMINDER",
-      title:   "Quick check on your payment method",
-      message: `Your ${deal.productName} deal closes soon and we noticed an issue with your saved card. Update it now so your final payment goes through smoothly when the deal closes.`,
-      data:    { dealId: deal.id, participationId: participation.id },
+      userId: participation.buyerId,
+      ...paymentReminderCardIssueCopy({ productName: deal.productName }),
+      data: { dealId: deal.id, participationId: participation.id },
     })
   }
 }

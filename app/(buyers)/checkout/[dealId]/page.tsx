@@ -43,7 +43,11 @@ function fmtShort(amount: number, currency = "USD") {
 
 // ── Delivery form schema ──────────────────────────────────────────────────────
 
+// deliveryZoneIndex only ever gets validated on the non-pickup branch of
+// DeliveryStep below — the pickup branch returns before this schema's
+// handleSubmit is ever reached, calling onContinue directly with a stub.
 const deliverySchema = z.object({
+  deliveryZoneIndex: z.coerce.number().int().min(0, "Pick a delivery zone"),
   fullName:    z.string().min(2, "Full name is required"),
   phone:       z.string().min(6, "Phone number is required"),
   street:      z.string().min(3, "Street address is required"),
@@ -52,7 +56,8 @@ const deliverySchema = z.object({
   country:     z.string().min(2, "Country is required"),
   zipCode:     z.string().optional(),
 })
-type DeliveryForm = z.infer<typeof deliverySchema>
+type DeliveryFormInput = z.input<typeof deliverySchema>
+type DeliveryForm = z.output<typeof deliverySchema>
 
 // ── Progress indicator ────────────────────────────────────────────────────────
 
@@ -185,7 +190,14 @@ function StepReview({
             ) : (
               <>
                 <Truck className="h-4 w-4 text-gray-400 flex-shrink-0" />
-                <span>Delivery: <span className="font-semibold text-gray-800">$9.99</span></span>
+                <span>
+                  Delivery:{" "}
+                  <span className="font-semibold text-gray-800">
+                    {deal.deliveryZones && deal.deliveryZones.length > 0
+                      ? `from ${fmt(Math.min(...deal.deliveryZones.map((z) => z.price)))}`
+                      : fmt(9.99)}
+                  </span>
+                </span>
               </>
             )}
           </div>
@@ -441,14 +453,24 @@ function StepDelivery({
   onContinue: (data: DeliveryForm) => void
   onBack:     () => void
 }) {
+  const zones = deal?.deliveryZones ?? []
+  const hasZones = zones.length > 0
+
   const {
     register,
     handleSubmit,
+    watch,
+    setValue,
     formState: { errors },
-  } = useForm<DeliveryForm>({
+  } = useForm<DeliveryFormInput, unknown, DeliveryForm>({
     resolver: zodResolver(deliverySchema),
-    defaultValues: { country: "Bolivia" },
+    // A deal without zones (the seed catalog, for now) has no zone to
+    // pick — default the index to 0 so validation passes trivially; it's
+    // never actually read for pricing in that case (handleComplete falls
+    // back to a flat rate whenever deal.deliveryZones is absent).
+    defaultValues: { country: "Bolivia", ...(hasZones ? {} : { deliveryZoneIndex: 0 }) },
   })
+  const selectedZoneIndex = watch("deliveryZoneIndex")
 
   const isPickup = deal?.isPickup ?? false
   const pd = deal?.pickupDetails
@@ -513,7 +535,7 @@ function StepDelivery({
             Back
           </button>
           <button
-            onClick={() => onContinue({ fullName: "", phone: "", street: "N/A (Pickup)", city: "", state: "", country: "N/A", zipCode: "" })}
+            onClick={() => onContinue({ deliveryZoneIndex: -1, fullName: "", phone: "", street: "N/A (Pickup)", city: "", state: "", country: "N/A", zipCode: "" })}
             className="flex-1 py-3.5 rounded-2xl font-extrabold text-white text-sm cursor-pointer transition-colors"
             style={{ backgroundColor: "#002356" }}
             onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#1b4487")}
@@ -538,6 +560,44 @@ function StepDelivery({
 
   return (
     <form onSubmit={handleSubmit(onContinue)} className="space-y-5">
+      {hasZones && (
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+          <h3 className="font-bold text-[#002356] text-base mb-1">Delivery Zone</h3>
+          <p className="text-gray-500 text-xs mb-4">
+            Pick the area closest to your delivery address — the exact delivery cost shows up on the next
+            step, alongside the rest of your payment breakdown.
+          </p>
+          <div className="flex flex-col gap-2">
+            {zones.map((zone, i) => (
+              <button
+                key={i}
+                type="button"
+                onClick={() => setValue("deliveryZoneIndex", i, { shouldValidate: true })}
+                className={cn(
+                  "flex items-center gap-3 px-4 py-3 rounded-xl border-2 text-left transition-colors cursor-pointer",
+                  selectedZoneIndex === i
+                    ? "border-[#002356] bg-[#002356]/5"
+                    : "border-gray-200 hover:border-gray-300"
+                )}
+              >
+                <span
+                  className={cn(
+                    "h-4 w-4 rounded-full border-2 flex-shrink-0 flex items-center justify-center transition-colors",
+                    selectedZoneIndex === i ? "border-[#002356]" : "border-gray-300"
+                  )}
+                >
+                  {selectedZoneIndex === i && <span className="h-2 w-2 rounded-full" style={{ backgroundColor: "#002356" }} />}
+                </span>
+                <span className="text-sm font-semibold text-gray-700">{zone.label}</span>
+              </button>
+            ))}
+          </div>
+          {errors.deliveryZoneIndex && (
+            <p className="text-xs text-red-500 mt-2">{errors.deliveryZoneIndex.message}</p>
+          )}
+        </div>
+      )}
+
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
         <h3 className="font-bold text-[#002356] text-base mb-4">Delivery Address</h3>
         <div className="space-y-4">
@@ -607,6 +667,7 @@ function StepConfirm({
 }) {
   if (!deal) return null
   const totalToday = computed.reservationAmount
+  const selectedZone = deal.deliveryZones?.[deliveryData?.deliveryZoneIndex ?? -1]
 
   return (
     <div className="space-y-5">
@@ -623,7 +684,7 @@ function StepConfirm({
         <h3 className="font-bold text-[#002356] text-base">Order Summary</h3>
         <div className="flex gap-3">
           <div className="relative h-16 w-16 flex-shrink-0 rounded-xl overflow-hidden">
-            <Image src={deal.productImage} alt={deal.productName} fill className="object-cover" sizes="64px" />
+            <Image src={deal.productImages[0]} alt={deal.productName} fill className="object-cover" sizes="64px" />
           </div>
           <div>
             <p className="font-semibold text-gray-800 text-sm line-clamp-2">{deal.productName}</p>
@@ -635,10 +696,21 @@ function StepConfirm({
             <span className="text-gray-500">Reservation (10%)</span>
             <span className="tabular-nums text-gray-700">{fmt(computed.reservationAmount, deal.currency)}</span>
           </div>
+          {selectedZone && (
+            <div className="flex justify-between text-sm">
+              <span className="text-gray-500">Delivery ({selectedZone.label})</span>
+              <span className="tabular-nums text-gray-700">{fmt(selectedZone.price)}</span>
+            </div>
+          )}
           <div className="border-t border-gray-100 pt-1.5 flex justify-between font-bold">
             <span className="text-gray-900">Total due today</span>
             <span className="text-[#002356] tabular-nums text-base">{fmt(totalToday, deal.currency)}</span>
           </div>
+          {selectedZone && (
+            <p className="text-xs text-gray-400">
+              Delivery is charged with your final payment when the deal closes, not today.
+            </p>
+          )}
         </div>
 
         {/* Delivery / pickup summary */}
@@ -669,6 +741,11 @@ function StepConfirm({
               <p className="text-sm text-gray-600">
                 {deliveryData.state}, {deliveryData.country}
               </p>
+              {selectedZone && (
+                <p className="text-sm text-gray-600 mt-1">
+                  Zone: <span className="font-semibold text-gray-800">{selectedZone.label}</span>
+                </p>
+              )}
             </div>
           )
         )}
@@ -815,7 +892,7 @@ export default function CheckoutPage() {
     window.scrollTo({ top: 0, behavior: "smooth" })
   }, [step])
 
-  const mockImages    = deal ? [deal.productImage, deal.productImage, deal.productImage] : []
+  const galleryImages = deal ? deal.productImages : []
   const relatedDeals  = MOCK_DEALS.filter(d => d.id !== dealId).slice(0, 3)
 
   if (!deal || !computed) {
@@ -850,10 +927,16 @@ export default function CheckoutPage() {
     setLoading(true)
 
     const isPickup = deal!.isPickup
+    // Falls back to the flat $9.99 rate whenever this deal has no
+    // seller-defined zones (every seed deal, for now) or the picked index
+    // is somehow out of range — never blocks a charge on missing pricing.
+    const deliveryCost = isPickup
+      ? 0
+      : deal!.deliveryZones?.[deliveryData?.deliveryZoneIndex ?? -1]?.price ?? 9.99
     const result = await chargeReservation({
       deal:         deal!,
       buyerId:      user.id,
-      deliveryCost: isPickup ? 0 : 9.99,
+      deliveryCost,
       deliveryAddress: deliveryData
         ? {
             street:  deliveryData.street,
@@ -884,6 +967,7 @@ export default function CheckoutPage() {
       dealId:          deal!.id,
       joinedAt:        result.participation!.createdAt.toISOString(),
       reservationPaid: result.participation!.reservationAmount,
+      deliveryCost,
       status:          "active",
       deliveryAddress: {
         street:  deliveryData?.street  ?? "",
@@ -922,7 +1006,7 @@ export default function CheckoutPage() {
         {/* Mobile/tablet: horizontal image slider */}
         <div className="lg:hidden -mx-4 mb-5">
           <div className="flex gap-3 overflow-x-auto px-4 pb-3 snap-x snap-mandatory">
-            {mockImages.map((img, i) => (
+            {galleryImages.map((img, i) => (
               <div key={i} className="relative h-64 w-[85vw] flex-shrink-0 rounded-2xl overflow-hidden snap-start">
                 <Image src={img} alt={`${deal.productName} view ${i + 1}`} fill className="object-cover" sizes="85vw" />
               </div>
@@ -938,7 +1022,7 @@ export default function CheckoutPage() {
             {/* Main image */}
             <div className="relative aspect-[4/3] w-full rounded-2xl overflow-hidden">
               <Image
-                src={mockImages[selectedImgIdx]}
+                src={galleryImages[selectedImgIdx]}
                 alt={deal.productName}
                 fill
                 className="object-cover transition-all duration-300"
@@ -947,7 +1031,7 @@ export default function CheckoutPage() {
             </div>
             {/* Thumbnails */}
             <div className="flex gap-2">
-              {mockImages.map((img, i) => (
+              {galleryImages.map((img, i) => (
                 <button
                   key={i}
                   onClick={() => setSelectedImgIdx(i)}
@@ -979,7 +1063,7 @@ export default function CheckoutPage() {
                         className="flex gap-3 bg-white rounded-xl border border-gray-100 p-3 hover:border-gray-300 hover:shadow-sm transition-all"
                       >
                         <div className="relative h-14 w-14 flex-shrink-0 rounded-lg overflow-hidden">
-                          <Image src={rd.productImage} alt={rd.productName} fill className="object-cover" sizes="56px" />
+                          <Image src={rd.productImages[0]} alt={rd.productName} fill className="object-cover" sizes="56px" />
                         </div>
                         <div className="flex-1 min-w-0">
                           <p className="text-xs font-semibold text-[#002356] line-clamp-2 leading-snug">{rd.productName}</p>
@@ -1038,7 +1122,7 @@ export default function CheckoutPage() {
                         className="bg-white rounded-xl border border-gray-100 overflow-hidden hover:border-gray-300 hover:shadow-sm transition-all"
                       >
                         <div className="relative h-28 w-full">
-                          <Image src={rd.productImage} alt={rd.productName} fill className="object-cover" sizes="200px" />
+                          <Image src={rd.productImages[0]} alt={rd.productName} fill className="object-cover" sizes="200px" />
                         </div>
                         <div className="p-2.5">
                           <p className="text-xs font-semibold text-[#002356] line-clamp-2 leading-snug">{rd.productName}</p>

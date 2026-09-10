@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
@@ -7,7 +8,7 @@ import { toast } from "sonner";
 import { useUser } from "@clerk/nextjs";
 import {
   Share2, ShieldCheck, Clock, Users,
-  Zap, ExternalLink, CheckCircle,
+  Zap, ExternalLink, CheckCircle, ImageOff,
 } from "lucide-react";
 import { CTA_BUTTON_CLASS } from "@/buyers/components/dashboard/DealPaymentSummary";
 import { CountdownTimer } from "./CountdownTimer";
@@ -192,6 +193,12 @@ export function DealCard({
   // (or someone else's, on a shared machine) session's "joined" state would
   // still show as "Already Joined" to a signed-out visitor.
   const hasJoined    = hasHydrated && !!isSignedIn && hasJoinedStore;
+  // A seller pastes an arbitrary image URL when creating an offer (no
+  // upload flow yet) — a page link instead of a direct image file (e.g. an
+  // unsplash.com/photos/... URL, not images.unsplash.com/...) loads as a
+  // 0×0 image with no error thrown, leaving a blank box where the photo
+  // should be. Falls back to a plain placeholder instead.
+  const [imageError, setImageError] = useState(false);
   const computed     = computeDealValues(deal);
   const hoursLeft    = (deal.deadlineAt.getTime() - Date.now()) / (1000 * 60 * 60);
 
@@ -234,14 +241,22 @@ export function DealCard({
       )}>
 
         {/* ── Product image ─────────────────────────────────── */}
-        <div className="relative w-full overflow-hidden" style={{ paddingBottom: "58%" }}>
-          <Image
-            src={deal.productImage}
-            alt={deal.productName}
-            fill
-            sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 25vw"
-            className="object-cover transition-transform duration-500 group-hover:scale-105"
-          />
+        <div className="relative w-full overflow-hidden bg-gray-100" style={{ paddingBottom: "58%" }}>
+          {imageError ? (
+            <div className="absolute inset-0 flex flex-col items-center justify-center gap-1.5 text-gray-300">
+              <ImageOff className="h-8 w-8" />
+              <span className="text-[11px] font-semibold text-gray-400">Image unavailable</span>
+            </div>
+          ) : (
+            <Image
+              src={deal.productImages[0]}
+              alt={deal.productName}
+              fill
+              sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 25vw"
+              className="object-cover transition-transform duration-500 group-hover:scale-105"
+              onError={() => setImageError(true)}
+            />
+          )}
           <div className="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-black/40 to-transparent" />
 
           {/* Discount badge — #eaad00 bg, #002356 text, always max discount */}

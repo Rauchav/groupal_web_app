@@ -17,14 +17,32 @@ export interface PickupDetails {
   contactEmail:       string
 }
 
+// A flat-rate pricing option a buyer picks at checkout when a deal isn't
+// pickup-only (e.g. "Downtown" $10, "Suburbs" $20). Manual for now — see
+// Deal.deliveryZones below.
+export interface DeliveryZone {
+  label: string   // e.g. "Downtown"
+  price: number   // e.g. 10
+}
+
 export interface Deal {
   id:                   string
   sellerId:             string
+  // The seller's real Clerk user id — distinct from sellerId above, which
+  // is the internal seller-profile id (sellers/stores/seller-store.ts
+  // generates "seller_..." ids, not Clerk ids). Notifications must be
+  // targeted by Clerk id, since that's what paymentsDb.listNotificationsForUser()
+  // and the signed-in useUser().id the notifications pages read from both
+  // key off — sellerId alone can't be used for that. Seed deals
+  // (lib/mock/deals.ts) set this to the same placeholder as sellerId
+  // ("seller-00X") — there's no real Clerk account behind those, so any
+  // notification sent there is a harmless no-op nobody ever sees.
+  sellerUserId:         string
   sellerName:           string
   sellerVerified:       boolean
   sellerUrl?:           string
   productName:          string
-  productImage:         string
+  productImages:        string[]  // 1–6 URLs; the first is the cover/main image
   category:             string
   originalPrice:        number
   currency?:            string
@@ -36,8 +54,19 @@ export interface Deal {
   reservationFeePercent: number  // always 10
   isPickup:             boolean          // seller-defined at deal creation: true = pick up in store, false = delivered
   pickupDetails?:       PickupDetails    // required when isPickup is true
+  // 1–4 flat-rate options a buyer picks from at checkout; required when
+  // isPickup is false. Optional on the type (not every deal — namely the
+  // seed catalog — has been given zones yet) so every read site falls
+  // back to a flat rate rather than assuming this is always populated.
+  deliveryZones?:       DeliveryZone[]
   status:               "active" | "completed" | "cancelled"
   createdAt:            Date
+  // Set true the first time the "ending soon" (<24h left) notification
+  // sweep fires for this deal — see lib/jobs/deal-ending-soon-job.ts.
+  // Mutated directly on the Deal object, same as status/currentBuyerCount
+  // already are, so the mock sweep (re-run on every relevant page load,
+  // no real cron yet) doesn't re-notify buyers every time it runs.
+  endingSoonNotified?:  boolean
 }
 
 export interface DealComputedValues {

@@ -4,29 +4,11 @@ import { useEffect, useState } from "react"
 import Link from "next/link"
 import { useUser } from "@clerk/nextjs"
 import { formatDistanceToNow } from "date-fns"
-import {
-  Bell, CheckCircle2, TrendingDown, Clock, PartyPopper,
-  CreditCard, AlertTriangle, BellRing,
-} from "lucide-react"
+import { Bell } from "lucide-react"
 import { DashboardSidebar, DashboardMobileTabs } from "@/buyers/components/dashboard/DashboardNav"
 import { paymentsDb } from "@/lib/mock/payments-db"
-import type { NotificationRecord, NotificationType } from "@/lib/types/payment"
-
-// ── Per-type presentation — icon + accent color ────────────────────────────
-
-const NOTIFICATION_STYLE: Record<NotificationType, { icon: typeof Bell; color: string; bg: string }> = {
-  DEAL_JOINED:            { icon: CheckCircle2,  color: "#048943", bg: "#048943" },
-  DEAL_PROGRESS:          { icon: TrendingDown,   color: "#1b4487", bg: "#1b4487" },
-  DEAL_ENDING_SOON:       { icon: Clock,          color: "#e86300", bg: "#e86300" },
-  DEAL_COMPLETED:         { icon: PartyPopper,    color: "#048943", bg: "#048943" },
-  PAYMENT_SUCCESS:        { icon: CreditCard,     color: "#048943", bg: "#048943" },
-  PAYMENT_FAILED:         { icon: AlertTriangle,  color: "#DA1200", bg: "#DA1200" },
-  PAYMENT_REMINDER:       { icon: BellRing,       color: "#e86300", bg: "#e86300" },
-  RESERVATION_FORFEITED:  { icon: AlertTriangle,  color: "#DA1200", bg: "#DA1200" },
-  SELLER_NEW_BUYER:       { icon: TrendingDown,   color: "#1b4487", bg: "#1b4487" },
-  SELLER_DEAL_COMPLETED:  { icon: PartyPopper,    color: "#048943", bg: "#048943" },
-  SELLER_PAYOUT_SENT:     { icon: CreditCard,     color: "#048943", bg: "#048943" },
-}
+import { NOTIFICATION_STYLE } from "@/lib/notifications/style"
+import type { NotificationRecord } from "@/lib/types/payment"
 
 function NotificationRow({ n, onRead }: { n: NotificationRecord; onRead: (id: string) => void }) {
   const style = NOTIFICATION_STYLE[n.type]

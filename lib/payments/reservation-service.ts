@@ -1,6 +1,8 @@
 import { paymentsDb } from "@/lib/mock/payments-db"
 import { chargeOffSession, saveMockPaymentMethod } from "@/lib/payments/gateway"
 import { computeDealValues } from "@/lib/utils/deal-calculator"
+import { dealJoinedCopy, dealProgressCopy, sellerNewBuyerCopy } from "@/lib/notifications/copy"
+import { persistSellerDealMutations } from "@/sellers/stores/seller-deals-store"
 import type { Deal } from "@/lib/types/deal"
 import type { DeliveryAddressSnapshot, Participation } from "@/lib/types/payment"
 
@@ -64,20 +66,60 @@ export async function chargeReservation({
     stripeId:        result.stripeId,
   })
 
-  paymentsDb.createNotification({
-    userId:  buyerId,
-    type:    "DEAL_JOINED",
-    title:   "You're in!",
-    message: `Your spot in ${deal.productName} is reserved. We'll charge the remaining balance automatically when the deal closes — nothing else for you to do.`,
-    data:    { dealId: deal.id, participationId: participation.id },
-  })
+  // Everyone else already in the group, captured BEFORE deal.currentBuyerCount
+  // below moves — they each get a "your discount just grew" nudge; the
+  // buyer who just joined gets their own "you're in!" notification instead.
+  const otherParticipants = paymentsDb
+    .listParticipationsByDealAndStatus(deal.id, "RESERVATION_PAID")
+    .filter((p) => p.id !== participation.id)
 
   // Mirrors releaseDealSpot()'s decrement on forfeiture (lib/mock/deals.ts)
   // — every successful join grows the live group, which is what lets a
   // deal actually reach maxBuyersRequired and auto-close (see
-  // closeExpiredDeals in lib/payments/sync-deal-closures.ts).
+  // closeExpiredDeals in lib/payments/sync-deal-closures.ts). Done before
+  // composing the notifications below so their buyer-count/discount
+  // figures already reflect this join.
   if (deal.currentBuyerCount < deal.maxBuyersRequired) {
     deal.currentBuyerCount += 1
+  }
+  // See persistSellerDealMutations's own comment — without this, a
+  // seller-created deal's buyer count silently reverts on the next reload.
+  persistSellerDealMutations()
+  const updatedComputed = computeDealValues(deal)
+
+  paymentsDb.createNotification({
+    userId: buyerId,
+    ...dealJoinedCopy({ productName: deal.productName }),
+    data: { dealId: deal.id, participationId: participation.id },
+  })
+
+  paymentsDb.createNotification({
+    userId: deal.sellerUserId,
+    ...sellerNewBuyerCopy({
+      productName:     deal.productName,
+      buyerCount:      deal.currentBuyerCount,
+      maxBuyers:       deal.maxBuyersRequired,
+      discountPercent: updatedComputed.currentDiscountPercent,
+    }),
+    data: { dealId: deal.id },
+  })
+
+  // Note: on a very popular deal this sends one notification per existing
+  // participant on every single new join — intentional per how the
+  // discount mechanic works (every buyer's price really does move every
+  // time), but worth knowing if a deal's Notifications feed ever feels
+  // noisy for a buyer in a large, fast-filling group.
+  for (const other of otherParticipants) {
+    paymentsDb.createNotification({
+      userId: other.buyerId,
+      ...dealProgressCopy({
+        productName:     deal.productName,
+        buyerCount:      deal.currentBuyerCount,
+        maxBuyers:       deal.maxBuyersRequired,
+        discountPercent: updatedComputed.currentDiscountPercent,
+      }),
+      data: { dealId: deal.id, participationId: other.id },
+    })
   }
 
   return { success: true, participation }

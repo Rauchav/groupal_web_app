@@ -11,6 +11,7 @@ import { closeExpiredDeals } from "@/lib/payments/sync-deal-closures"
 import { cn } from "@/lib/utils"
 import { Deal } from "@/lib/types/deal"
 import { DEAL_CATEGORIES } from "@/lib/constants/categories"
+import { useMockDealsSyncStore } from "@/sellers/stores/seller-deals-store"
 
 type SortOption = "ending-soon" | "most-popular" | "biggest-discount" | "newest"
 
@@ -73,6 +74,19 @@ function DealsPageInner() {
     closeExpiredDeals().then(() => setClosedTick((n) => n + 1))
   }, [])
 
+  // A seller-created deal only reaches MOCK_DEALS once
+  // sellers/components/SellerViewOnlyGuard.tsx pushes it there, from an
+  // effect gated to strictly after this route's first commit (see that
+  // file for why). useMockDealsSyncStore's tick (not seller-deals-store's
+  // own hasHydrated — see that store's comment for why a boolean that can
+  // already be true on mount is an unreliable recompute trigger) only ever
+  // increases, and only from that same effect, so including it in
+  // activeDeals' dependency array guarantees a recompute exactly when the
+  // sync actually lands — not depending on closedTick's unrelated effect
+  // happening to fire again afterward, which is a race (reported as: the
+  // same deal showing up on some reloads and not others).
+  const sellerDealsSyncTick = useMockDealsSyncStore((s) => s.tick)
+
   // Picks up ?category=... and ?search=... whenever they change — including
   // a click on the Navbar's category chips or a Navbar search submit while
   // already on this page (client-side nav doesn't remount the component,
@@ -89,7 +103,7 @@ function DealsPageInner() {
   // "Deals That Delivered" on the homepage instead.
   const activeDeals = useMemo(
     () => MOCK_DEALS.filter((d) => d.status === "active"),
-    [closedTick]
+    [closedTick, sellerDealsSyncTick]
   )
 
   const endingSoon = useMemo(
@@ -130,7 +144,14 @@ function DealsPageInner() {
             </p>
             <div className="mt-4 inline-flex items-center gap-2 bg-white/10 rounded-full px-4 py-1.5">
               <span className="h-2 w-2 rounded-full bg-green-400 animate-pulse" />
-              <span className="text-white/80 text-sm font-semibold">
+              {/* suppressHydrationWarning: same rationale as
+                  CountdownTimer.tsx's ticking digits — a seller-created
+                  deal only reaches this count once
+                  sellers/stores/seller-deals-store.ts syncs it into
+                  MOCK_DEALS client-side, which the server never knows
+                  about, so the client legitimately (and correctly) shows a
+                  different number here than the server did. */}
+              <span suppressHydrationWarning className="text-white/80 text-sm font-semibold">
                 {activeDeals.length} active deals right now
               </span>
             </div>

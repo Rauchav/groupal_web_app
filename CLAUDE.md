@@ -363,6 +363,253 @@ Located over the product image, next to the share button.
   behavior, styling, or text changed. Verified via `npx tsc --noEmit`
   and a full route smoke test (/, /deals, /checkout/[dealId], /sellers,
   /sellers/dashboard, /dashboard all resolve exactly as before).
+- Manual deal creation loop hardened, and three create-offer gaps closed
+  ahead of the eventual database migration (schema now settled for these):
+  - Deal.productImage (single string) → Deal.productImages (string[],
+    1–6, first = cover). The create-offer form
+    (app/sellers/dashboard/deals/new/page.tsx) now collects a required
+    cover photo plus up to 5 optional additional photos via a
+    useFieldArray list, each with its own live preview; every non-empty
+    URL is verified to actually load an image before publish is allowed
+    (not just URL-shaped — a page link like an Unsplash photo page, not
+    the direct image file, is rejected). The checkout page's gallery
+    (app/(buyers)/checkout/[dealId]/page.tsx) — main image, clickable
+    thumbnails, mobile slider — was already fully built but fed a
+    3x-repeated single image; it now renders the real array.
+  - New Deal.deliveryZones?: { label, price }[] (1–4, manual for now —
+    e.g. Downtown $10 / Midtown $15 / Suburbs $20) — replaces the
+    flat-everywhere $9.99 delivery charge for deals that define zones
+    (seed deals have none yet, so they keep behaving exactly as before
+    via a fallback at every read site). The create-offer form collects
+    zones when "Delivered" is selected (cleared automatically if the
+    seller switches to Pickup, so no stale zone data lingers). At
+    checkout, the buyer picks one of the deal's zones on the Delivery
+    step; that zone's price becomes the deliveryCost passed to
+    chargeReservation() — the real payment engine
+    (lib/payments/reservation-service.ts, lib/jobs/deal-close-job.ts) was
+    already built to store and later re-read a per-participation
+    deliveryCost, it just never had a variable one to use before now.
+    Threaded the same value through to the simple client-side store
+    (buyers/stores/participation-store.ts's MockParticipation gained a
+    deliveryCost field) so the dashboard's payment summary
+    (buyers/components/dashboard/DealPaymentSummary.tsx) reflects the
+    buyer's actual picked rate instead of also hardcoding $9.99.
+  - New shared components/success-celebration.tsx (confetti +
+    animated-checkmark modal, extracted from the buyer checkout-success
+    page, which now just supplies its own copy) — a seller landing on
+    the new app/sellers/dashboard/deals/published page after publishing
+    an offer gets the same celebratory treatment, with a "See it live"
+    CTA straight to the real /checkout/[dealId] page a buyer would see.
+  - Verified live end-to-end: created an offer with 2 photos and 3
+    delivery zones, confirmed the success screen, the real gallery and
+    "Delivery: from $10.00" on the checkout page, and the Active Offers
+    list — all matching what was entered in the form.
+- (2026-09-09) Two small UX refinements on top of the multi-image/
+  delivery-zones work above:
+  - Unseen-deal count badge on the seller "Active Offers" nav link
+    (sellers/components/SellerDashboardNav.tsx). New deal counts are
+    tracked per-seller in sellers/stores/seller-deals-store.ts
+    (lastViewedCounts map + markDealsViewed()); the badge shows
+    deals.length - lastViewedCounts[sellerId] in Groupal orange
+    (#e86300, not red — CLAUDE.md reserves red for warnings/errors/
+    "ending soon" only) and clears the moment the seller opens
+    app/sellers/dashboard/deals/page.tsx (calls markDealsViewed() on
+    mount). Verified live: publishing a new offer shows the badge
+    immediately on the sidebar/mobile-tabs nav, right on the success
+    screen the seller lands on after publishing.
+  - Checkout Delivery Details step no longer shows each delivery
+    zone's price up front — app/(buyers)/checkout/[dealId]/page.tsx's
+    StepDelivery zone picker is now a single stacked column (radio-dot
+    selector, zone label only, no price), so the buyer picks their
+    area without anchoring on a number yet. The price now surfaces one
+    step later, in StepConfirm's actual payment breakdown: a "Delivery
+    ({zone label})" line sits between "Reservation (10%)" and "Total
+    due today," with a small note underneath clarifying delivery is
+    charged with the final payment, not today (it's never added into
+    "Total due today," which stays reservation-only per the payment
+    logic above). The redundant zone+price line that used to live
+    under the delivery address was trimmed to just the zone label,
+    since the price now has its proper home in the breakdown.
+- (2026-09-09) "Closed Deals" unseen-count badge, plus a full "offer" →
+  "deal" terminology pass across the whole seller portal:
+  - The Closed Deals nav link (previously a "Coming in the next phase"
+    placeholder) is now a real list: app/sellers/dashboard/deals/closed/
+    page.tsx renders every one of the signed-in seller's deals whose
+    status is "completed" (final price, final discount %, and buyers
+    joined out of max), reusing computeDealValues() the same way the
+    Active Deals list does. Getting deals to actually close from inside
+    the seller portal needed a real fix, not just a badge: MOCK_DEALS
+    (lib/mock/deals.ts) is an in-memory module array that resets to just
+    the 8 seed deals on every fresh page load, and closeExpiredDeals()
+    (lib/payments/sync-deal-closures.ts) only ever mutates deal objects
+    it finds inside that array. A seller's own created deals only rejoin
+    MOCK_DEALS by object reference through sellers/components/
+    SellerNavbar.tsx (mounted for the whole /sellers/** tree) — mirroring
+    exactly what SellerViewOnlyGuard.tsx already does for the buyer side
+    — re-pushing this seller's persisted deals via addMockDeal() BEFORE
+    running closeExpiredDeals(), so the mutation lands on the same object
+    the seller-deals-store still holds, then closeExpiredDeals() runs and
+    bumps the shared useMockDealsSyncStore tick so Active/Closed Deals and
+    their nav badges (sellers/stores/seller-deals-store.ts) recompute.
+    Without that re-link step, a seller would never see their own deals
+    close unless a buyer happened to load a buyer-side page first.
+  - Unseen-count badge (same orange #e86300 mechanic as the existing
+    Active Deals badge) added to the Closed Deals nav link in both
+    SellerDashboardNav.tsx and SellerNavbar.tsx's account menu: tracked
+    via lastViewedClosedCounts/markClosedDealsViewed/
+    useUnseenClosedDealsCount in seller-deals-store.ts, clearing the
+    moment the seller opens the Closed Deals page. Verified live: forced
+    a just-created deal's deadline into the past, reloaded, and watched
+    Active Deals drop from 2→1 while Closed Deals picked up a "1" badge
+    that cleared on opening the page and stayed cleared on a second
+    reload.
+  - Renamed "offer(s)" → "deal(s)" everywhere a seller sees the word,
+    across app/sellers/**, sellers/components/SellerNavbar.tsx, and
+    sellers/components/SellerDashboardNav.tsx — nav labels ("Active
+    Offers"/"Closed Offers" → "Active Deals"/"Closed Deals"), buttons
+    ("New Offer" → "New Deal", "Publish Group Buy Offer" → "Publish
+    Group Buy Deal"), headings, empty-state copy, stat card labels, and
+    placeholder text, so buyers and sellers alike consistently see
+    "group buy deal" as the one name for what a seller creates. Left
+    alone: the buyer portal (already used "deal" everywhere — this was
+    purely a seller-portal inconsistency), the verb "offer" in the
+    how-it-works FAQ ("unable to offer cancellations" — different sense
+    of the word), and internal code comments (not user-facing).
+- (2026-09-09) New-seller onboarding now ends on the same celebration
+  screen as a deal publish or a buyer's checkout success, instead of a
+  toast + immediate redirect: app/sellers/page.tsx's OnboardingStep
+  renders the shared components/success-celebration.tsx after
+  createProfile() succeeds ("Welcome to Groupal — the best way to sell
+  fast and sell massive!" / "Start creating deals: the more you launch
+  with great discounts, the faster you'll move your inventory." / "Let's
+  Get Started" → straight to /sellers/dashboard/deals/new, so a new
+  seller lands on the create-deal form rather than an empty dashboard).
+  Fixed a real race this surfaced: SellersGatePage's own "already
+  onboarded" redirect effect fires the instant useSellerProfile(userId)
+  goes truthy, which happens immediately after createProfile() — without
+  a guard this yanked the seller to /sellers/dashboard before the
+  celebration ever painted. Added a justOnboarded flag (lifted to
+  SellersGatePage, set via an onOnboarded callback passed into
+  OnboardingStep) that both the redirect effect and the page's loading
+  gate now check, so an already-onboarded seller still gets redirected
+  on a normal visit, but a freshly-onboarded one sees the celebration
+  first. Verified live end-to-end: fresh onboarding submit → celebration
+  renders and stays put (no flash-redirect) → "Let's Get Started" lands
+  on Create a Group Buy Deal.
+- (2026-09-10) Unseen-count badges on the buyer dashboard nav
+  (buyers/components/dashboard/DashboardNav.tsx), matching the seller
+  portal's Active/Closed Deals badges — same orange #e86300 pill, same
+  "unseen since last visit" mechanic, but on three different triggers:
+  - "My Group Buys" (buyers/stores/participation-store.ts): badge counts
+    participations the buyer hasn't opened that page to see since
+    joining — lastViewedGroupBuysCount vs. participations.length,
+    cleared by markGroupBuysViewed() on that page's mount. Total
+    participations only ever grows (joining always adds one), so this is
+    safe to diff against even though a joined deal later leaves the
+    "active" list once it closes.
+  - "Purchases": badge counts participations that have left "active"
+    (status "completed" or "forfeited" — i.e. the deal closed) since the
+    buyer last opened that page — lastViewedClosedCount vs. that
+    filtered count, cleared by markClosedViewed(). Neither of these two
+    counts is scoped per-buyer-id — consistent with participation-store's
+    pre-existing, known limitation of not being scoped by user id at all
+    (see the buyers/sellers folder-reorg entry above).
+  - "Notifications": deliberately NOT an "unseen since last visit" badge
+    — it's a live unread count (lib/mock/payments-db.ts's new
+    useUnreadNotificationsCount(userId), subscribing directly to the
+    reactive paymentsDb store), since NotificationsPage already tracks
+    read/unread per item and only flips it on an explicit click or "Mark
+    all as read". Simply opening the page must not clear it the way
+    visiting the other two pages clears theirs.
+  Verified live: joined a deal → "My Group Buys" and "Notifications"
+  badges appeared, "My Group Buys" cleared on visiting /dashboard;
+  force-flipped a participation to "completed" → "Purchases" badge
+  appeared and cleared on visiting /dashboard/purchases; clicked "Mark
+  all as read" on Notifications → that badge cleared immediately, live,
+  with no page reload needed.
+- (2026-09-10) Full buyer↔seller notification suite covering a deal's
+  entire lifecycle, from creation through payout. **All notification text
+  lives in exactly one file: lib/notifications/copy.ts** — every title/
+  message for every notification type is a small function there (e.g.
+  dealJoinedCopy, sellerDealCompletedCopy), grouped BUYER then SELLER in
+  the order the events actually happen. Edit wording there and it updates
+  everywhere that notification fires; no other file hardcodes any
+  notification copy. Icons/colors for each type live in the adjacent
+  lib/notifications/style.tsx, shared by both the buyer
+  (app/(buyers)/dashboard/notifications/page.tsx) and the now-real seller
+  (app/sellers/dashboard/notifications/page.tsx — previously a "Coming
+  Soon" placeholder) Notifications pages.
+  - New NotificationTypes: SELLER_DEAL_PUBLISHED, SELLER_PAYOUT_ISSUE
+    (lib/types/payment.ts). Newly WIRED (the types already existed but
+    nothing ever created them): DEAL_PROGRESS, DEAL_ENDING_SOON,
+    DEAL_COMPLETED, SELLER_NEW_BUYER, SELLER_DEAL_COMPLETED,
+    SELLER_PAYOUT_SENT.
+  - Lifecycle covered: seller publishes a deal (SELLER_DEAL_PUBLISHED,
+    wired in sellers/stores/seller-deals-store.ts's addDeal) → a buyer
+    joins, paying the 10% reservation (DEAL_JOINED for that buyer +
+    SELLER_NEW_BUYER for the seller, both in
+    lib/payments/reservation-service.ts's chargeReservation) → every
+    OTHER buyer already in that deal gets nudged that their price just
+    dropped (DEAL_PROGRESS, same function) → once a deal enters its
+    final 24 hours, everyone still in it gets warned once
+    (DEAL_ENDING_SOON — new lib/jobs/deal-ending-soon-job.ts, folded into
+    the existing closeExpiredDeals() sweep in
+    lib/payments/sync-deal-closures.ts that already runs on every buyer/
+    seller page load) → the deal closes: every buyer gets a group-level
+    "here's how it went" congratulations with final buyer count/discount/
+    savings (DEAL_COMPLETED), independent of their own final-charge
+    outcome (which still gets its own existing PAYMENT_SUCCESS/
+    PAYMENT_FAILED/PAYMENT_REMINDER/RESERVATION_FORFEITED notification,
+    copy now also centralized into lib/notifications/copy.ts) → the
+    seller gets one sale summary (SELLER_DEAL_COMPLETED: units sold,
+    final discount, gross revenue, Groupal's commission, net payout —
+    same currentPrice/sellerPlatformFeeAmount basis as the "Revenue" stat
+    card on app/sellers/dashboard/page.tsx) → a new mock payout gateway
+    (sendPayout() in lib/payments/gateway.ts, 95% success rate, same
+    pattern as the existing chargeOffSession/checkPaymentMethodValidity)
+    is attempted once per deal, resulting in either SELLER_PAYOUT_SENT or
+    SELLER_PAYOUT_ISSUE ("contact Groupal support," non-alarming tone).
+    All of this lives in lib/jobs/deal-close-job.ts's closeDeal() and its
+    new settleSellerPayout() helper.
+  - Schema: Deal (lib/types/deal.ts) gained sellerUserId (the seller's
+    real Clerk id, distinct from sellerId — sellers/stores/seller-store.ts's
+    internal "seller_..." profile id — since notifications must be
+    targeted by Clerk id) and endingSoonNotified?: boolean (dedupes the
+    ending-soon sweep). Seed deals (lib/mock/deals.ts) set sellerUserId
+    to the same placeholder as sellerId; app/sellers/dashboard/deals/new/
+    page.tsx now sets it to the signed-in user's real id when a seller
+    publishes a deal.
+  - **Real bug found and fixed while testing this**: mutations directly
+    on a seller-created Deal object — currentBuyerCount++, status =
+    "completed", endingSoonNotified = true — were never actually written
+    back to localStorage. They only survived within one continuous page
+    session; the next hard reload silently reverted them (deal.status
+    back to "active", buyer count back to 0), which would have made the
+    close-sweep re-run closeDeal() and re-send every close/payout
+    notification on every subsequent page load. Fixed with a new
+    persistSellerDealMutations() export in sellers/stores/
+    seller-deals-store.ts (forces zustand's persist middleware to
+    re-serialize `deals`, picking up in-place mutations on the shared
+    object references), called from chargeReservation(),
+    closeExpiredDeals(), and resolveGracePeriodExpiry() right after each
+    mutates a Deal. Verified via repeated hard reloads with localStorage
+    inspection: buyer count and status now persist correctly, and
+    notification counts stay at exactly 1 each no matter how many times
+    the sweep re-runs.
+  - Verified live end-to-end (two full passes, second one after the
+    persistence fix): published a deal → SELLER_DEAL_PUBLISHED fires +
+    badge; joined as a buyer → DEAL_JOINED + SELLER_NEW_BUYER fire with
+    correct buyer-count/discount figures; force-closed the deal (past
+    deadline, real hard reloads in between) → DEAL_COMPLETED,
+    PAYMENT_SUCCESS, SELLER_DEAL_COMPLETED, and SELLER_PAYOUT_SENT all
+    fired exactly once each, with correct math (e.g. $1000 item, 1
+    buyer, 13.3% discount → $866.67 revenue, $15.00 commission, $851.67
+    payout) — confirmed both via raw localStorage inspection and the
+    rendered seller Notifications page (all icons/copy correct).
+    DEAL_PROGRESS (needs a second buyer under a different Clerk
+    identity) was verified via code review of the shared
+    chargeReservation() code path rather than a live second-account
+    click-through.
 
 ### Not yet built
 - Seller Portal (landing, dashboard, deal creator, deal monitoring,
@@ -372,6 +619,13 @@ Located over the product image, next to the share button.
   lib/payments/gateway.ts once Connect is configured
 - Real API routes backed by Prisma/Supabase (currently using
   mock data from lib/mock/deals.ts and lib/mock/payments-db.ts)
+  - Once real image upload exists (this needs the database/storage in
+    place first — there's no upload pipeline yet, only pasted image
+    URLs), add a required profile picture step to seller onboarding
+    (app/sellers/page.tsx's OnboardingStep / the "Tell us about your
+    company" form): registration must NOT be able to complete without
+    one. Flagged 2026-09-10 — do this as soon as the database
+    integration milestone starts.
 - Real job scheduling (BullMQ/Upstash) and email delivery
   (React Email/Resend) — job logic and notification content already
   exist as isolated functions in lib/jobs/, just not wired to a real

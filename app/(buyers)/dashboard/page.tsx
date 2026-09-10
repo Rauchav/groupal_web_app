@@ -42,7 +42,7 @@ function ActiveDealCard({ participation }: { participation: MockParticipation })
     >
       <div className="flex gap-4 p-4">
         <div className="relative h-20 w-20 flex-shrink-0 rounded-xl overflow-hidden">
-          <Image src={deal.productImage} alt={deal.productName} fill className="object-cover" sizes="80px" />
+          <Image src={deal.productImages[0]} alt={deal.productName} fill className="object-cover" sizes="80px" />
         </div>
         <div className="flex-1 min-w-0 space-y-1">
           <h3 className="font-bold text-[#002356] text-sm leading-snug line-clamp-2">{deal.productName}</h3>
@@ -84,7 +84,7 @@ function ActiveDealCard({ participation }: { participation: MockParticipation })
       </div>
 
       {/* Payments */}
-      <OpenDealPaymentSummary deal={deal} reservationPaid={participation.reservationPaid} onShare={shareLink} />
+      <OpenDealPaymentSummary deal={deal} reservationPaid={participation.reservationPaid} deliveryCost={participation.deliveryCost} onShare={shareLink} />
     </motion.div>
   )
 }
@@ -110,6 +110,7 @@ export default function DashboardPage() {
   // empty state below diverge and React throws a hydration mismatch.
   const hasHydrated = useParticipationStore((s) => s.hasHydrated)
   const participations = useParticipationStore((s) => s.participations)
+  const markGroupBuysViewed = useParticipationStore((s) => s.markGroupBuysViewed)
   const effectiveParticipations = hasHydrated ? participations : []
   const active    = effectiveParticipations.filter((p) => p.status === "active")
 
@@ -119,6 +120,12 @@ export default function DashboardPage() {
   useEffect(() => {
     if (hasHydrated && user?.id) void syncDealClosures(user.id)
   }, [hasHydrated, user?.id])
+
+  // Clears the "My Group Buys" nav badge — the buyer has now actually
+  // looked at whatever they joined since their last visit here.
+  useEffect(() => {
+    if (hasHydrated) markGroupBuysViewed()
+  }, [hasHydrated, markGroupBuysViewed])
   const completed = effectiveParticipations.filter((p) => p.status === "completed")
 
   const totalSaved = completed.reduce((sum, p) => {

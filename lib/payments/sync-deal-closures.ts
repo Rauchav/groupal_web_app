@@ -1,6 +1,8 @@
 import { MOCK_DEALS } from "@/lib/mock/deals"
 import { paymentsDb } from "@/lib/mock/payments-db"
 import { isDealReadyToClose, closeDeal } from "@/lib/jobs/deal-close-job"
+import { notifyIfEndingSoon } from "@/lib/jobs/deal-ending-soon-job"
+import { persistSellerDealMutations } from "@/sellers/stores/seller-deals-store"
 import { useParticipationStore, type MockParticipation } from "@/buyers/stores/participation-store"
 import type { Participation, PaymentStatus } from "@/lib/types/payment"
 
@@ -21,6 +23,7 @@ function toSimpleParticipation(p: Participation): MockParticipation {
     dealId: p.dealId,
     joinedAt: p.createdAt.toISOString(),
     reservationPaid: p.reservationAmount,
+    deliveryCost: p.deliveryCost,
     status: toSimpleStatus(p.status),
     deliveryAddress: {
       street:  p.deliveryAddress?.street  ?? "",
@@ -45,11 +48,24 @@ function toSimpleParticipation(p: Participation): MockParticipation {
 // so calling this repeatedly (e.g. on every page load) never re-processes
 // the same deal twice.
 export async function closeExpiredDeals(): Promise<void> {
+  let mutated = false
   for (const deal of MOCK_DEALS) {
-    if (deal.status !== "active" || !isDealReadyToClose(deal)) continue
+    if (deal.status !== "active") continue
+    // A pre-close reminder, not a close — checked for every active deal
+    // regardless of whether it's actually ready to close yet.
+    const wasAlreadyNotified = deal.endingSoonNotified
+    notifyIfEndingSoon(deal)
+    if (deal.endingSoonNotified && !wasAlreadyNotified) mutated = true
+    if (!isDealReadyToClose(deal)) continue
     await closeDeal(deal)
     deal.status = "completed"
+    mutated = true
   }
+  // See persistSellerDealMutations's own comment — without this, a
+  // seller-created deal's status/endingSoonNotified flags silently revert
+  // on the next reload, and this sweep would re-run closeDeal() (re-sending
+  // every close notification) on a deal that's actually already closed.
+  if (mutated) persistSellerDealMutations()
 }
 
 // The bridge between the richer payment engine (lib/payments/, lib/jobs/)

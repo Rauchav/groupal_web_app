@@ -23,9 +23,11 @@ export type NotificationType =
   | "PAYMENT_FAILED"
   | "PAYMENT_REMINDER"
   | "RESERVATION_FORFEITED"
+  | "SELLER_DEAL_PUBLISHED"
   | "SELLER_NEW_BUYER"
   | "SELLER_DEAL_COMPLETED"
   | "SELLER_PAYOUT_SENT"
+  | "SELLER_PAYOUT_ISSUE"
 
 export interface DeliveryAddressSnapshot {
   street:   string

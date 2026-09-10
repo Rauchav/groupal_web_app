@@ -4,14 +4,17 @@ function hoursFromNow(h: number): Date {
   return new Date(Date.now() + h * 60 * 60 * 1000);
 }
 
-function daysFromNow(d: number): Date {
+export function daysFromNow(d: number): Date {
   const date = new Date();
   date.setDate(date.getDate() + d);
   return date;
 }
 
-// Generates 3 milestone markers at 25%, 50%, and 100% of maxBuyers
-function milestones(maxBuyers: number, maxDiscount: number): DiscountMilestone[] {
+// Generates 3 milestone markers at 25%, 50%, and 100% of maxBuyers — exported
+// so seller-created deals (sellers/stores/seller-deals-store.ts) compute
+// milestones identically to every seed deal here, instead of duplicating
+// the math.
+export function milestones(maxBuyers: number, maxDiscount: number): DiscountMilestone[] {
   const dpb = maxDiscount / maxBuyers;
   const at = (pct: number, label: string): DiscountMilestone => {
     const count = Math.round(maxBuyers * pct);
@@ -80,10 +83,11 @@ export const MOCK_DEALS: Deal[] = [
   {
     id:                   "deal-001",
     sellerId:             "seller-001",
+    sellerUserId:         "seller-001",
     sellerName:           "Samsung Official",
     sellerVerified:       true,
     productName:          'Samsung 65" QLED 4K Smart TV — QN90C Series',
-    productImage:         "https://images.unsplash.com/photo-1593305841991-05c297ba4575?w=600&q=80",
+    productImages:        ["https://images.unsplash.com/photo-1593305841991-05c297ba4575?w=600&q=80"],
     category:             "Electronics",
     originalPrice:        1799,
     currency:             "USD",
@@ -95,17 +99,18 @@ export const MOCK_DEALS: Deal[] = [
     reservationFeePercent: 10,
     isPickup:             false,
     status:               "active",
-    createdAt:            new Date(),
+    createdAt:            daysFromNow(-21),
   },
 
   // Deal 2 — 35% progress → gold
   {
     id:                   "deal-002",
     sellerId:             "seller-002",
+    sellerUserId:         "seller-002",
     sellerName:           "TechMart Pro",
     sellerVerified:       true,
     productName:          'MacBook Pro 14" M3 Pro — 18GB RAM, 512GB SSD',
-    productImage:         "https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=600&q=80",
+    productImages:        ["https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=600&q=80"],
     category:             "Computers",
     originalPrice:        1999,
     currency:             "USD",
@@ -117,17 +122,18 @@ export const MOCK_DEALS: Deal[] = [
     reservationFeePercent: 10,
     isPickup:             false,
     status:               "active",
-    createdAt:            new Date(),
+    createdAt:            daysFromNow(-18),
   },
 
   // Deal 3 — 60% progress → orange
   {
     id:                   "deal-003",
     sellerId:             "seller-003",
+    sellerUserId:         "seller-003",
     sellerName:           "MotoDeals",
     sellerVerified:       true,
     productName:          "Yamaha MT-07 Motorcycle 2024 — Midnight Black",
-    productImage:         "https://images.unsplash.com/photo-1558981806-ec527fa84c39?w=600&q=80",
+    productImages:        ["https://images.unsplash.com/photo-1558981806-ec527fa84c39?w=600&q=80"],
     category:             "Motorcycles",
     originalPrice:        8299,
     currency:             "USD",
@@ -139,17 +145,18 @@ export const MOCK_DEALS: Deal[] = [
     reservationFeePercent: 10,
     isPickup:             false,
     status:               "active",
-    createdAt:            new Date(),
+    createdAt:            daysFromNow(-15),
   },
 
   // Deal 4 — 90% progress → green
   {
     id:                   "deal-004",
     sellerId:             "seller-004",
+    sellerUserId:         "seller-004",
     sellerName:           "VacationsPlus",
     sellerVerified:       true,
     productName:          "Cancún All-Inclusive Resort — 7 Nights for 2",
-    productImage:         "https://images.unsplash.com/photo-1566073771259-6a8506099945?w=600&q=80",
+    productImages:        ["https://images.unsplash.com/photo-1566073771259-6a8506099945?w=600&q=80"],
     category:             "Travel",
     originalPrice:        3200,
     currency:             "USD",
@@ -171,17 +178,18 @@ export const MOCK_DEALS: Deal[] = [
       contactEmail:      "support@vacationsplus.example.com",
     },
     status:               "active",
-    createdAt:            new Date(),
+    createdAt:            daysFromNow(-12),
   },
 
   // Deal 5 — 90% progress → green zone, almost full but still active
   {
     id:                   "deal-005",
     sellerId:             "seller-005",
+    sellerUserId:         "seller-005",
     sellerName:           "MobileKing",
     sellerVerified:       true,
     productName:          "iPhone 16 Pro Max 256GB — Natural Titanium",
-    productImage:         "https://images.unsplash.com/photo-1592750475338-74b7b21085ab?w=600&q=80",
+    productImages:        ["https://images.unsplash.com/photo-1592750475338-74b7b21085ab?w=600&q=80"],
     category:             "Cell Phones",
     originalPrice:        1199,
     currency:             "USD",
@@ -193,17 +201,18 @@ export const MOCK_DEALS: Deal[] = [
     reservationFeePercent: 10,
     isPickup:             false,
     status:               "active",
-    createdAt:            new Date(),
+    createdAt:            daysFromNow(-9),
   },
 
   // Deal 6 — 20% progress, 2 hours left → "Ending Soon" red badge, slate color
   {
     id:                   "deal-006",
     sellerId:             "seller-006",
+    sellerUserId:         "seller-006",
     sellerName:           "GameZone",
     sellerVerified:       true,
     productName:          "Sony PlayStation 5 Slim + 2 Controllers Bundle",
-    productImage:         "https://images.unsplash.com/photo-1606144042614-b2417e99c4e3?w=600&q=80",
+    productImages:        ["https://images.unsplash.com/photo-1606144042614-b2417e99c4e3?w=600&q=80"],
     category:             "Electronics",
     originalPrice:        649,
     currency:             "USD",
@@ -215,17 +224,18 @@ export const MOCK_DEALS: Deal[] = [
     reservationFeePercent: 10,
     isPickup:             false,
     status:               "active",
-    createdAt:            new Date(),
+    createdAt:            daysFromNow(-6),
   },
 
   // Deal 7 — 45% progress → orange zone
   {
     id:                   "deal-007",
     sellerId:             "seller-007",
+    sellerUserId:         "seller-007",
     sellerName:           "DysonStore",
     sellerVerified:       true,
     productName:          "Dyson V15 Detect Cordless Vacuum — Absolute Extra",
-    productImage:         "https://images.unsplash.com/photo-1558317374-067fb5f30001?w=600&q=80",
+    productImages:        ["https://images.unsplash.com/photo-1558317374-067fb5f30001?w=600&q=80"],
     category:             "Home",
     originalPrice:        749,
     currency:             "USD",
@@ -237,17 +247,18 @@ export const MOCK_DEALS: Deal[] = [
     reservationFeePercent: 10,
     isPickup:             false,
     status:               "active",
-    createdAt:            new Date(),
+    createdAt:            daysFromNow(-3),
   },
 
   // Deal 8 — 70% progress, almost full → gold zone + "Almost Full" tag
   {
     id:                   "deal-008",
     sellerId:             "seller-008",
+    sellerUserId:         "seller-008",
     sellerName:           "WatchHouse",
     sellerVerified:       true,
     productName:          "Apple Watch Ultra 2 — Titanium, 49mm, Ocean Band",
-    productImage:         "https://images.unsplash.com/photo-1546868871-7041f2a55e12?w=600&q=80",
+    productImages:        ["https://images.unsplash.com/photo-1546868871-7041f2a55e12?w=600&q=80"],
     category:             "Gadgets",
     originalPrice:        799,
     currency:             "USD",
@@ -259,12 +270,22 @@ export const MOCK_DEALS: Deal[] = [
     reservationFeePercent: 10,
     isPickup:             false,
     status:               "active",
-    createdAt:            new Date(),
+    createdAt:            daysFromNow(-1),
   },
 ];
 
 export function getMockDealById(id: string) {
   return MOCK_DEALS.find((d) => d.id === id) ?? null;
+}
+
+// Pushes a seller-created deal (sellers/stores/seller-deals-store.ts) into
+// the same array every buyer-side page/lookup already reads from — a new
+// offer needs zero changes anywhere else in the browse/checkout/payment
+// code to show up and become joinable. Guards against double-inserting the
+// same deal twice, since this also runs on every store rehydration.
+export function addMockDeal(deal: Deal): void {
+  if (MOCK_DEALS.some((d) => d.id === deal.id)) return;
+  MOCK_DEALS.push(deal);
 }
 
 // Called when a buyer's reservation is forfeited after the grace period —

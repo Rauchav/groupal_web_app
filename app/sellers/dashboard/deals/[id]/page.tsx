@@ -5,8 +5,8 @@ export default function SellerDealDetailPage() {
   return (
     <SellerComingSoon
       icon={PackageCheck}
-      title="Offer Detail"
-      description="Buyer progress, milestones, and edit/cancel controls for a single offer are coming in the next phase."
+      title="Deal Detail"
+      description="Buyer progress, milestones, and edit/cancel controls for a single deal are coming in the next phase."
     />
   )
 }

@@ -4,6 +4,8 @@ import Link from "next/link"
 import { useUser } from "@clerk/nextjs"
 import { PlusCircle, PackageCheck, Users, DollarSign, TrendingUp } from "lucide-react"
 import { useSellerProfile } from "@/sellers/stores/seller-store"
+import { useSellerDeals } from "@/sellers/stores/seller-deals-store"
+import { computeDealValues } from "@/lib/utils/deal-calculator"
 
 function StatCard({ label, value, sub, icon: Icon }: { label: string; value: string | number; sub?: string; icon: React.ElementType }) {
   return (
@@ -21,12 +23,15 @@ function StatCard({ label, value, sub, icon: Icon }: { label: string; value: str
 export default function SellerDashboardPage() {
   const { user } = useUser()
   const profile = useSellerProfile(user?.id)
+  const deals = useSellerDeals(profile?.id)
 
-  // Wired to real numbers once the seller-deals store exists (Phase 2) —
-  // every seller starts with an empty portfolio either way.
-  const activeOffers  = 0
-  const buyersJoined  = 0
-  const revenue       = 0
+  const activeDeals = deals.filter((d) => d.status === "active").length
+  const buyersJoined = deals.reduce((sum, d) => sum + d.currentBuyerCount, 0)
+  // Revenue from deals that have actually closed — an active deal's
+  // buyers have only paid the 10% reservation so far, not the full price.
+  const revenue = deals
+    .filter((d) => d.status === "completed")
+    .reduce((sum, d) => sum + computeDealValues(d).currentPrice * d.currentBuyerCount, 0)
 
   return (
     <>
@@ -35,7 +40,7 @@ export default function SellerDashboardPage() {
           <h1 className="font-heading font-extrabold text-[#002356] text-2xl">
             Welcome, {profile?.companyName ?? "there"} 👋
           </h1>
-          <p className="text-gray-500 text-sm mt-1">Here&apos;s how your group buy offers are doing.</p>
+          <p className="text-gray-500 text-sm mt-1">Here&apos;s how your group buy deals are doing.</p>
         </div>
         <Link
           href="/sellers/dashboard/deals/new"
@@ -43,22 +48,22 @@ export default function SellerDashboardPage() {
           style={{ backgroundColor: "#048943" }}
         >
           <PlusCircle className="h-4 w-4" />
-          New Offer
+          New Deal
         </Link>
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-        <StatCard label="Active offers" value={activeOffers} icon={PackageCheck} />
-        <StatCard label="Buyers joined" value={buyersJoined} sub="across all offers" icon={Users} />
-        <StatCard label="Revenue" value={new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(revenue)} sub="from closed offers" icon={DollarSign} />
+        <StatCard label="Active deals" value={activeDeals} icon={PackageCheck} />
+        <StatCard label="Buyers joined" value={buyersJoined} sub="across all deals" icon={Users} />
+        <StatCard label="Revenue" value={new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(revenue)} sub="from closed deals" icon={DollarSign} />
       </div>
 
-      {activeOffers === 0 && (
+      {activeDeals === 0 && (
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-12 text-center">
           <div className="flex justify-center mb-4">
             <TrendingUp className="h-14 w-14 text-gray-200" />
           </div>
-          <h3 className="font-bold text-gray-700 text-lg mb-1">Create your first offer</h3>
+          <h3 className="font-bold text-gray-700 text-lg mb-1">Create your first deal</h3>
           <p className="text-gray-400 text-sm mb-6 max-w-sm mx-auto">
             Set a retail price, a target discount, and a closing date — Groupal handles the rest, from the
             countdown to the final charge.
@@ -69,7 +74,7 @@ export default function SellerDashboardPage() {
             style={{ backgroundColor: "#048943" }}
           >
             <PlusCircle className="h-4 w-4" />
-            Create a Group Buy Offer
+            Create a Group Buy Deal
           </Link>
         </div>
       )}

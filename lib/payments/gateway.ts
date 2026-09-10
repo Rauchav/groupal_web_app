@@ -25,6 +25,12 @@ export interface ValidityResult {
   reason?: string
 }
 
+export interface PayoutResult {
+  success:        boolean
+  payoutId?:      string
+  failureReason?: string
+}
+
 // Lets tests/demos force a deterministic outcome instead of the random
 // simulation below.
 export type ForcedOutcome = "success" | "failure"
@@ -55,6 +61,25 @@ export async function checkPaymentMethodValidity(
   await delay(150)
   const valid = forceOutcome ? forceOutcome === "success" : Math.random() < 0.95
   return valid ? { valid: true } : { valid: false, reason: pickFailureReason() }
+}
+
+// Stand-in for a real Stripe Connect transfer to the seller's connected
+// account, once Connect is configured (~May 2026, see CLAUDE.md). Called
+// once per deal at close, after every buyer's final charge has been
+// attempted — see lib/jobs/deal-close-job.ts. A higher success rate than
+// chargeOffSession above: by this point the money has already been
+// collected from buyers, so a payout failure here is a Groupal-side
+// transfer issue, not a buyer-side card problem — rare, but still worth
+// simulating so the "contact Groupal support" notification path
+// (lib/notifications/copy.ts's sellerPayoutIssueCopy) actually gets
+// exercised sometimes.
+export async function sendPayout(amount: number, forceOutcome?: ForcedOutcome): Promise<PayoutResult> {
+  await delay(300)
+  const success = forceOutcome ? forceOutcome === "success" : Math.random() < 0.95
+  if (!success) {
+    return { success: false, failureReason: "payout_transfer_failed" }
+  }
+  return { success: true, payoutId: `po_mock_${nanoid(14)}` }
 }
 
 function pickFailureReason(): string {

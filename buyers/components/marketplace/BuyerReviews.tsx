@@ -43,7 +43,7 @@ export function BuyerReviews({ variants, custom }: { variants?: Variants; custom
               <div className="flex items-center gap-2.5 mt-1 pt-2.5 border-t border-gray-50">
                 {deal && (
                   <div className="relative h-8 w-8 flex-shrink-0 rounded-lg overflow-hidden">
-                    <Image src={deal.productImage} alt={deal.productName} fill className="object-cover" sizes="32px" />
+                    <Image src={deal.productImages[0]} alt={deal.productName} fill className="object-cover" sizes="32px" />
                   </div>
                 )}
                 <div className="min-w-0">

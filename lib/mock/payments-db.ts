@@ -150,3 +150,20 @@ export const paymentsDb = {
     usePaymentsDbStore.setState({ participations: [], payments: [], notifications: [], idCounter: 0 })
   },
 }
+
+// Powers the notification badge on the buyer dashboard's "Notifications"
+// nav link (buyers/components/dashboard/DashboardNav.tsx). Deliberately a
+// live unread count, not an "unseen since last visit" count like the
+// seller portal's deal badges — NotificationsPage already tracks read/
+// unread per item and only flips it via an explicit click (or "Mark all
+// as read"), so simply opening the page must NOT clear this badge the
+// way visiting Active/Closed Deals clears those. Subscribing to the
+// store directly (rather than going through paymentsDb's plain
+// getState() methods above) is what makes this reactive — every other
+// paymentsDb method is a one-off read/write called from an effect or
+// event handler, not rendered from directly.
+export function useUnreadNotificationsCount(userId: string | null | undefined): number {
+  const notifications = usePaymentsDbStore((s) => s.notifications)
+  if (!userId) return 0
+  return notifications.filter((n) => n.userId === userId && !n.read).length
+}

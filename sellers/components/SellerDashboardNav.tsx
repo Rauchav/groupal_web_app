@@ -1,21 +1,48 @@
 "use client"
 
 import Link from "next/link"
+import { useUser } from "@clerk/nextjs"
 import { LayoutDashboard, PackageCheck, PackageX, PlusCircle, BarChart3, Bell, Settings, ShoppingCart } from "lucide-react"
+import { useSellerProfile } from "@/sellers/stores/seller-store"
+import { useUnseenDealsCount, useUnseenClosedDealsCount } from "@/sellers/stores/seller-deals-store"
+import { useUnreadNotificationsCount } from "@/lib/mock/payments-db"
 
 const NAV_ITEMS = [
   { href: "/sellers/dashboard",               icon: LayoutDashboard, label: "Dashboard" },
-  { href: "/sellers/dashboard/deals",         icon: PackageCheck,    label: "Active Offers" },
-  { href: "/sellers/dashboard/deals/closed",  icon: PackageX,        label: "Closed Offers" },
+  { href: "/sellers/dashboard/deals",         icon: PackageCheck,    label: "Active Deals" },
+  { href: "/sellers/dashboard/deals/closed",  icon: PackageX,        label: "Closed Deals" },
   { href: "/sellers/dashboard/reports",       icon: BarChart3,       label: "Reports" },
   { href: "/sellers/dashboard/notifications", icon: Bell,            label: "Notifications" },
   { href: "/sellers/dashboard/settings",      icon: Settings,        label: "Settings" },
 ] as const
 
+const ACTIVE_DEALS_HREF = "/sellers/dashboard/deals"
+const CLOSED_DEALS_HREF = "/sellers/dashboard/deals/closed"
+const NOTIFICATIONS_HREF = "/sellers/dashboard/notifications"
+
+// Small orange count badge — reused by both nav shells below for the
+// "Active Deals" and "Closed Deals" links. Orange rather than red:
+// CLAUDE.md reserves red specifically for warnings/errors/"ending soon",
+// and a new-deal or deal-closed announcement isn't either.
+function UnseenBadge({ count }: { count: number }) {
+  if (count <= 0) return null
+  return (
+    <span className="inline-flex items-center justify-center h-5 min-w-[1.25rem] rounded-full text-white text-[10px] font-bold px-1" style={{ backgroundColor: "#e86300" }}>
+      {count}
+    </span>
+  )
+}
+
 // Desktop sidebar — same shell as the buyer DashboardSidebar
-// (components/dashboard/DashboardNav.tsx), plus a highlighted "New Offer"
-// CTA since creating an offer is the seller portal's core action.
+// (components/dashboard/DashboardNav.tsx), plus a highlighted "New Deal"
+// CTA since creating a deal is the seller portal's core action.
 export function SellerDashboardSidebar({ active }: { active: string }) {
+  const { user } = useUser()
+  const profile = useSellerProfile(user?.id)
+  const unseenCount = useUnseenDealsCount(profile?.id)
+  const unseenClosedCount = useUnseenClosedDealsCount(profile?.id)
+  const unreadNotifications = useUnreadNotificationsCount(user?.id)
+
   return (
     <aside className="hidden lg:flex flex-col w-60 flex-shrink-0 gap-3">
       <Link
@@ -24,7 +51,7 @@ export function SellerDashboardSidebar({ active }: { active: string }) {
         style={{ backgroundColor: "#048943" }}
       >
         <PlusCircle className="h-4 w-4" />
-        New Offer
+        New Deal
       </Link>
 
       <nav className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
@@ -39,7 +66,10 @@ export function SellerDashboardSidebar({ active }: { active: string }) {
             }`}
           >
             <Icon className="h-4 w-4 flex-shrink-0" />
-            {label}
+            <span className="flex-1">{label}</span>
+            {href === ACTIVE_DEALS_HREF && <UnseenBadge count={unseenCount} />}
+            {href === CLOSED_DEALS_HREF && <UnseenBadge count={unseenClosedCount} />}
+            {href === NOTIFICATIONS_HREF && <UnseenBadge count={unreadNotifications} />}
           </Link>
         ))}
         <div className="border-t border-gray-100">
@@ -58,19 +88,28 @@ export function SellerDashboardSidebar({ active }: { active: string }) {
 
 // Mobile tab strip — same tabs, plus the marketplace escape hatch.
 export function SellerDashboardMobileTabs({ active }: { active: string }) {
+  const { user } = useUser()
+  const profile = useSellerProfile(user?.id)
+  const unseenCount = useUnseenDealsCount(profile?.id)
+  const unseenClosedCount = useUnseenClosedDealsCount(profile?.id)
+  const unreadNotifications = useUnreadNotificationsCount(user?.id)
+
   return (
     <div className="flex lg:hidden gap-1 bg-white rounded-2xl border border-gray-100 shadow-sm p-1 mb-4 overflow-x-auto">
       {NAV_ITEMS.map(({ href, label }) => (
         <Link
           key={href}
           href={href}
-          className={`flex-1 text-center py-2 rounded-xl text-sm font-semibold transition-colors whitespace-nowrap px-3 ${
+          className={`flex-1 flex items-center justify-center gap-1.5 text-center py-2 rounded-xl text-sm font-semibold transition-colors whitespace-nowrap px-3 ${
             active === href
               ? "bg-[#002356] text-white"
               : "text-gray-500 hover:text-[#002356]"
           }`}
         >
           {label}
+          {href === ACTIVE_DEALS_HREF && <UnseenBadge count={unseenCount} />}
+          {href === CLOSED_DEALS_HREF && <UnseenBadge count={unseenClosedCount} />}
+          {href === NOTIFICATIONS_HREF && <UnseenBadge count={unreadNotifications} />}
         </Link>
       ))}
       <Link
