@@ -127,6 +127,23 @@ export const paymentsDb = {
     return record
   },
 
+  // Lets a caller make one notification type idempotent per participation,
+  // independent of any in-memory dedupe flag on the Deal object itself
+  // (e.g. deal.endingSoonNotified — lib/jobs/deal-ending-soon-job.ts).
+  // That flag alone isn't a reliable guard for a SEED deal (lib/mock/deals.ts's
+  // MOCK_DEALS array): it's a plain in-memory module array with no
+  // persistence layer of its own (unlike seller-created deals, which
+  // persist via sellers/stores/seller-deals-store.ts's persistSellerDealMutations()),
+  // so the flag silently resets to undefined on every fresh page load,
+  // letting the sweep re-fire and re-send the same notification indefinitely.
+  // notifications ARE persisted here, so checking against them directly is
+  // the source of truth this dedupe needs.
+  hasNotificationForParticipation(userId: string, type: NotificationType, participationId: string): boolean {
+    return usePaymentsDbStore.getState().notifications.some(
+      (n) => n.userId === userId && n.type === type && n.data?.participationId === participationId
+    )
+  },
+
   listNotificationsForUser(userId: string): NotificationRecord[] {
     return usePaymentsDbStore.getState()
       .notifications.filter((n) => n.userId === userId)

@@ -2,6 +2,7 @@
 
 import { create } from "zustand"
 import { persist } from "zustand/middleware"
+import { useUser } from "@clerk/nextjs"
 
 // Mirrors the Prisma SellerProfile model's shape (see prisma/schema.prisma)
 // without needing the DB — same mock-first pattern as
@@ -86,4 +87,23 @@ export const useSellerStore = create<SellerStore>()(
 // someone else's seller status in this browser.
 export function useSellerProfile(userId: string | null | undefined): SellerProfile | null {
   return useSellerStore((s) => (userId ? s.profilesByUserId[userId] ?? null : null))
+}
+
+// Cross-portal convenience for buyer-side code (same precedent as
+// buyers/stores/buyer-identity-store.ts being read from the seller gate):
+// combines useUser() + useSellerProfile() so any buyer-facing personalization
+// read (a deal card's "Joined" badge, a liked heart, the dashboard pages)
+// can gate on "is this signed-in account actually a seller?" the same way it
+// already gates on isSignedIn. This matters because buyers/stores/
+// participation-store.ts and likes-store.ts aren't scoped by Clerk user id
+// at all (see participation-store.ts's own comment) — every signed-in
+// visitor on this browser reads the same flat, unscoped array. Without this
+// guard, a seller using "Buyers Portal" view-only browsing (sellers/
+// components/SellerViewOnlyGuard.tsx) could see a completely different
+// Clerk account's real "joined this deal" / "liked this deal" state, which
+// is exactly the kind of buyer↔seller identity leak this app must not have.
+export function useIsSeller(): boolean {
+  const { isSignedIn, user } = useUser()
+  const profile = useSellerProfile(user?.id)
+  return !!isSignedIn && !!profile
 }

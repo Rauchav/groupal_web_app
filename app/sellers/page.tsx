@@ -3,15 +3,23 @@
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
-import { useUser, SignIn, SignUp } from "@clerk/nextjs"
+import { useUser, useClerk, SignIn, SignUp } from "@clerk/nextjs"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
-import { Building2, ArrowRight } from "lucide-react"
+import { Building2, ArrowRight, ShieldAlert } from "lucide-react"
 import { useSellerStore, useSellerProfile } from "@/sellers/stores/seller-store"
 import { DEAL_CATEGORIES } from "@/lib/constants/categories"
 import { cn } from "@/lib/utils"
 import { SuccessCelebration } from "@/components/success-celebration"
+// Cross-portal import, same precedent as sellers/stores/seller-deals-store.ts
+// being imported from buyer pages: this one bit of buyer-side state (has
+// this Clerk account ever been signed in on the buyer portal without a
+// seller profile? — see buyer-identity-store's own comment for why that's
+// the actual bar, not just liking/joining a deal) is inherently
+// cross-cutting — it's the only way this page can tell whether the account
+// trying to register as a seller is already a buyer.
+import { useHasBuyerActivity } from "@/buyers/stores/buyer-identity-store"
 
 // Shared appearance for both the sign-in and sign-up widgets — same
 // treatment as app/sign-in and app/sign-up so switching between the buyer
@@ -181,10 +189,18 @@ function OnboardingStep({ userId, onOnboarded }: { userId: string; onOnboarded: 
 
 export default function SellersGatePage() {
   const router = useRouter()
+  const { signOut } = useClerk()
   const { isSignedIn, isLoaded, user } = useUser()
   const [authMode, setAuthMode] = useState<"sign-in" | "sign-up">("sign-in")
   const profile      = useSellerProfile(user?.id)
   const hasHydrated  = useSellerStore((s) => s.hasHydrated)
+  // Blocks a Clerk account that's already been signed in on the buyer
+  // portal (without a seller profile — see buyer-identity-store's own
+  // comment) from also registering as a seller. Deliberately its own
+  // tracked signal rather than reading participation-store/likes-store
+  // directly, since simply signing up as a buyer needs to count on its
+  // own, not just an explicit like or join.
+  const isAlreadyBuyer = useHasBuyerActivity(user?.id)
   // Set the instant a seller finishes onboarding, so the checks below stop
   // treating "profile now exists" as a signal to redirect an ALREADY-
   // onboarded seller straight to their dashboard — a freshly-onboarded one
@@ -215,7 +231,37 @@ export default function SellersGatePage() {
         <p className="font-heading font-bold text-white/70 text-sm">The new way to sell like crazy</p>
       </div>
 
-      {isSignedIn && user ? (
+      {isSignedIn && user && isAlreadyBuyer ? (
+        <div className="w-full max-w-md bg-white rounded-2xl shadow-2xl p-6 sm:p-8 space-y-6 text-center">
+          <div className="mx-auto h-12 w-12 rounded-2xl flex items-center justify-center" style={{ backgroundColor: "#DA1200" }}>
+            <ShieldAlert className="h-6 w-6 text-white" />
+          </div>
+          <div className="space-y-1.5">
+            <h1 className="font-heading font-bold text-[#002356] text-xl">This account is already a buyer</h1>
+            <p className="text-gray-500 text-sm">
+              This email address or Google account is already registered for a Groupal buyer account.
+              To keep buyer and seller activity separate, please sign out and create your seller
+              account with a different email address or Google account.
+            </p>
+          </div>
+          <div className="space-y-2.5">
+            <button
+              onClick={() => signOut({ redirectUrl: "/sellers" })}
+              className="w-full py-3 rounded-xl font-bold text-white text-sm cursor-pointer transition-colors"
+              style={{ backgroundColor: "#002356" }}
+            >
+              Sign out
+            </button>
+            <button
+              onClick={() => router.push("/")}
+              className="w-full py-2.5 rounded-xl text-sm font-bold cursor-pointer transition-colors"
+              style={{ color: "#002356" }}
+            >
+              Go back to my buyer account
+            </button>
+          </div>
+        </div>
+      ) : isSignedIn && user ? (
         <OnboardingStep userId={user.id} onOnboarded={() => setJustOnboarded(true)} />
       ) : (
         <div className="w-full max-w-md space-y-5">

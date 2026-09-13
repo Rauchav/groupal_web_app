@@ -3,6 +3,8 @@
 import Image from "next/image";
 import { motion, type Variants } from "framer-motion";
 import { Share2, ShieldCheck, Users } from "lucide-react";
+import { DealReachBadge } from "@/components/deal-reach-badge";
+import type { DealReach } from "@/lib/types/deal";
 
 type CompletedDeal = {
   id:               string;
@@ -15,6 +17,7 @@ type CompletedDeal = {
   finalPrice:       number;
   discountAchieved: number;
   category:         string;
+  reach?:           DealReach;
 };
 
 function fmt(amount: number): string {
@@ -110,6 +113,8 @@ export function CompletedDealCard({
             {fmt(deal.originalPrice)}
           </span>
         </div>
+
+        {deal.reach && <DealReachBadge reach={deal.reach} className="text-xs text-gray-400" />}
 
       </div>
 

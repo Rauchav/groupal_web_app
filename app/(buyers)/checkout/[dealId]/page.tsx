@@ -9,7 +9,7 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
 import { toast } from "sonner"
 import {
-  Check, AlertTriangle, Lock, Clock, MapPin, Truck, ShoppingBag,
+  Check, AlertTriangle, Lock, Clock, Truck, ShoppingBag,
   ShieldCheck, CreditCard, ArrowLeft, Share2, Copy,
   Info, ExternalLink, Phone, Mail,
 } from "lucide-react"
@@ -18,8 +18,11 @@ import { useUser } from "@clerk/nextjs"
 import { getMockDealById, MOCK_DEALS } from "@/lib/mock/deals"
 import { computeDealValues } from "@/lib/utils/deal-calculator"
 import { useParticipationStore } from "@/buyers/stores/participation-store"
+import { useBuyerIdentityStore } from "@/buyers/stores/buyer-identity-store"
+import { useIsSeller } from "@/sellers/stores/seller-store"
 import { chargeReservation } from "@/lib/payments/reservation-service"
 import { CountdownTimer } from "@/buyers/components/marketplace/CountdownTimer"
+import { DealReachBadge } from "@/components/deal-reach-badge"
 import { cn } from "@/lib/utils"
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -175,12 +178,11 @@ function StepReview({
         </div>
 
         <div className="flex flex-col gap-2 text-sm text-gray-600">
-          <div className="flex items-center gap-2">
-            <MapPin className="h-4 w-4 text-gray-400 flex-shrink-0" />
-            <span>
-              Available in: <span className="font-semibold text-gray-800">{deal.sellerName.split(" ")[0]} Region</span>
-            </span>
-          </div>
+          {deal.reach && (
+            <div className="flex items-center gap-2">
+              <DealReachBadge reach={deal.reach} className="text-gray-600 [&_svg]:text-gray-400" />
+            </div>
+          )}
           <div className="flex items-center gap-2">
             {deal.isPickup ? (
               <>
@@ -216,7 +218,7 @@ function StepReview({
                 Regular Store Price
               </p>
               <a
-                href={deal.sellerUrl ?? "#"}
+                href={deal.externalProductUrl || deal.sellerUrl || "#"}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="group inline-flex items-center gap-1.5 cursor-pointer"
@@ -851,9 +853,11 @@ export default function CheckoutPage() {
   const { dealId } = useParams<{ dealId: string }>()
   const router     = useRouter()
   const { user, isSignedIn } = useUser()
+  const isSeller = useIsSeller()
   const { addParticipation } = useParticipationStore()
   const hasHydrated = useParticipationStore((s) => s.hasHydrated)
   const alreadyJoined = useParticipationStore((s) => s.hasJoined(dealId))
+  const markAsBuyer = useBuyerIdentityStore((s) => s.markAsBuyer)
 
   const [step,            setStep]            = useState(0)
   const [deliveryData,    setDeliveryData]    = useState<DeliveryForm | null>(null)
@@ -878,12 +882,16 @@ export default function CheckoutPage() {
     // localStorage persists across sign-out, so this only counts as
     // "already joined" while a Clerk session backs it up — otherwise a
     // signed-out visitor gets bounced to /dashboard (and from there to
-    // sign-in) for a deal they can't currently prove they joined.
-    if (isSignedIn && alreadyJoined) {
+    // sign-in) for a deal they can't currently prove they joined. Also
+    // excludes sellers: this store isn't scoped by Clerk user id (see
+    // sellers/stores/seller-store.ts's useIsSeller), so without this a
+    // seller who lands here directly could get redirected based on a
+    // completely different Clerk account's real "joined" state.
+    if (isSignedIn && !isSeller && alreadyJoined) {
       toast.info("You've already joined this deal — here's where it's at.")
       router.replace("/dashboard")
     }
-  }, [hasHydrated, alreadyJoined, isSignedIn, router])
+  }, [hasHydrated, alreadyJoined, isSignedIn, isSeller, router])
 
   // Each checkout step swaps in new instructions below the same scroll
   // position the previous step left off at — jump back to the top so the
@@ -934,8 +942,10 @@ export default function CheckoutPage() {
       ? 0
       : deal!.deliveryZones?.[deliveryData?.deliveryZoneIndex ?? -1]?.price ?? 9.99
     const result = await chargeReservation({
-      deal:         deal!,
-      buyerId:      user.id,
+      deal:            deal!,
+      buyerId:         user.id,
+      buyerName:       user.fullName ?? user.firstName ?? "A Groupal buyer",
+      buyerAvatarUrl:  user.imageUrl,
       deliveryCost,
       deliveryAddress: deliveryData
         ? {
@@ -977,6 +987,7 @@ export default function CheckoutPage() {
         zipCode: deliveryData?.zipCode ?? "",
       },
     })
+    markAsBuyer(user.id)
     toast.success("You're in! Welcome to the group!")
     router.push(`/checkout/success?dealId=${deal!.id}`)
   }

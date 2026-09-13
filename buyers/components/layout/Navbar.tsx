@@ -11,6 +11,7 @@ import { useUser, useClerk } from "@clerk/nextjs";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useLikesStore } from "@/buyers/stores/likes-store";
+import { useIsSeller } from "@/sellers/stores/seller-store";
 import { DEAL_CATEGORIES } from "@/lib/constants/categories";
 
 export function Navbar() {
@@ -31,12 +32,17 @@ export function Navbar() {
 
   const { isSignedIn, user } = useUser();
   const { signOut } = useClerk();
+  const isSeller = useIsSeller();
   // Gate on hasHydrated — likedDealIds comes from localStorage, unavailable
   // during SSR. Showing the badge before hydration would make it appear/
-  // disappear between server and client render, breaking hydration.
+  // disappear between server and client render, breaking hydration. Also
+  // gated on !isSeller: this count isn't scoped by Clerk user id (see
+  // useIsSeller's own comment on sellers/stores/seller-store.ts), so without
+  // this a seller in view-only mode could see another account's real
+  // liked-deals count.
   const likesHasHydrated = useLikesStore((s) => s.hasHydrated);
   const likedCount = useLikesStore((s) => s.likedDealIds.length);
-  const likedBadgeCount = likesHasHydrated ? likedCount : 0;
+  const likedBadgeCount = likesHasHydrated && !isSeller ? likedCount : 0;
 
   const accountLinks = [
     { href: "/dashboard",               icon: ShoppingBag, label: "My Group Buys" },

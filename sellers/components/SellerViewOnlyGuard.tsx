@@ -8,21 +8,30 @@ import { useSellerProfile } from "@/sellers/stores/seller-store"
 import { useSellerDealsStore, useMockDealsSyncStore } from "@/sellers/stores/seller-deals-store"
 import { addMockDeal } from "@/lib/mock/deals"
 import { SellerModeModal } from "./SellerModeModal"
+// Cross-portal import, same precedent as seller-deals-store.ts being
+// imported from buyer pages: this guard is the one component guaranteed to
+// mount on every buyer route for every signed-in visitor, real buyer or
+// view-only seller, so it's also the right place to record "this Clerk
+// account has been on the buyer side" — see buyer-identity-store's own
+// comment for why that needs to be its own tracked signal.
+import { useBuyerIdentityStore } from "@/buyers/stores/buyer-identity-store"
 
 // Mounted once in app/(buyers)/layout.tsx, so it's only ever present on
-// buyer routes — a seller ("Visit Groupal Buyers Portal" in
-// components/sellers/SellerDashboardNav.tsx) can see the marketplace
-// exactly as a buyer would — deal cards, prices, competitors' offers — but
-// shouldn't be able to actually act as a buyer there (join/like a deal,
-// click through the navbar, etc). Rather than gating every individual
-// button across the buyer side, a capture-phase click listener sits above
-// the whole page: any click pops the explainer modal instead of reaching
-// whatever was underneath, UNLESS the clicked element (or an ancestor)
-// opts back in with data-seller-view-ok — used by the handful of
-// pure-browsing controls (category chips, search, sort/filter) sellers are
-// allowed to use while just looking around. Listening in the capture phase
-// means this runs before the click reaches its target, so it can stop the
-// action outright rather than racing whatever handler is already there.
+// buyer routes — reached either by a seller directly visiting a buyer URL,
+// or intentionally via the "Buyers Portal" link in the seller dashboard nav
+// (sellers/components/SellerDashboardNav.tsx / SellerNavbar.tsx), built so
+// a seller can see the marketplace exactly as a buyer would — deal cards,
+// prices, competitors' offers, category/search/sort — but shouldn't be able
+// to actually act as a buyer there (join/like a deal, click through the
+// navbar, etc). Rather than gating every individual button across the buyer
+// side, a capture-phase click listener sits above the whole page: any click
+// pops the explainer modal instead of reaching whatever was underneath,
+// UNLESS the clicked element (or an ancestor) opts back in with
+// data-seller-view-ok — used by the handful of pure-browsing controls
+// (category chips, search, sort/filter) sellers are allowed to use while
+// just looking around. Listening in the capture phase means this runs
+// before the click reaches its target, so it can stop the action outright
+// rather than racing whatever handler is already there.
 export function SellerViewOnlyGuard() {
   const router = useRouter()
   const { isSignedIn, user } = useUser()
@@ -66,6 +75,18 @@ export function SellerViewOnlyGuard() {
   }, [mounted, sellerDeals, bumpMockDealsSync])
 
   const isSeller = !!isSignedIn && !!sellerProfile
+
+  // A Clerk account counts as "a buyer" the moment it's signed in anywhere
+  // on the buyer portal — not only once it likes or joins a deal. Buyers
+  // never have an explicit registration step of their own (unlike sellers,
+  // who fill out OnboardingStep), so simply landing here signed in, without
+  // a seller profile, IS that account's buyer registration. Excluding
+  // isSeller keeps a seller's own view-only visits (SellerModeModal's
+  // territory) from ever being counted as buyer activity.
+  const markAsBuyer = useBuyerIdentityStore((s) => s.markAsBuyer)
+  useEffect(() => {
+    if (mounted && isSignedIn && user && !isSeller) markAsBuyer(user.id)
+  }, [mounted, isSignedIn, user, isSeller, markAsBuyer])
 
   // Detached while the modal itself is open so its own buttons (and the
   // overlay's backdrop-click-to-close) work like any other dialog.

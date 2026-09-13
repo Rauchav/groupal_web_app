@@ -17,6 +17,8 @@ import { cn } from "@/lib/utils";
 import { Deal } from "@/lib/types/deal";
 import { computeDealValues } from "@/lib/utils/deal-calculator";
 import { useParticipationStore } from "@/buyers/stores/participation-store";
+import { useIsSeller } from "@/sellers/stores/seller-store";
+import { DealReachBadge } from "@/components/deal-reach-badge";
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -171,17 +173,14 @@ function GroupalPricing({
 
 export function DealCard({
   deal,
-  onJoin,
-  onShare,
   className,
 }: {
   deal:      Deal;
-  onJoin?:   (id: string) => void;
-  onShare?:  (id: string) => void;
   className?: string;
 }) {
   const router       = useRouter();
   const { isSignedIn } = useUser();
+  const isSeller = useIsSeller();
   // Gate on hasHydrated — the store persists to localStorage, which isn't
   // available during SSR. Reading it before hydration completes would make
   // the CTA button's structure (icon + label) diverge from what the server
@@ -191,8 +190,11 @@ export function DealCard({
   // localStorage is scoped to the browser, not to whether there's currently
   // a signed-in Clerk session — without the isSignedIn check, a previous
   // (or someone else's, on a shared machine) session's "joined" state would
-  // still show as "Already Joined" to a signed-out visitor.
-  const hasJoined    = hasHydrated && !!isSignedIn && hasJoinedStore;
+  // still show as "Already Joined" to a signed-out visitor. The isSeller
+  // check exists for the same reason: a seller browsing view-only (see
+  // useIsSeller's own comment) must never see another Clerk account's real
+  // "joined" state either.
+  const hasJoined    = hasHydrated && !!isSignedIn && !isSeller && hasJoinedStore;
   // A seller pastes an arbitrary image URL when creating an offer (no
   // upload flow yet) — a page link instead of a direct image file (e.g. an
   // unsplash.com/photos/... URL, not images.unsplash.com/...) loads as a
@@ -224,7 +226,6 @@ export function DealCard({
       await navigator.clipboard.writeText(url);
       toast.success("Share link copied!");
     }
-    onShare?.(deal.id);
   }
   const isEndingSoon = hoursLeft > 0 && hoursLeft < 24;
   const isAlmostFull = computed.progressPercent >= 80 && computed.progressPercent < 100;
@@ -321,19 +322,24 @@ export function DealCard({
             {deal.productName}
           </h3>
 
-          {/* IN STORE price — opens the seller site. A plain button, not an
-              <a>: cards on /deals and /dashboard/liked are themselves
-              wrapped in a full-card <a href="/checkout/...">, and a nested
-              <a> is invalid HTML — browsers auto-correct that at parse
-              time (closing the outer anchor early), which corrupts the
-              whole card's layout. stopPropagation alone can't fix that,
-              since it's a markup problem, not an event one. */}
+          {/* IN STORE price — opens this exact product's page on the
+              seller's own site (deal.externalProductUrl, set at deal
+              creation — see app/sellers/dashboard/deals/new/page.tsx),
+              falling back to the seller's general storefront (sellerUrl)
+              for a deal created before that field existed. A plain button,
+              not an <a>: cards on /deals and /dashboard/liked are
+              themselves wrapped in a full-card <a href="/checkout/...">,
+              and a nested <a> is invalid HTML — browsers auto-correct that
+              at parse time (closing the outer anchor early), which
+              corrupts the whole card's layout. stopPropagation alone can't
+              fix that, since it's a markup problem, not an event one. */}
           <button
             type="button"
             onClick={(e) => {
               e.stopPropagation()
               e.preventDefault()
-              if (deal.sellerUrl) window.open(deal.sellerUrl, "_blank", "noopener,noreferrer")
+              const url = deal.externalProductUrl || deal.sellerUrl
+              if (url) window.open(url, "_blank", "noopener,noreferrer")
             }}
             className="inline-flex items-center justify-between gap-2 w-full rounded-lg border border-gray-200 px-3 py-2 hover:border-gray-400 hover:bg-gray-50 transition-all duration-150 cursor-pointer group/store"
           >
@@ -367,6 +373,7 @@ export function DealCard({
               </span>{" "}
               now (10% of the store price)
             </p>
+            {deal.reach && <DealReachBadge reach={deal.reach} className="text-gray-400" style={{ fontSize: "0.68rem" }} />}
           </div>
 
           {/* CTAs */}
@@ -388,7 +395,6 @@ export function DealCard({
                     router.push(`/sign-up?redirect_url=${encodeURIComponent(`/checkout/${deal.id}`)}`);
                     return;
                   }
-                  onJoin?.(deal.id);
                   router.push(`/checkout/${deal.id}`);
                 }}
                 className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl text-sm font-extrabold text-white transition-transform duration-150 cursor-pointer border-[3px] border-[#eaad00] shadow-[0_4px_4px_rgba(0,35,86,0.4)] hover:scale-[1.01]"

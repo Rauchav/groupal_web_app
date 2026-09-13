@@ -45,7 +45,7 @@ function NotificationRow({ n, onRead }: { n: NotificationRecord; onRead: (id: st
           </span>
           {dealId && (
             <Link
-              href={`/checkout/${dealId}`}
+              href={`/sellers/dashboard/deals/${dealId}`}
               onClick={(e) => e.stopPropagation()}
               className="text-xs font-semibold text-[#1b4487] hover:underline"
             >

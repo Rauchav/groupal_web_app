@@ -9,6 +9,8 @@ import type { DeliveryAddressSnapshot, Participation } from "@/lib/types/payment
 export interface ChargeReservationInput {
   deal:             Deal
   buyerId:          string
+  buyerName:        string
+  buyerAvatarUrl?:  string
   deliveryAddress?: DeliveryAddressSnapshot
   deliveryCost?:    number
 }
@@ -26,6 +28,8 @@ export interface ChargeReservationResult {
 export async function chargeReservation({
   deal,
   buyerId,
+  buyerName,
+  buyerAvatarUrl,
   deliveryAddress,
   deliveryCost = 0,
 }: ChargeReservationInput): Promise<ChargeReservationResult> {
@@ -49,6 +53,8 @@ export async function chargeReservation({
   const participation = paymentsDb.createParticipation({
     dealId:                 deal.id,
     buyerId,
+    buyerName,
+    buyerAvatarUrl,
     reservationAmount:      computed.reservationAmount,
     platformFee:            computed.sellerPlatformFeeAmount,
     deliveryCost,

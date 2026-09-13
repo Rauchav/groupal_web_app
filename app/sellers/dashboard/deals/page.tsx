@@ -9,6 +9,7 @@ import { useSellerProfile } from "@/sellers/stores/seller-store"
 import { useSellerDeals, useSellerDealsStore } from "@/sellers/stores/seller-deals-store"
 import { computeDealValues, getDiscountColor } from "@/lib/utils/deal-calculator"
 import { SellerComingSoon } from "@/sellers/components/SellerComingSoon"
+import { DealReachBadge } from "@/components/deal-reach-badge"
 
 function fmt(amount: number) {
   return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(amount)
@@ -56,7 +57,7 @@ export default function SellerActiveDealsPage() {
             return (
               <Link
                 key={deal.id}
-                href={`/checkout/${deal.id}`}
+                href={`/sellers/dashboard/deals/${deal.id}`}
                 className="flex items-center gap-4 bg-white rounded-2xl border border-gray-100 shadow-sm p-4 hover:border-gray-200 transition-colors"
               >
                 <div className="relative h-16 w-16 rounded-xl overflow-hidden flex-shrink-0 bg-gray-100">
@@ -84,6 +85,7 @@ export default function SellerActiveDealsPage() {
                       style={{ width: `${computed.progressPercent}%`, backgroundColor: getDiscountColor(computed.progressPercent) }}
                     />
                   </div>
+                  {deal.reach && <DealReachBadge reach={deal.reach} className="text-xs text-gray-400 mt-1.5" />}
                 </div>
 
                 <ArrowRight className="h-4 w-4 text-gray-300 flex-shrink-0" />

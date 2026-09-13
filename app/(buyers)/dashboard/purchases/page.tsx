@@ -1,16 +1,19 @@
 "use client"
 
 import { useEffect } from "react"
+import { useRouter } from "next/navigation"
 import Link from "next/link"
 import Image from "next/image"
 import { useUser } from "@clerk/nextjs"
 import { Clock, Users, LayoutList } from "lucide-react"
 import { toast } from "sonner"
 import { useParticipationStore, MockParticipation } from "@/buyers/stores/participation-store"
+import { useIsSeller } from "@/sellers/stores/seller-store"
 import { syncDealClosures } from "@/lib/payments/sync-deal-closures"
 import { MOCK_DEALS } from "@/lib/mock/deals"
 import { computeDealValues } from "@/lib/utils/deal-calculator"
 import { OpenDealPaymentSummary, ClosedDealPaymentSummary, MilestoneScale } from "@/buyers/components/dashboard/DealPaymentSummary"
+import { DealReachBadge } from "@/components/deal-reach-badge"
 import { DashboardSidebar, DashboardMobileTabs } from "@/buyers/components/dashboard/DashboardNav"
 import { CountdownTimer } from "@/buyers/components/marketplace/CountdownTimer"
 import { format } from "date-fns"
@@ -61,6 +64,7 @@ function ParticipationCard({ p }: { p: MockParticipation }) {
             {deal.productName}
           </h3>
           <StatusBadge status={p.status} />
+          {deal.reach && <DealReachBadge reach={deal.reach} className="text-xs text-gray-400" />}
           {(p.status === "active" || p.status === "completed") && (
             <p className="text-xs text-gray-400">Joined in {format(new Date(p.joinedAt), "MMMM d, yyyy")}</p>
           )}
@@ -126,7 +130,9 @@ function ParticipationCard({ p }: { p: MockParticipation }) {
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function PurchasesPage() {
+  const router = useRouter()
   const { user } = useUser()
+  const isSeller = useIsSeller()
   // Gate on hasHydrated so the first client render matches the server's
   // always-empty SSR state — otherwise the real (persisted) list vs. the
   // empty state below diverge and React throws a hydration mismatch.
@@ -147,6 +153,19 @@ export default function PurchasesPage() {
   useEffect(() => {
     if (hasHydrated) markClosedViewed()
   }, [hasHydrated, markClosedViewed])
+
+  // Same reasoning as app/(buyers)/dashboard/page.tsx's own guard: this page
+  // is normally only reachable via a click that SellerViewOnlyGuard already
+  // intercepts, but a direct URL visit would otherwise show a seller
+  // another Clerk account's real purchase history (participation-store.ts
+  // isn't scoped by user id — see useIsSeller's comment). Comes after every
+  // other hook in this component, never around one — conditionally skipping
+  // a hook call itself would violate the Rules of Hooks.
+  useEffect(() => {
+    if (isSeller) router.replace("/sellers/dashboard")
+  }, [isSeller, router])
+
+  if (isSeller) return null
 
   return (
     <main className="min-h-screen" style={{ backgroundColor: "#f8f9fa", paddingTop: "7.5rem", paddingBottom: "4rem" }}>

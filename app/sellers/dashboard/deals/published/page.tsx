@@ -19,8 +19,8 @@ function DealPublishedInner() {
           Groupal marketplace. We&apos;ll keep you posted as buyers join and the group discount grows.
         </>
       }
-      ctaLabel="See it live"
-      ctaHref={dealId ? `/checkout/${dealId}` : "/sellers/dashboard/deals"}
+      ctaLabel="View my deal"
+      ctaHref={dealId ? `/sellers/dashboard/deals/${dealId}` : "/sellers/dashboard/deals"}
     />
   )
 }

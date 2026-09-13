@@ -610,22 +610,196 @@ Located over the product image, next to the share button.
     identity) was verified via code review of the shared
     chargeReservation() code path rather than a live second-account
     click-through.
+- (2026-09-11) Real seller-facing deal detail page — was the "Deal
+  Detail" SellerComingSoon placeholder at app/sellers/dashboard/deals/[id]/
+  page.tsx, now the seller-only counterpart to app/(buyers)/checkout/
+  [dealId]/page.tsx's "Review Deal" step (same gallery/store-price/
+  groupal-price/milestones/progress-bar/countdown visual language, no
+  buyer-only CTA), with a "who's in the group" section replacing the
+  reserve-a-spot card: a horizontal overlapping avatar stack + "N buyers
+  joined in", click to expand into a full list (avatar, name, city if
+  present, amount paid upfront, live-estimated remaining payment if the
+  deal closed right now via computeEstimatedFinalPrice, exact join date/
+  time). Sellers no longer land on their own deal's BUYER checkout page
+  at all — Active Deals cards, Closed Deals cards, the post-publish
+  celebration CTA (now "View my deal" instead of "See it live"), and the
+  seller Notifications "View deal" links all point here instead.
+  - Root cause of the bug that prompted this: app/(buyers)/checkout/
+    [dealId]/page.tsx redirects to /dashboard if useParticipationStore's
+    (not user-scoped — a known, pre-existing limitation) hasJoined(dealId)
+    is true for ANYONE who used this browser, so a seller clicking their
+    own deal card landed on the BUYER dashboard, welcomed by their own
+    Clerk first name (e.g. "Raul") rather than their seller company name
+    (e.g. "Dismac") — same account, two different display identities,
+    read as "someone else's dashboard." Moving sellers off that route
+    entirely sidesteps it rather than patching the buyer-side redirect.
+  - Schema: Participation (lib/types/payment.ts) gained buyerName?/
+    buyerAvatarUrl?, captured from Clerk's useUser() at the moment of
+    chargeReservation() (lib/payments/reservation-service.ts — new
+    required buyerName/optional buyerAvatarUrl params) since this mock
+    layer has no way to look up another user's Clerk profile later —
+    denormalized onto the participation itself, the same reasoning as
+    every other buyer-identity field already stored there.
+  - Verified live end-to-end: published a 2-photo deal, joined it as a
+    real buyer (captured real Clerk name + avatar + city), confirmed the
+    Active Deals card, the post-publish CTA, and a seller-notification
+    "View deal" link all land on this new page with correct data (0→1
+    buyer, 8% discount, $50 paid upfront, $420 "if closed now" — checked
+    against the formula by hand); force-closed the deal and confirmed
+    the countdown hides and the status badge flips to "Closed" while the
+    buyer list stays intact.
+- (2026-09-12) "Share this deal" on the seller deal-detail page
+  (app/sellers/dashboard/deals/[id]/page.tsx) — same gold-fill/navy-border/
+  navy-text/drop-shadow CTA style as the buyer marketplace cards'
+  own share button (buyers/components/dashboard/DealPaymentSummary.tsx's
+  CTA_BUTTON_CLASS — duplicated as a local SHARE_BUTTON_CLASS constant on
+  the seller page rather than cross-imported, per the buyer/seller
+  component-tree separation), placed right after the countdown inside the
+  navy pricing card. Opens sellers/components/ShareDealModal.tsx (new),
+  with two real, functional social-share buttons (WhatsApp/X — genuine
+  wa.me and twitter.com intent links — and Copy Link, genuine clipboard
+  write) pointed at the deal's real buyer-facing URL
+  (/checkout/{dealId}), plus a "Reach your own customers" section: upload
+  a CSV (name/email/phone columns, simple dependency-free parser, no
+  quoted-comma support yet), pick SMS/Email/WhatsApp channels, and send.
+  That send is explicitly SIMULATED — there's no real Twilio/SendGrid/
+  WhatsApp Business API configured (same "not yet built" bucket as real
+  Stripe Connect), so it parses the CSV for real and reports a real
+  contact count, but never actually messages anyone, and says so both in
+  small print under the button and in the success toast ("Simulated: N
+  customers would be reached via ..."). Verified live: uploaded a 3-row
+  test CSV via the browser's file-input upload path, confirmed "3
+  contacts detected", toggled SMS+Email, sent, and got the correct
+  simulated-count toast; Copy Link fired a real "Link copied!" toast.
+- (2026-09-13) Buyer↔seller exclusive-account enforcement — a signed-in
+  Clerk account can now never hold both a buyer and a seller identity,
+  enforced everywhere that boundary is crossed:
+  - Seller trying to register as a buyer: app/(buyers)/sign-in and
+    sign-up now catch this the moment Clerk resolves the account, before
+    ever reaching the buyer homepage — new buyers/components/auth/
+    AlreadySellerBlock.tsx (red ShieldAlert card, Sign out / Go back to
+    my seller account). Needed `forceRedirectUrl` AND
+    `signInForceRedirectUrl` on `<SignUp>` (and the mirrored pair on
+    `<SignIn>`): Clerk transfers a "sign up with an already-existing
+    account" attempt to a SEPARATE sign-in redirect target that
+    `forceRedirectUrl` alone doesn't cover — without both, the transfer
+    bypassed the check entirely and landed straight on the buyer
+    homepage.
+  - Buyer trying to register as a seller: app/sellers/page.tsx's
+    SellersGatePage blocks via new buyers/stores/buyer-identity-store.ts,
+    which now marks a Clerk account "a buyer" the moment it's signed in
+    ANYWHERE on the buyer portal without a seller profile (an effect in
+    sellers/components/SellerViewOnlyGuard.tsx, mounted on every buyer
+    route) — not only on an explicit like/join, which was the original,
+    too-narrow definition that let a buyer who "just signed up and did
+    nothing else" slip through.
+  - Seller browsing the buyer portal ("Buyers Portal" nav link, or
+    landing there directly): SellerViewOnlyGuard's capture-phase
+    click-intercept + sellers/components/SellerModeModal.tsx restored to
+    the original browse-then-intercept UX (an earlier full-block attempt
+    broke the "Buyers Portal" feature entirely by preventing browsing at
+    all) — restyled to match the other two blocks: red ShieldAlert icon,
+    the lighter navy overlay used by the checkout-success celebration,
+    Sign out / Go back to my seller account buttons.
+  - Real bug found and fixed along the way: DealCard's "Already Joined"
+    badge, LikeButton's filled heart, Navbar's liked-count badge, the
+    checkout page's already-joined redirect, and the dashboard/purchases/
+    liked pages were all reading buyers/stores/participation-store.ts and
+    likes-store.ts directly — neither store is scoped by Clerk user id (a
+    known, pre-existing limitation), so a seller browsing view-only could
+    see a completely different buyer account's real joined/liked state.
+    New useIsSeller() hook (sellers/stores/seller-store.ts) now gates
+    every one of those reads; the three dashboard pages additionally
+    redirect a seller to /sellers/dashboard before ever painting another
+    account's data (closing the same gap for direct-URL visits, not just
+    clicks).
+- (2026-09-13) Deal reach (city/country/continent) + external product
+  link — two new fields on Deal (lib/types/deal.ts): `reach?: DealReach`
+  (`{ scope: "city"|"country"|"continent", values: string[] }`, captured
+  via a scope toggle + multi-value picker in the create-deal form,
+  replacing an earlier, narrower single city/country pair this same
+  session) and `externalProductUrl?: string` (a deep link to the exact
+  product page on the seller's own site — optional for now, a future pass
+  makes it required). New shared components/deal-reach-badge.tsx renders
+  a scope-appropriate icon (pin/flag/globe) + short label everywhere deal
+  info shows up: DealCard, CompletedDealCard, the buyer dashboard's "My
+  Group Buys"/"Purchases" cards, checkout's Review Deal step (replacing a
+  hardcoded fake "Available in: {Seller} Region" line), and the seller's
+  Active/Closed Deals lists and deal-detail page. The "In Store Price"
+  button (DealCard and checkout) now opens externalProductUrl first,
+  falling back to the seller's general sellerUrl. Not yet wired into any
+  actual buyer-side filtering — display-only until the region-matching
+  rules themselves are defined (planned as a follow-up).
+- (2026-09-13) Seller Sales Reports (app/sellers/dashboard/reports/
+  page.tsx) — was a "coming in a later phase" placeholder, now a real
+  reporting dashboard: KPI cards (Total/Closed Deals, Buyers Joined,
+  Gross Revenue, and a wide navy-background/gold-text Net Payout card
+  spanning the two grid slots the removed Groupal Commission card used to
+  occupy), Date range/Category/City/Status filters, two hand-drawn charts
+  (revenue by month, revenue by category — no charting library added, by
+  design, as a base to escalate later), and a deal-by-deal table. City
+  filtering currently stands in with the seller's own registered city
+  (SellerProfile.city) rather than deal.reach, since the latter isn't
+  wired into any filtering yet — see the page's own cityOf() comment.
+- (2026-09-13) Seller deal-detail page, closed state (app/sellers/
+  dashboard/deals/[id]/page.tsx) — a closed deal now shows "Group buy
+  deal closed" where the countdown used to be (previously nothing
+  rendered there at all once a deal closed), and "Review my sales
+  reports" (BarChart3 icon, links to the Reports page above) in place of
+  "Share this deal", which only makes sense for a still-open deal.
+- (2026-09-13) Fixed a real bug: a buyer received ~30 duplicate "ending
+  soon" notifications for the same deal. Root cause: deal.endingSoonNotified
+  (the flag meant to dedupe this) is mutated directly on a SEED deal
+  object (lib/mock/deals.ts's MOCK_DEALS — a plain in-memory array with
+  no persistence layer, unlike seller-created deals), so it silently
+  reset to undefined on every fresh page load, letting lib/jobs/
+  deal-ending-soon-job.ts's sweep re-fire indefinitely. Fixed by checking
+  paymentsDb's actual persisted notification history per buyer+
+  participation (new paymentsDb.hasNotificationForParticipation()) instead
+  of relying solely on the in-memory flag — robust regardless of whether
+  that flag survives a reload. Known related gap, not fixed here:
+  seed-deal mutations in general (buyer counts, closed status) don't
+  persist across reloads the way seller-created deals do; the database
+  migration below removes this whole class of bug structurally.
+- (2026-09-13) Cleanup pass ahead of the database migration: removed
+  DealCard's vestigial onJoin/onShare callback props (the card already
+  navigates/shares internally regardless of what's passed — one call
+  site's onJoin was actually a redundant window.location.href
+  hard-navigation duplicating the already-working router.push), removed
+  an already-unused Badge import from app/(buyers)/page.tsx, and
+  corrected several comments left stale by earlier changes this same
+  session (app/sellers/page.tsx's and buyer-identity-store's descriptions
+  of what counts as "buyer activity"; SellerModeModal.tsx's list of
+  sibling cross-registration blocks; the Reports page's cityOf() note
+  about deal.reach not existing, which it now does).
 
 ### Not yet built
-- Seller Portal (landing, dashboard, deal creator, deal monitoring,
-  settings, API docs page) — NEXT MILESTONE
-- Real Stripe Connect integration (deferred to Germany move, ~May 2026)
-  — the payment engine above is fully mocked and ready to swap in
-  lib/payments/gateway.ts once Connect is configured
-- Real API routes backed by Prisma/Supabase (currently using
-  mock data from lib/mock/deals.ts and lib/mock/payments-db.ts)
+- Real API routes backed by Prisma/Supabase, replacing every mock data
+  source (lib/mock/deals.ts's hardcoded MOCK_DEALS, lib/mock/
+  payments-db.ts, sellers/stores/seller-deals-store.ts, and every other
+  buyers/stores/*.ts persist store) with one real Postgres database via
+  Prisma — THE NEXT MILESTONE, starting 2026-09-14. A full phase-by-phase
+  roadmap was written and reviewed on 2026-09-13 (provision Supabase →
+  reconcile prisma/schema.prisma → seed the 8 catalog deals as real rows
+  → build API routes mirroring today's mock function signatures → cut
+  over reads, then seller writes, then participations/likes/
+  notifications → delete the mock layer). This migration structurally
+  fixes several known bugs/gaps at once: the not-scoped-by-user-id
+  limitation on participation-store.ts/likes-store.ts, seed-deal
+  mutations not surviving a reload (today's ~30-duplicate-notification
+  bug), and the seller-deals-store persistence workarounds
+  (persistSellerDealMutations, the SellerNavbar re-link effect,
+  useMockDealsSyncStore) — all of which a real database needs none of.
   - Once real image upload exists (this needs the database/storage in
     place first — there's no upload pipeline yet, only pasted image
     URLs), add a required profile picture step to seller onboarding
     (app/sellers/page.tsx's OnboardingStep / the "Tell us about your
     company" form): registration must NOT be able to complete without
     one. Flagged 2026-09-10 — do this as soon as the database
-    integration milestone starts.
+    integration milestone starts, i.e. now.
+- Real Stripe Connect integration (deferred to Germany move, ~May 2026)
+  — the payment engine above is fully mocked and ready to swap in
+  lib/payments/gateway.ts once Connect is configured
 - Real job scheduling (BullMQ/Upstash) and email delivery
   (React Email/Resend) — job logic and notification content already
   exist as isolated functions in lib/jobs/, just not wired to a real

@@ -17,14 +17,24 @@ export function isEndingSoon(deal: Pick<Deal, "deadlineAt">, now = new Date()): 
 // lib/payments/sync-deal-closures.ts's closeExpiredDeals(), which already
 // sweeps every deal on every buyer/seller page load. deal.endingSoonNotified
 // (mutated directly on the Deal object, same as status/currentBuyerCount
-// already are) is what stops a buyer getting this notification more than
-// once per deal even though the sweep itself re-runs on every page load.
+// already are) is meant to stop a buyer getting this notification more than
+// once per deal, but for a SEED deal (lib/mock/deals.ts's MOCK_DEALS array —
+// a plain in-memory array with no persistence layer of its own) that flag
+// silently resets on every fresh page load, letting this fire again and
+// again — the actual bug behind a buyer once receiving ~30 duplicate
+// "ending soon" notifications for the same deal. The per-participation
+// check below is the real guard now: paymentsDb.notifications IS persisted,
+// so it stays true to whether this buyer was actually already notified,
+// regardless of whether the in-memory flag survived. deal.endingSoonNotified
+// is kept too, purely as a cheap early-exit so an already-notified active
+// deal doesn't re-scan its participant list on every sweep.
 export function notifyIfEndingSoon(deal: Deal, now = new Date()): void {
   if (deal.status !== "active" || deal.endingSoonNotified || !isEndingSoon(deal, now)) return
   deal.endingSoonNotified = true
 
   const participants = paymentsDb.listParticipationsByDealAndStatus(deal.id, "RESERVATION_PAID")
   for (const participation of participants) {
+    if (paymentsDb.hasNotificationForParticipation(participation.buyerId, "DEAL_ENDING_SOON", participation.id)) continue
     paymentsDb.createNotification({
       userId: participation.buyerId,
       ...dealEndingSoonCopy({ productName: deal.productName }),

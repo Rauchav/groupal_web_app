@@ -67,6 +67,37 @@ export interface Deal {
   // already are, so the mock sweep (re-run on every relevant page load,
   // no real cron yet) doesn't re-notify buyers every time it runs.
   endingSoonNotified?:  boolean
+  // Where this deal is available to buyers — one or more cities, one or
+  // more countries, OR one or more continents (never a mix of scopes).
+  // Captured at creation (app/sellers/dashboard/deals/new/page.tsx) via a
+  // scope choice + a multi-value picker for that scope, and shown
+  // everywhere deal info shows up (see components/deal-reach-badge.tsx).
+  // Required going forward in that form, but optional on the type itself —
+  // same reasoning as deliveryZones above: the seed catalog
+  // (lib/mock/deals.ts) and any deal created before this field existed
+  // don't have it, so every read site needs a fallback (see
+  // lib/utils/deal-reach.ts's formatDealReach, which returns null for that
+  // case) rather than assuming it's always populated. Supersedes an
+  // earlier, narrower city/country pair this same field replaced. Not
+  // wired into any actual buyer-side filtering/matching yet — informational
+  // only until the region-matching rules themselves are defined.
+  reach?:               DealReach
+  // Deep link to this exact product's listing on the seller's own website
+  // or marketplace, so a buyer can go look at the original page (reviews,
+  // full specs, etc.) alongside the group deal. Optional while this is new
+  // — a later pass will make it required at creation, same maturity path
+  // deliveryZones/productImages already went through.
+  externalProductUrl?:  string
+}
+
+export type DealReachScope = "city" | "country" | "continent"
+
+export interface DealReach {
+  scope:  DealReachScope
+  // One or more names matching `scope` — city names, country names, or a
+  // subset of lib/constants/continents.ts's fixed CONTINENTS list. Never a
+  // mix of scopes on the same deal.
+  values: string[]
 }
 
 export interface DealComputedValues {

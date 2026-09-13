@@ -5,6 +5,8 @@ import { Heart } from "lucide-react"
 import { motion } from "framer-motion"
 import { useUser } from "@clerk/nextjs"
 import { useLikesStore } from "@/buyers/stores/likes-store"
+import { useBuyerIdentityStore } from "@/buyers/stores/buyer-identity-store"
+import { useIsSeller } from "@/sellers/stores/seller-store"
 import { cn } from "@/lib/utils"
 
 interface LikeButtonProps {
@@ -13,7 +15,9 @@ interface LikeButtonProps {
 }
 
 export function LikeButton({ dealId, className }: LikeButtonProps) {
-  const { isSignedIn } = useUser()
+  const { isSignedIn, user } = useUser()
+  const isSeller = useIsSeller()
+  const markAsBuyer = useBuyerIdentityStore((s) => s.markAsBuyer)
   const router = useRouter()
   const { toggleLike, isLiked } = useLikesStore()
   // Same SSR/localStorage timing issue as the participation store — don't
@@ -22,8 +26,10 @@ export function LikeButton({ dealId, className }: LikeButtonProps) {
   // Same reasoning as DealCard's hasJoined — localStorage persists across
   // sign-out, so without the isSignedIn check a signed-out visitor (or the
   // next person on a shared machine) would still see the previous
-  // session's likes.
-  const liked = hasHydrated && !!isSignedIn && isLiked(dealId)
+  // session's likes. The isSeller check keeps a seller's view-only browsing
+  // (see useIsSeller's own comment) from showing another Clerk account's
+  // real liked deals.
+  const liked = hasHydrated && !!isSignedIn && !isSeller && isLiked(dealId)
 
   function handleClick(e: React.MouseEvent) {
     e.stopPropagation()
@@ -34,6 +40,7 @@ export function LikeButton({ dealId, className }: LikeButtonProps) {
       return
     }
     toggleLike(dealId)
+    if (user) markAsBuyer(user.id)
   }
 
   return (

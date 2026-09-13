@@ -274,10 +274,7 @@ function DealsPageInner() {
               >
                 {filtered.map((deal) => (
                   <a key={deal.id} href={`/checkout/${deal.id}`} className="block h-full">
-                    <DealCard
-                      deal={deal}
-                      onJoin={() => window.location.href = `/checkout/${deal.id}`}
-                    />
+                    <DealCard deal={deal} />
                   </a>
                 ))}
               </motion.div>

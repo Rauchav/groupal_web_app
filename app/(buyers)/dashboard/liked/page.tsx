@@ -1,13 +1,18 @@
 "use client"
 
+import { useEffect } from "react"
+import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { Heart } from "lucide-react"
 import { DealCard } from "@/buyers/components/marketplace/DealCard"
 import { DashboardSidebar, DashboardMobileTabs } from "@/buyers/components/dashboard/DashboardNav"
 import { MOCK_DEALS } from "@/lib/mock/deals"
 import { useLikesStore } from "@/buyers/stores/likes-store"
+import { useIsSeller } from "@/sellers/stores/seller-store"
 
 export default function LikedDealsPage() {
+  const router = useRouter()
+  const isSeller = useIsSeller()
   // Gate on hasHydrated so the first client render matches the server's
   // always-empty SSR state — otherwise the real (persisted) list vs. the
   // empty state below diverge and React throws a hydration mismatch.
@@ -15,6 +20,16 @@ export default function LikedDealsPage() {
   const likedDealIdsStore = useLikesStore((s) => s.likedDealIds)
   const likedDealIds = hasHydrated ? likedDealIdsStore : []
   const likedDeals = MOCK_DEALS.filter((d) => likedDealIds.includes(d.id))
+
+  // Same reasoning as the other dashboard pages' guard: normally only
+  // reachable via a click SellerViewOnlyGuard already intercepts, but a
+  // direct URL visit would otherwise show a seller another Clerk account's
+  // real liked deals (likes-store.ts isn't scoped by user id — see
+  // useIsSeller's comment).
+  useEffect(() => {
+    if (isSeller) router.replace("/sellers/dashboard")
+  }, [isSeller, router])
+  if (isSeller) return null
 
   return (
     <main className="min-h-screen" style={{ backgroundColor: "#f8f9fa", paddingTop: "7.5rem", paddingBottom: "4rem" }}>
@@ -55,10 +70,7 @@ export default function LikedDealsPage() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {likedDeals.map((deal) => (
                   <a key={deal.id} href={`/checkout/${deal.id}`} className="block h-full">
-                    <DealCard
-                      deal={deal}
-                      onJoin={() => window.location.href = `/checkout/${deal.id}`}
-                    />
+                    <DealCard deal={deal} />
                   </a>
                 ))}
               </div>

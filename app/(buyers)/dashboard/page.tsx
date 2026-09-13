@@ -1,14 +1,17 @@
 "use client"
 
 import { useEffect } from "react"
+import { useRouter } from "next/navigation"
 import Link from "next/link"
 import Image from "next/image"
 import { useUser } from "@clerk/nextjs"
 import { useParticipationStore, MockParticipation } from "@/buyers/stores/participation-store"
+import { useIsSeller } from "@/sellers/stores/seller-store"
 import { syncDealClosures } from "@/lib/payments/sync-deal-closures"
 import { MOCK_DEALS } from "@/lib/mock/deals"
 import { computeDealValues } from "@/lib/utils/deal-calculator"
 import { OpenDealPaymentSummary, MilestoneScale } from "@/buyers/components/dashboard/DealPaymentSummary"
+import { DealReachBadge } from "@/components/deal-reach-badge"
 import { DashboardSidebar, DashboardMobileTabs } from "@/buyers/components/dashboard/DashboardNav"
 import { CountdownTimer } from "@/buyers/components/marketplace/CountdownTimer"
 import { motion } from "framer-motion"
@@ -81,6 +84,8 @@ function ActiveDealCard({ participation }: { participation: MockParticipation })
           <span>Ends in:</span>
           <CountdownTimer targetDate={deal.deadlineAt} compact className="text-xs" />
         </div>
+
+        {deal.reach && <DealReachBadge reach={deal.reach} className="text-xs text-gray-400" />}
       </div>
 
       {/* Payments */}
@@ -104,7 +109,9 @@ function StatCard({ label, value, sub }: { label: string; value: string | number
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function DashboardPage() {
+  const router = useRouter()
   const { user } = useUser()
+  const isSeller = useIsSeller()
   // Gate on hasHydrated so the first client render matches the server's
   // always-empty SSR state — otherwise the real (persisted) list vs. the
   // empty state below diverge and React throws a hydration mismatch.
@@ -126,6 +133,22 @@ export default function DashboardPage() {
   useEffect(() => {
     if (hasHydrated) markGroupBuysViewed()
   }, [hasHydrated, markGroupBuysViewed])
+
+  // This page is normally only reachable via a navbar click, which
+  // sellers/components/SellerViewOnlyGuard.tsx already intercepts — but a
+  // seller could still land here by typing the URL directly. Since
+  // participation-store.ts isn't scoped by Clerk user id (every signed-in
+  // visitor on this browser reads the same flat list — see useIsSeller's
+  // own comment), rendering this page for a seller would show a completely
+  // different Clerk account's real purchase history. Bounce them back to
+  // their own dashboard instead of ever painting that data. This effect
+  // (and the early return below) come after every other hook in this
+  // component, never around one — conditionally skipping a hook call
+  // itself would violate the Rules of Hooks.
+  useEffect(() => {
+    if (isSeller) router.replace("/sellers/dashboard")
+  }, [isSeller, router])
+
   const completed = effectiveParticipations.filter((p) => p.status === "completed")
 
   const totalSaved = completed.reduce((sum, p) => {
@@ -138,6 +161,8 @@ export default function DashboardPage() {
   const memberSince = user?.createdAt
     ? new Intl.DateTimeFormat("en-US", { month: "short", year: "numeric" }).format(new Date(user.createdAt))
     : "—"
+
+  if (isSeller) return null
 
   return (
     <main className="min-h-screen" style={{ backgroundColor: "#f8f9fa", paddingTop: "7.5rem", paddingBottom: "4rem" }}>

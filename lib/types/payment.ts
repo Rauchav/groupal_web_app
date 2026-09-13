@@ -41,6 +41,15 @@ export interface Participation {
   id:                    string
   dealId:                string
   buyerId:               string
+  // Captured from Clerk at the moment the buyer checks out (there's no
+  // backend users table this mock layer can look other buyers' profiles
+  // up in later — Clerk's client SDK only ever exposes the CURRENTLY
+  // signed-in user). Denormalized onto the participation itself so the
+  // seller's deal-detail page (app/sellers/dashboard/deals/[id]/page.tsx)
+  // can show who's actually in the group. Optional only so participations
+  // created before this field existed still parse.
+  buyerName?:            string
+  buyerAvatarUrl?:       string
   reservationAmount:     number
   platformFee:           number   // seller-side fee snapshot, used for payout calc at deal close — never shown to the buyer
   deliveryCost:          number

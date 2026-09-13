@@ -19,7 +19,6 @@ import {
   CheckCircle2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { DealCard, DealCardSkeleton } from "@/buyers/components/marketplace/DealCard";
 import { CompletedDealCard } from "@/buyers/components/marketplace/CompletedDealCard";
 import { BuyerReviews } from "@/buyers/components/marketplace/BuyerReviews";
@@ -202,6 +201,7 @@ export default function HomePage() {
         finalPrice:       computed.currentPrice,
         discountAchieved: Math.round(computed.currentDiscountPercent),
         category:         deal.category,
+        reach:            deal.reach,
       };
     }),
     ...COMPLETED_DEALS,
@@ -273,12 +273,7 @@ export default function HomePage() {
             >
               {liveDeals.map((deal, i) => (
                 <motion.div key={deal.id} variants={fadeUp} custom={i} className="h-full">
-                  <DealCard
-                    deal={deal}
-                    onJoin={(id) => console.log("join", id)}
-                    onShare={(id) => console.log("share", id)}
-                    className="h-full"
-                  />
+                  <DealCard deal={deal} className="h-full" />
                 </motion.div>
               ))}
             </motion.div>

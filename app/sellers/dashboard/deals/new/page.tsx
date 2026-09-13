@@ -7,16 +7,21 @@ import { useForm, useFieldArray } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
 import { toast } from "sonner"
-import { Plus, PlusCircle, Store, Truck, X } from "lucide-react"
+import { Plus, PlusCircle, Store, Truck, X, MapPin, Flag, Globe2 } from "lucide-react"
 import { useSellerProfile } from "@/sellers/stores/seller-store"
 import { useSellerDealsStore } from "@/sellers/stores/seller-deals-store"
 import { daysFromNow, milestones } from "@/lib/mock/deals"
 import { DEAL_CATEGORIES } from "@/lib/constants/categories"
+import { CONTINENTS } from "@/lib/constants/continents"
+import { REACH_SCOPE_LABEL } from "@/lib/utils/deal-reach"
+import type { DealReach, DealReachScope } from "@/lib/types/deal"
 import { cn } from "@/lib/utils"
 
 const PRODUCT_CATEGORIES = DEAL_CATEGORIES.filter((c) => c !== "All")
 const MAX_ADDITIONAL_IMAGES = 5 // + 1 required cover = 6 total
 const MAX_DELIVERY_ZONES = 4
+const MAX_REACH_VALUES = 8
+const REACH_SCOPE_ICON: Record<DealReachScope, typeof MapPin> = { city: MapPin, country: Flag, continent: Globe2 }
 
 const dealSchema = z
   .object({
@@ -28,6 +33,20 @@ const dealSchema = z
       url: z.string().url("Enter a valid image URL").optional().or(z.literal("")),
     })),
     category:            z.string().min(1, "Pick a category"),
+    // Where this deal is available — one scope (city/country/continent) and
+    // one or more values for it. reachCities/reachCountries are free-text
+    // lists (like deliveryZones); reachContinents is a fixed checkbox set
+    // (see lib/constants/continents.ts) since that list is small and known.
+    // Only the array matching reachScope is actually used at submit time —
+    // the other two stay in the form state, unused, just so switching scope
+    // back and forth doesn't lose what the seller already typed.
+    reachScope: z.enum(["city", "country", "continent"]),
+    reachCities: z.array(z.object({ value: z.string() })),
+    reachCountries: z.array(z.object({ value: z.string() })),
+    reachContinents: z.array(z.string()),
+    // Optional for now — a future pass makes this required, same maturity
+    // path productImages/deliveryZones already went through.
+    externalProductUrl: z.string().url("Enter a valid URL").optional().or(z.literal("")),
     originalPrice:       z.coerce.number().positive("Enter a price above $0"),
     maxDiscountPercent:  z.coerce.number().min(5, "At least 5%").max(90, "Keep it under 90%"),
     maxBuyersRequired:   z.coerce.number().int().min(2, "Needs at least 2 buyers"),
@@ -61,6 +80,14 @@ const dealSchema = z
   .refine(
     (data) => data.isPickup || data.deliveryZones.length > 0,
     { message: "Add at least one delivery zone", path: ["deliveryZones"] }
+  )
+  .refine(
+    (data) => {
+      if (data.reachScope === "city") return data.reachCities.some((c) => c.value.trim())
+      if (data.reachScope === "country") return data.reachCountries.some((c) => c.value.trim())
+      return data.reachContinents.length > 0
+    },
+    { message: "Add at least one value for the selected reach", path: ["reachScope"] }
   )
 
 type DealFormInput = z.input<typeof dealSchema>
@@ -120,6 +147,7 @@ export default function NewSellerDealPage() {
   const addDeal = useSellerDealsStore((s) => s.addDeal)
   const [isPickup, setIsPickup] = useState(false)
   const [publishing, setPublishing] = useState(false)
+  const [reachScope, setReachScope] = useState<DealReachScope>("city")
 
   const {
     register,
@@ -132,6 +160,8 @@ export default function NewSellerDealPage() {
     resolver: zodResolver(dealSchema),
     defaultValues: {
       productName: "", coverImage: "", additionalImages: [], category: PRODUCT_CATEGORIES[0],
+      reachScope: "city", reachCities: [{ value: profile?.city ?? "" }], reachCountries: [{ value: "" }], reachContinents: [],
+      externalProductUrl: "",
       originalPrice: "" as unknown as number, maxDiscountPercent: 40, maxBuyersRequired: 20,
       daysUntilDeadline: 7, isPickup: false, deliveryZones: [{ label: "", price: "" as unknown as number }],
     },
@@ -139,6 +169,21 @@ export default function NewSellerDealPage() {
 
   const additionalImages = useFieldArray({ control, name: "additionalImages" })
   const deliveryZones = useFieldArray({ control, name: "deliveryZones" })
+  const reachCities = useFieldArray({ control, name: "reachCities" })
+  const reachCountries = useFieldArray({ control, name: "reachCountries" })
+
+  function changeReachScope(scope: DealReachScope) {
+    setReachScope(scope)
+    setValue("reachScope", scope)
+  }
+
+  const reachContinents = watch("reachContinents")
+  function toggleContinent(continent: string) {
+    const next = reachContinents.includes(continent)
+      ? reachContinents.filter((c) => c !== continent)
+      : [...reachContinents, continent]
+    setValue("reachContinents", next)
+  }
 
   function toggleFulfillment(pickup: boolean) {
     setIsPickup(pickup)
@@ -171,6 +216,14 @@ export default function NewSellerDealPage() {
       return
     }
 
+    const reach: DealReach = {
+      scope: data.reachScope,
+      values:
+        data.reachScope === "city" ? data.reachCities.map((c) => c.value.trim()).filter(Boolean)
+        : data.reachScope === "country" ? data.reachCountries.map((c) => c.value.trim()).filter(Boolean)
+        : data.reachContinents,
+    }
+
     const newDealId = `deal_${Date.now().toString(36)}`
     addDeal({
       id:                    newDealId,
@@ -181,6 +234,8 @@ export default function NewSellerDealPage() {
       productName:           data.productName,
       productImages:         allUrls,
       category:              data.category,
+      reach,
+      externalProductUrl:    data.externalProductUrl || undefined,
       originalPrice:         data.originalPrice,
       currency:              "USD",
       maxDiscountPercent:    data.maxDiscountPercent,
@@ -293,6 +348,106 @@ export default function NewSellerDealPage() {
                 Add another photo ({additionalImages.fields.length + 1}/{MAX_ADDITIONAL_IMAGES + 1})
               </button>
             )}
+          </div>
+        </div>
+
+        {/* Deal reach & listing */}
+        <div className="space-y-4 pt-2 border-t border-gray-100">
+          <h2 className="font-heading font-bold text-[#002356] text-sm uppercase tracking-wider">Deal Reach & Listing</h2>
+
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">
+              Where is this deal available? <span className="font-normal text-gray-400">(pick one, then add one or more)</span>
+            </label>
+            <div className="flex gap-3 mb-3">
+              {(["city", "country", "continent"] as const).map((scope) => {
+                const Icon = REACH_SCOPE_ICON[scope]
+                return (
+                  <button
+                    key={scope}
+                    type="button"
+                    onClick={() => changeReachScope(scope)}
+                    className={cn(
+                      "flex-1 flex items-center gap-2 justify-center py-2.5 rounded-xl text-sm font-bold border transition-colors cursor-pointer",
+                      reachScope === scope ? "border-[#002356] bg-[#002356] text-white" : "border-gray-200 text-gray-500 hover:border-gray-300"
+                    )}
+                  >
+                    <Icon className="h-4 w-4" /> {REACH_SCOPE_LABEL[scope]}
+                  </button>
+                )
+              })}
+            </div>
+
+            {reachScope !== "continent" ? (
+              <div className="space-y-2">
+                {(reachScope === "city" ? reachCities : reachCountries).fields.map((field, i) => (
+                  <div key={field.id} className="flex items-start gap-2">
+                    <input
+                      {...register(reachScope === "city" ? `reachCities.${i}.value` : `reachCountries.${i}.value`)}
+                      placeholder={reachScope === "city" ? "e.g. Starnberg" : "e.g. Germany"}
+                      className={cn(inputClass(false), "flex-1")}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => (reachScope === "city" ? reachCities : reachCountries).remove(i)}
+                      disabled={(reachScope === "city" ? reachCities : reachCountries).fields.length <= 1}
+                      aria-label="Remove"
+                      className="flex-shrink-0 h-11 w-11 flex items-center justify-center rounded-xl text-gray-400 hover:bg-gray-100 cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+                ))}
+                {(reachScope === "city" ? reachCities : reachCountries).fields.length < MAX_REACH_VALUES && (
+                  <button
+                    type="button"
+                    onClick={() => (reachScope === "city" ? reachCities : reachCountries).append({ value: "" })}
+                    className="inline-flex items-center gap-1.5 text-xs font-bold px-3 py-2 rounded-xl border-2 border-dashed border-[#002356]/25 text-[#002356] cursor-pointer transition-all hover:border-[#002356] hover:bg-[#002356]/5 active:scale-[0.97]"
+                  >
+                    <Plus className="h-3.5 w-3.5" />
+                    Add another {reachScope}
+                  </button>
+                )}
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                {CONTINENTS.map((c) => (
+                  <label
+                    key={c}
+                    className={cn(
+                      "flex items-center gap-2 px-3 py-2.5 rounded-xl border text-sm font-medium cursor-pointer transition-colors",
+                      reachContinents.includes(c) ? "border-[#002356] bg-[#002356]/5 text-[#002356]" : "border-gray-200 text-gray-600 hover:border-gray-300"
+                    )}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={reachContinents.includes(c)}
+                      onChange={() => toggleContinent(c)}
+                      className="h-4 w-4 accent-[#002356] cursor-pointer"
+                    />
+                    {c}
+                  </label>
+                ))}
+              </div>
+            )}
+            {errors.reachScope && <p className="text-xs text-red-500 mt-2">{errors.reachScope.message}</p>}
+          </div>
+
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-1">
+              Product page link <span className="font-normal text-gray-400">(optional for now)</span>
+            </label>
+            <input
+              {...register("externalProductUrl")}
+              placeholder="https://your-store.com/products/this-item"
+              className={inputClass(!!errors.externalProductUrl)}
+            />
+            {errors.externalProductUrl && <p className="text-xs text-red-500 mt-1">{errors.externalProductUrl.message}</p>}
+            <p className="text-xs text-gray-400 mt-1">
+              A deep link to this product on your own website or marketplace listing — lets buyers see the
+              original page (reviews, full specs) alongside the group deal. Optional for now; a future update
+              will require it.
+            </p>
           </div>
         </div>
 
