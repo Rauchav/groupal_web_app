@@ -44,9 +44,8 @@ export function SellerModeModal({ open, onOpenChange }: { open: boolean; onOpenC
             This account is already a seller
           </DialogTitle>
           <DialogDescription className="text-gray-500 text-sm">
-            This email address or Google account is already registered as a Groupal seller. You&apos;re welcome to
-            keep browsing to see how Groupal deals look from a buyer&apos;s side — to actually join or like one,
-            sign out and sign back in with a different email address or Google account.
+            You are currently a seller checking out how buyers see active deals at the groupal buyers portal. 
+            If you want to experience groupal as a buyer, sign out to your seller account and sign up or login with a different email or google account to the groupal buyers portal.
           </DialogDescription>
         </DialogHeader>
 

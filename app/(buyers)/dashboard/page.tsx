@@ -5,10 +5,8 @@ import { useRouter } from "next/navigation"
 import Link from "next/link"
 import Image from "next/image"
 import { useUser } from "@clerk/nextjs"
-import { useParticipationStore, MockParticipation } from "@/buyers/stores/participation-store"
+import { useParticipationStore, useEnsureParticipationsLoaded, MockParticipation } from "@/buyers/stores/participation-store"
 import { useIsSeller } from "@/sellers/stores/seller-store"
-import { syncDealClosures } from "@/lib/payments/sync-deal-closures"
-import { MOCK_DEALS } from "@/lib/mock/deals"
 import { computeDealValues } from "@/lib/utils/deal-calculator"
 import { OpenDealPaymentSummary, MilestoneScale } from "@/buyers/components/dashboard/DealPaymentSummary"
 import { DealReachBadge } from "@/components/deal-reach-badge"
@@ -24,8 +22,7 @@ import {
 // ── Dashboard deal card ───────────────────────────────────────────────────────
 
 function ActiveDealCard({ participation }: { participation: MockParticipation }) {
-  const deal = MOCK_DEALS.find((d) => d.id === participation.dealId)
-  if (!deal) return null
+  const deal = participation.deal
   const computed = computeDealValues(deal)
   const isDealOpen = deal.currentBuyerCount < deal.maxBuyersRequired && new Date() < deal.deadlineAt
 
@@ -113,20 +110,24 @@ export default function DashboardPage() {
   const { user } = useUser()
   const isSeller = useIsSeller()
   // Gate on hasHydrated so the first client render matches the server's
-  // always-empty SSR state — otherwise the real (persisted) list vs. the
+  // always-empty SSR state — otherwise the real (fetched) list vs. the
   // empty state below diverge and React throws a hydration mismatch.
   const hasHydrated = useParticipationStore((s) => s.hasHydrated)
   const participations = useParticipationStore((s) => s.participations)
+  const refresh = useParticipationStore((s) => s.refresh)
   const markGroupBuysViewed = useParticipationStore((s) => s.markGroupBuysViewed)
+  useEnsureParticipationsLoaded(user?.id)
   const effectiveParticipations = hasHydrated ? participations : []
   const active    = effectiveParticipations.filter((p) => p.status === "active")
 
-  // No real job scheduler yet (see lib/jobs/scheduler.ts) — check on every
+  // No real job scheduler yet (see app/api/jobs/sweep) — check on every
   // load whether any of this buyer's active deals are ready to close, and
-  // if so run the close job and reflect the outcome here.
+  // if so run the close job and re-fetch this buyer's participations to
+  // reflect the outcome here.
   useEffect(() => {
-    if (hasHydrated && user?.id) void syncDealClosures(user.id)
-  }, [hasHydrated, user?.id])
+    if (!user?.id) return
+    fetch("/api/jobs/sweep", { method: "POST" }).then(() => refresh()).catch(() => {})
+  }, [user?.id, refresh])
 
   // Clears the "My Group Buys" nav badge — the buyer has now actually
   // looked at whatever they joined since their last visit here.
@@ -136,15 +137,11 @@ export default function DashboardPage() {
 
   // This page is normally only reachable via a navbar click, which
   // sellers/components/SellerViewOnlyGuard.tsx already intercepts — but a
-  // seller could still land here by typing the URL directly. Since
-  // participation-store.ts isn't scoped by Clerk user id (every signed-in
-  // visitor on this browser reads the same flat list — see useIsSeller's
-  // own comment), rendering this page for a seller would show a completely
-  // different Clerk account's real purchase history. Bounce them back to
-  // their own dashboard instead of ever painting that data. This effect
-  // (and the early return below) come after every other hook in this
-  // component, never around one — conditionally skipping a hook call
-  // itself would violate the Rules of Hooks.
+  // seller could still land here by typing the URL directly. Bounce them
+  // back to their own dashboard instead. This effect (and the early return
+  // below) come after every other hook in this component, never around
+  // one — conditionally skipping a hook call itself would violate the
+  // Rules of Hooks.
   useEffect(() => {
     if (isSeller) router.replace("/sellers/dashboard")
   }, [isSeller, router])
@@ -152,9 +149,7 @@ export default function DashboardPage() {
   const completed = effectiveParticipations.filter((p) => p.status === "completed")
 
   const totalSaved = completed.reduce((sum, p) => {
-    const deal = MOCK_DEALS.find((d) => d.id === p.dealId)
-    if (!deal) return sum
-    const computed = computeDealValues(deal)
+    const computed = computeDealValues(p.deal)
     return sum + computed.savingsAmount
   }, 0)
 

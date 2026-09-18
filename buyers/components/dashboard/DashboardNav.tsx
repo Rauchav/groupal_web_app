@@ -4,7 +4,7 @@ import Link from "next/link"
 import { useUser } from "@clerk/nextjs"
 import { ShoppingBag, Heart, Settings, LayoutList, Bell, ShoppingCart } from "lucide-react"
 import { useUnseenGroupBuysCount, useUnseenClosedCount } from "@/buyers/stores/participation-store"
-import { useUnreadNotificationsCount } from "@/lib/mock/payments-db"
+import { useUnreadNotificationsCount } from "@/lib/notifications/notifications-store"
 
 const NAV_ITEMS = [
   { href: "/dashboard",               icon: ShoppingBag, label: "My Group Buys" },

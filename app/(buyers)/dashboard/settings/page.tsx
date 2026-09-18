@@ -10,8 +10,26 @@ import { toast } from "sonner"
 import { CreditCard, User, Bell, Lock } from "lucide-react"
 import { Switch } from "@/components/ui/switch"
 import { DashboardSidebar, DashboardMobileTabs } from "@/buyers/components/dashboard/DashboardNav"
-import { usePreferencesStore } from "@/buyers/stores/preferences-store"
+import { useApiGet } from "@/lib/api/use-fetch"
 import { cn } from "@/lib/utils"
+
+interface NotificationPreferences {
+  emailNewBuyer: boolean
+  emailEndingSoon: boolean
+  emailDealCompleted: boolean
+  emailPaymentReminders: boolean
+  pushBuyerUpdates: boolean
+  pushCountdownAlerts: boolean
+}
+
+const DEFAULT_PREFERENCES: NotificationPreferences = {
+  emailNewBuyer: true,
+  emailEndingSoon: true,
+  emailDealCompleted: true,
+  emailPaymentReminders: true,
+  pushBuyerUpdates: false,
+  pushCountdownAlerts: false,
+}
 
 // ── Profile tab ───────────────────────────────────────────────────────────────
 
@@ -172,11 +190,20 @@ type NotifKey =
   | "pushCountdownAlerts"
 
 function NotificationsTab() {
-  const { notifications, setNotification } = usePreferencesStore()
+  const { user } = useUser()
+  const { data, refetch } = useApiGet<{ notificationPreferences: Partial<NotificationPreferences> | null }>(
+    user ? "/api/users/me" : null
+  )
+  const notifications: NotificationPreferences = { ...DEFAULT_PREFERENCES, ...data?.notificationPreferences }
 
-  function handleToggle(key: NotifKey, value: boolean) {
-    setNotification(key, value)
+  async function handleToggle(key: NotifKey, value: boolean) {
+    await fetch("/api/users/me", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ notificationPreferences: { [key]: value } }),
+    })
     toast.success("Preferences updated!")
+    refetch()
   }
 
   const emailToggles: { key: NotifKey; label: string; desc: string }[] = [

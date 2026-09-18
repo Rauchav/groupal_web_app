@@ -5,16 +5,9 @@ import { useRouter } from "next/navigation"
 import { useUser } from "@clerk/nextjs"
 import { ArrowLeft } from "lucide-react"
 import { useSellerProfile } from "@/sellers/stores/seller-store"
-import { useSellerDealsStore, useMockDealsSyncStore } from "@/sellers/stores/seller-deals-store"
-import { addMockDeal } from "@/lib/mock/deals"
 import { SellerModeModal } from "./SellerModeModal"
-// Cross-portal import, same precedent as seller-deals-store.ts being
-// imported from buyer pages: this guard is the one component guaranteed to
-// mount on every buyer route for every signed-in visitor, real buyer or
-// view-only seller, so it's also the right place to record "this Clerk
-// account has been on the buyer side" — see buyer-identity-store's own
-// comment for why that needs to be its own tracked signal.
-import { useBuyerIdentityStore } from "@/buyers/stores/buyer-identity-store"
+import { useParticipationStore } from "@/buyers/stores/participation-store"
+import { useLikesStore } from "@/buyers/stores/likes-store"
 
 // Mounted once in app/(buyers)/layout.tsx, so it's only ever present on
 // buyer routes — reached either by a seller directly visiting a buyer URL,
@@ -38,42 +31,6 @@ export function SellerViewOnlyGuard() {
   const sellerProfile = useSellerProfile(user?.id)
   const [modalOpen, setModalOpen] = useState(false)
 
-  // Nothing else on the buyer side imports seller-deals-store.ts, so
-  // without this, its persist middleware never even rehydrates and
-  // seller-created deals never reach MOCK_DEALS (lib/mock/deals.ts) for a
-  // real buyer to see. This component is the one thing already guaranteed
-  // to mount on every buyer route (app/(buyers)/layout.tsx), for buyers
-  // and view-only sellers alike, so it doubles as the sync point.
-  //
-  // zustand's persist middleware rehydrates from localStorage SYNCHRONOUSLY
-  // (its toThenable helper skips microtask deferral for sync storages) —
-  // so sellerDealsHydrated can already be true, with deals already
-  // populated, on the very first client render, before React has even
-  // started reconciling against the server-rendered HTML. Gating the
-  // MOCK_DEALS mutation on that flag directly mutated the array during
-  // that same first render, so the client's "N active deals" text was
-  // already off from what the server sent — a "Text content does not
-  // match" hydration error. `mounted` here is a plain useState/useEffect
-  // pair instead: React guarantees its initial value is used for the
-  // first render everywhere (server AND client) and only flips true in an
-  // effect strictly after that render commits, so the mutation below can
-  // never land before hydration has already been verified.
-  const [mounted, setMounted] = useState(false)
-  useEffect(() => setMounted(true), [])
-
-  const sellerDeals = useSellerDealsStore((s) => s.deals)
-  const bumpMockDealsSync = useMockDealsSyncStore((s) => s.bump)
-
-  useEffect(() => {
-    if (!mounted) return
-    sellerDeals.forEach(addMockDeal)
-    // Unconditional, even if sellerDeals is empty — buyer pages need a
-    // reliable "the sync attempt has happened" signal to recompute against,
-    // see useMockDealsSyncStore's own comment for why hasHydrated can't be
-    // that signal.
-    bumpMockDealsSync()
-  }, [mounted, sellerDeals, bumpMockDealsSync])
-
   const isSeller = !!isSignedIn && !!sellerProfile
 
   // A Clerk account counts as "a buyer" the moment it's signed in anywhere
@@ -82,11 +39,37 @@ export function SellerViewOnlyGuard() {
   // who fill out OnboardingStep), so simply landing here signed in, without
   // a seller profile, IS that account's buyer registration. Excluding
   // isSeller keeps a seller's own view-only visits (SellerModeModal's
-  // territory) from ever being counted as buyer activity.
-  const markAsBuyer = useBuyerIdentityStore((s) => s.markAsBuyer)
+  // territory) from ever being counted as buyer activity. Real-DB version
+  // of the old buyer-identity-store flag — requireUser() lazily creates the
+  // User row if a webhook hasn't already, so this PATCH alone is enough to
+  // both provision the row and set hasBuyerActivity in one call.
   useEffect(() => {
-    if (mounted && isSignedIn && user && !isSeller) markAsBuyer(user.id)
-  }, [mounted, isSignedIn, user, isSeller, markAsBuyer])
+    if (!isSignedIn || !user || isSeller) return
+    fetch("/api/users/me", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ hasBuyerActivity: true }),
+    }).catch(() => {})
+  }, [isSignedIn, user, isSeller])
+
+  // Populates the shared likes/participations caches (DealCard's "Already
+  // Joined" badge, LikeButton's filled heart, Navbar's liked-count badge)
+  // once per session, and sweeps for deals that hit their deadline or max
+  // buyer count — no real job scheduler yet, see app/api/jobs/sweep. This
+  // guard mounts on every buyer route, so it's the one reliable place to
+  // do both, the same way it used to be the one reliable place to sync
+  // seller-created deals into the old mock catalog.
+  const refreshParticipations = useParticipationStore((s) => s.refresh)
+  const refreshLikes = useLikesStore((s) => s.refresh)
+  useEffect(() => {
+    if (!isSignedIn || !user || isSeller) return
+    void refreshParticipations()
+    void refreshLikes()
+  }, [isSignedIn, user, isSeller, refreshParticipations, refreshLikes])
+
+  useEffect(() => {
+    fetch("/api/jobs/sweep", { method: "POST" }).catch(() => {})
+  }, [])
 
   // Detached while the modal itself is open so its own buttons (and the
   // overlay's backdrop-click-to-close) work like any other dialog.

@@ -185,13 +185,23 @@ Light mode primary — navy sections for hero/footer/CTAs.
 ## Tech Stack
 - Frontend: Next.js 14 (App Router), TypeScript
 - Styling: Tailwind CSS + shadcn/ui
-- Database: PostgreSQL via Supabase + Prisma ORM
+- Database: PostgreSQL via Supabase + Prisma 7 ORM (real, connected —
+  see 2026-09-14 entry below; connection URLs live in prisma.config.ts,
+  not schema.prisma's datasource block, and the generated client needs
+  an explicit @prisma/adapter-pg driver adapter, both new in Prisma 7)
 - Auth: Clerk (Apple + Google sign-in enabled, GitHub disabled)
 - Payments: Stripe Connect — NOT YET CONFIGURED (user is relocating
   from Bolivia to Germany end of May 2026; Stripe unavailable in
-  Bolivia). Using MOCK payment flow until then. Mock payment logic
-  lives in checkout components and lib/stores/participation-store.ts
-- State: Zustand (with persist middleware for likes/participations)
+  Bolivia). The gateway is mocked (lib/payments/gateway.ts — simulated
+  charge/payout success rates), but persistence is real: Participation/
+  Payment/Notification rows live in Postgres via the API routes under
+  app/api/deals/[id]/join, app/api/participations/, app/api/jobs/sweep
+  (see CLAUDE.md's 2026-09-18 "Un-Mocking phase 5" entry)
+- State: Zustand — mostly thin fetch-once caches over the real API now
+  (buyers/stores/participation-store.ts, likes-store.ts, lib/notifications/
+  notifications-store.ts, lib/dashboard/badges-store.ts), not persisted
+  to localStorage; sellers/stores/seller-store.ts (profile) and
+  seller-deals-store.ts (legacy, see "Not yet built") still are
 - Forms: React Hook Form + Zod
 - API Client: TanStack Query
 - Email: Resend + React Email
@@ -772,38 +782,300 @@ Located over the product image, next to the share button.
   of what counts as "buyer activity"; SellerModeModal.tsx's list of
   sibling cross-registration blocks; the Reports page's cityOf() note
   about deal.reach not existing, which it now does).
+- (2026-09-14) "The Un-Mocking," phases 00–4: Users, SellerProfiles, and
+  Deals (+ milestones/deliveryZones/reach) moved off localStorage/
+  in-memory MOCK_DEALS onto a real Supabase Postgres database via
+  Prisma 7, with full CRUD through real API routes — the deliberate
+  scope line drawn for this pass (see "Not yet built" below for what's
+  still mock). Provisioned the existing paused-then-resumed Supabase
+  project, reconciled prisma/schema.prisma (11 models, 7 enums) against
+  it, seeded the 8 catalog deals as real rows (prisma/seed.ts,
+  idempotent), then built and wired the data-access layer:
+  - lib/db.ts (PrismaClient singleton via PrismaPg adapter), lib/auth/
+    current-user.ts (requireUser()/requireClerkId() — lazily creates a
+    User row on first authenticated API call if Clerk's webhook hasn't
+    already, since local dev has no public HTTPS endpoint for Clerk to
+    call), app/api/webhooks/clerk/route.ts (real svix-verified
+    user.created/updated/deleted handling, still a no-op if
+    CLERK_WEBHOOK_SECRET isn't set).
+  - New routes: GET/POST /api/sellers (own profile + onboarding upsert),
+    GET/POST /api/deals (list with ?sellerId=/?status= filters; create,
+    zod-validated, ownership resolved server-side from the session —
+    never trusted from the request body), GET/DELETE /api/deals/[id]
+    (single deal; delete is ownership-checked and cascades to
+    milestones/deliveryZones/reach/participations/likes/reviews per
+    schema.prisma), POST /api/deals/[id]/join (atomic currentBuyerCount
+    increment — the one bridge point between the still-mock reservation
+    engine and a real Deal row, called right after chargeReservation()
+    succeeds in checkout's handleComplete()).
+  - lib/api/deal-adapter.ts's apiDealToDeal() converts Prisma's real
+    relational wire shape (nested seller, per-row reach values,
+    uppercase enums, ISO date strings) into the exact pre-existing Deal
+    TypeScript shape every buyer/seller component already consumes —
+    this is what made the frontend cutover a rewire instead of a
+    rewrite. lib/api/use-fetch.ts's useApiGet() is the small GET hook
+    (data/loading/error/refetch, no caching/dedup) every rewired page
+    uses.
+  - Rewired to real data: the buyer home page and /deals browse page
+    (both fetch /api/deals?status=... — work signed-out, same as
+    before), checkout's Review Deal step (fetches /api/deals/[id],
+    "You might also like" now pulls from real active deals, the join
+    bridge above wired into handleComplete()), the seller onboarding
+    form, the create-deal form, the Active/Closed Deals lists (real
+    fetch + a new working delete button — Trash2 icon, confirm dialog,
+    calls DELETE /api/deals/[id] — the "erase a deal" capability that
+    didn't exist before today), and the seller deal-detail page.
+  - Real bug found and fixed during end-to-end verification: middleware.ts's
+    isPublicRoute matcher was never updated when the /api/deals* routes
+    were built, so Clerk's auth.protect() was redirecting even the
+    intentionally-public GET /api/deals calls to /sign-in — silently
+    breaking the signed-out home page, /deals, and checkout's Review Deal
+    step (each route handler already does its own per-method auth check,
+    e.g. POST/DELETE return 401 without a session, so this was a
+    middleware gap, not a missing server-side guard). Fixed by adding
+    "/api/deals(.*)" to the public matcher.
+  - Verified: npx tsc --noEmit and npx next build both clean; live
+    against the real dev server and real Supabase data — GET /api/deals
+    returns all 8 seeded deals, the home page/deals page/a checkout page
+    all render real DB data (price, discount, buyer count, milestones,
+    related deals) with no session, and POST/DELETE on /api/deals both
+    correctly return 401 without one. Not verified live in this pass (no
+    Clerk test credentials available to this session): the full signed-in
+    loop of onboarding a seller, creating a deal through the real form,
+    and deleting it via the new button — logically wired and typechecked,
+    but wants a real manual click-through.
+
+- (2026-09-18) "The Un-Mocking," phase 5 — the final mock layer: every
+  remaining piece the 2026-09-14 pass deliberately deferred
+  (Participations, Payments, Notifications, Likes, Reviews, notification
+  preferences, and the buyer/seller cross-registration flag) now reads
+  from and writes to the real Postgres database. Nothing in the app is
+  backed by localStorage/Zustand-persist as its source of truth anymore
+  except two small, explicitly out-of-scope legacy pieces noted below.
+  - Schema: added `notificationPreferences Json?`,
+    `lastViewedGroupBuysCount`/`lastViewedPurchasesCount Int @default(0)`,
+    and `hasBuyerActivity Boolean @default(false)` to User (migration
+    `20260918171606_user_buyer_side_fields`). Every other model this phase
+    needed (GroupBuyParticipation, Payment, Notification, UserLikedDeal,
+    Review) already existed from the 2026-09-14 schema reconciliation.
+  - New API routes, all under lib/auth/current-user.ts's requireUser()
+    pattern except where noted: `GET/PATCH /api/users/me` (role,
+    notification preferences, badge snapshots, hasBuyerActivity — lazily
+    provisions the User row same as every other route); `GET
+    /api/participations` (mine, deal embedded); `POST
+    /api/participations/[id]/retry` (buyer-initiated grace-period retry);
+    `GET /api/deals/[id]/participants` (seller-only, ownership-checked —
+    the "who's in the group" list); `GET /api/notifications`, `PATCH
+    /api/notifications/[id]`, `POST /api/notifications/read-all`; `POST
+    /api/deals/[id]/like` (toggle) and `GET /api/likes` (dealIds + full
+    deals in one call); `GET/POST /api/deals/[id]/reviews` (mine; upsert)
+    and `GET /api/reviews` (public, global recent-reviews feed — the
+    homepage strip isn't deal-scoped); `GET/POST /api/dashboard/badges`
+    (the two "unseen since last visit" snapshot counts, now per-account
+    instead of per-browser). `lib/api/deal-include.ts` centralizes the
+    Deal `include` shape every one of these (and the existing deals
+    routes) shares, plus a `dealRowToApiDeal()` converter for server code
+    that wants to reuse `apiDealToDeal()`/`computeDealValues()` directly
+    on a fresh Prisma row without an HTTP round trip first.
+  - `POST /api/deals/[id]/join` — rewritten from the Phase-4 buyer-count-
+    only bridge into the FULL reservation charge: the real-DB counterpart
+    of the old lib/payments/reservation-service.ts's chargeReservation().
+    Creates the GroupBuyParticipation + Payment(RESERVATION) rows,
+    increments the real Deal's currentBuyerCount, and fires all three
+    join-time notifications (buyer DEAL_JOINED, seller SELLER_NEW_BUYER,
+    every other active participant DEAL_PROGRESS).
+  - `POST /api/jobs/sweep` — the real-DB stand-in for a job scheduler (no
+    BullMQ/Upstash yet), replacing all four old mock jobs (lib/jobs/
+    card-health-check-job.ts, deal-close-job.ts, deal-ending-soon-job.ts,
+    scheduler.ts) and lib/payments/sync-deal-closures.ts in one endpoint:
+    ending-soon notifications, card health-check reminders, closing deals
+    past their deadline/max-buyer-count (final charge attempt → success or
+    grace period, seller payout), and grace-period auto-retries/
+    forfeiture. The old scheduler's setTimeout-based "retry on day 1/day
+    2" became a due-date check instead (days-since-grace-start vs.
+    GRACE_PERIOD_RETRY_OFFSETS_DAYS, driven by retryAttempts) — more
+    reliable than the mock version's setTimeout, which never survived
+    across days in a real browser tab anyway. Deliberately public/
+    unauthenticated (not user-scoped) and called from every buyer/seller
+    page load (app/(buyers)/page.tsx, app/(buyers)/deals/page.tsx,
+    sellers/components/SellerViewOnlyGuard.tsx,
+    sellers/components/SellerNavbar.tsx) — added to middleware.ts's public
+    matcher alongside GET /api/reviews (same reasoning as GET
+    /api/deals — reachable signed-out).
+  - Reused unchanged: lib/payments/gateway.ts (mock Stripe-style
+    functions), lib/payments/constants.ts (grace-period rules), and
+    lib/notifications/copy.ts (all notification text) — all three were
+    already pure functions with zero mock-persistence dependency, so the
+    real routes call them exactly as the old jobs did.
+  - Frontend: kept the same public store interfaces wherever a
+    consumer file didn't otherwise need touching, and swapped only the
+    internals from localStorage-persisted to an in-memory fetch-once
+    cache — buyers/stores/participation-store.ts (now also embeds each
+    participation's full Deal, fixing a real latent bug: the dashboard/
+    purchases pages used to look a joined deal up via
+    `MOCK_DEALS.find(...)`, which would have silently failed to render
+    for any deal created through the real seller flow) and buyers/stores/
+    likes-store.ts. DealCard.tsx, LikeButton.tsx (minus its now-redundant
+    markAsBuyer call), and Navbar.tsx needed zero changes as a result.
+    New lib/notifications/notifications-store.ts and lib/dashboard/
+    badges-store.ts (shared, deduped fetch caches — several nav badges
+    read the same underlying counts) replace lib/mock/payments-db.ts's
+    reactive slice. Rewired directly (no store to preserve, the old
+    interface didn't fit): checkout's handleComplete (one fetch to the
+    rewritten join route replaces chargeReservation + addParticipation +
+    the old bridge fetch), the buyer and seller notifications pages, the
+    settings page's notification toggles, BuyerReviews.tsx and
+    DealPaymentSummary.tsx's review flow, the liked-deals gallery, and the
+    seller deal-detail page's buyer list.
+  - Real bug found and fixed along the way: POST /api/deals (seller deal
+    creation, from the 2026-09-14 pass) never sent the
+    SELLER_DEAL_PUBLISHED notification the old mock addDeal() used to —
+    lost when deal creation moved off that store and never ported. Fixed
+    by creating it inline in the route, right after the Prisma create.
+  - Cleanup: deleted lib/mock/payments-db.ts, lib/payments/
+    reservation-service.ts, lib/payments/sync-deal-closures.ts, all of
+    lib/jobs/, and buyers/stores/{reviews,buyer-identity,preferences}-store.ts
+    outright — fully obsolete, not deprecated-in-place. Removed
+    sellers/stores/seller-deals-store.ts's addDeal/persistSellerDealMutations/
+    useMockDealsSyncStore — already fully dead (nothing has called addDeal
+    since deal creation moved to POST /api/deals on 2026-09-14; confirmed
+    via a repo-wide grep before deleting) — and the matching MOCK_DEALS-
+    sync effects in SellerViewOnlyGuard.tsx/SellerNavbar.tsx, replaced
+    with real fetch-based store refreshes and the sweep trigger.
+  - Verified: npx tsc --noEmit and npx next build both clean. A dedicated
+    Prisma script exercised the real POST /api/jobs/sweep route (over real
+    HTTP) against three hand-seeded participations covering deal-close,
+    grace-period-retry-due, and forfeiture — all 9 assertions passed
+    (correct status transitions, exactly-once Payment/notification
+    creation, deal.currentBuyerCount decrementing on forfeit) — then
+    cleaned up every test row. Live in the browser against the user's own
+    real signed-in account: liking a deal wrote a real UserLikedDeal row
+    (confirmed via a direct DB query), showed up correctly on
+    /dashboard/liked with live price/discount/milestone data, and
+    unliking removed it — full round trip, no console errors. Not
+    independently verified live: an actual checkout join (would have
+    consumed the user's own test deal's buyer slot) and a manual
+    grace-period retry — logically identical Prisma operations to what
+    the sweep test already exercised, but this is exactly what the user
+    was about to test themselves next.
+- (2026-09-18, same day) Closed the seller-side gap the entry above
+  flagged, plus every other spot still reading the old mock deal catalog
+  instead of the real database — the user asked for this specifically
+  ("please pull that data from the database and not the local memory,
+  and whatever else is needed"):
+  - Schema: added `lastViewedDealsCount`/`lastViewedClosedDealsCount Int
+    @default(0)` to SellerProfile (migration
+    `20260918180253_seller_badge_counts`) — the seller-side counterpart
+    of User's own lastViewed* badge snapshots from the entry above.
+  - New `GET/POST /api/sellers/badges` (mirrors `/api/dashboard/badges`
+    exactly) and new sellers/stores/seller-badges-store.ts (mirrors
+    lib/dashboard/badges-store.ts) — a small fetch-once cache exposing
+    `useUnseenDealsCount(userId)`/`useUnseenClosedDealsCount(userId)`,
+    same exported names sellers/components/SellerDashboardNav.tsx already
+    called, just now keyed by Clerk userId instead of the dead local
+    store's fake sellerId and backed by a real count query.
+    app/sellers/dashboard/deals/page.tsx and .../closed/page.tsx now call
+    `markViewed()` on mount to clear the badge — this had been silently
+    dropped when those two pages were rewired to the real API on
+    2026-09-14 and never restored until now.
+  - app/sellers/dashboard/page.tsx (welcome stats) and .../reports/
+    page.tsx (Sales Reports) now fetch the seller's real id via
+    GET /api/sellers and its real deals via GET /api/deals?sellerId=,
+    same pattern the Active/Closed Deals lists already used — both had
+    been silently showing zero/empty since 2026-09-14.
+  - Deleted sellers/stores/seller-deals-store.ts outright — every real
+    consumer was migrated above, and everything else in it
+    (persistSellerDealMutations, useMockDealsSyncStore, addDeal) was
+    already unreachable dead code.
+  - Found the same "reads the mock catalog, real deals silently don't
+    show up" bug in four more places while auditing for it: checkout's
+    success page (buyer-facing, showed generic copy with no product name
+    for any real deal), the checkout route's generateMetadata (link-
+    preview title/description), its opengraph-image (the actual share-
+    card image — required switching that route's Next.js runtime from
+    "edge" to the default Node.js runtime, since the shared Prisma client
+    needs Node's net/tls modules, unavailable on Edge), and the seller's
+    own "your deal is live!" post-publish screen. All four now query the
+    real deal via Prisma (server components) or GET /api/deals/[id]
+    (client component). Removed the now-fully-dead getMockDealById,
+    addMockDeal, and releaseDealSpot from lib/mock/deals.ts — confirmed
+    via repo-wide grep before deleting each.
+  - Deliberately left alone: MOCK_DEALS is still read by app/api/v1/deals/
+    route.ts, a placeholder stub for the not-yet-built seller inventory
+    sync API — not reachable from any real page today, out of scope here.
+  - **User's question, answered and confirmed correct in the same
+    conversation, worth keeping as a standing note:** SellerProfile.city
+    (the seller's own registered HQ location, set once at onboarding) and
+    Deal.reach (city/country/continent, set per-deal at creation — see
+    lib/types/deal.ts's own comment) are and must stay two separate
+    concepts. The only connection between them is a one-time convenience
+    default: the create-deal form (app/sellers/dashboard/deals/new/
+    page.tsx) pre-fills the reach picker's first city value with
+    `profile.city` when reachScope defaults to "city", since a seller's
+    own city is often a reasonable first guess — the seller can freely
+    change or clear it, and nothing else ties the two fields together.
+    Matching a deal's reach against a BUYER's own location (not the
+    seller's) is real future work, not yet wired into any filtering — see
+    deal.reach's own comment in lib/types/deal.ts and the Reports page's
+    cityOf() note for where that intentionally stands today.
+  - Verified: npx tsc --noEmit and npx next build both clean. Confirmed
+    correct against real Supabase data via direct queries (the real
+    "Dismac" seller profile created during earlier testing has exactly 1
+    ACTIVE deal and 0 COMPLETED — matching what the rewired badge/stats/
+    reports queries would now compute). Not verified live by clicking
+    through the seller dashboard itself: the browser session available
+    this session had since switched to a different, buyer-only Clerk
+    account (no seller profile, local or real) — wants a real check next
+    time the user is signed in as their seller account.
+- (2026-09-19) Two small UI fixes, both diagnosed by actually measuring the
+  live page rather than guessing from markup:
+  - The seller dashboard's Settings page shifted the whole layout (nav
+    sidebar included) a few pixels left whenever it was open — first
+    diagnosed (wrongly) as a CSS Grid overflow issue in Settings' form
+    (fixed with `min-w-0` on its grid cells — a real, separate, harmless
+    fix, but not the actual cause). The real cause, found by measuring
+    the sidebar's exact pixel position across pages: Settings' content is
+    taller than the viewport at typical window sizes and needs a vertical
+    scrollbar, while shorter pages (Active Deals, Reports) don't — and a
+    scrollbar appearing/disappearing between page loads changes the
+    viewport's usable width, so the centered `max-w-[…] mx-auto` shell
+    re-centers into a different width and visibly shifts. Fixed app-wide
+    (not just Settings) by adding `scrollbar-gutter: stable` to `html` in
+    app/globals.css, so the browser always reserves that space regardless
+    of whether the current page needs to scroll. Verified by measuring
+    the sidebar's `getBoundingClientRect().left` on three pages before/
+    after — identical now, whether or not the page has a scrollbar.
+  - The seller Sales Reports page's "City" filter (app/sellers/dashboard/
+    reports/page.tsx) predated Deal.reach (2026-09-13) and had never been
+    reconnected to it — it always grouped every deal under the seller's
+    own registered city (`cityOf()`, an explicitly-flagged stand-in),
+    never the deal's real per-deal reach. Replaced with a "Reach" filter
+    built from the actual union of reach values across the seller's
+    deals, grouped by scope (`<optgroup>`: Cities / Countries /
+    Continents, since a seller's deals can mix scopes) — matching on any
+    value in a deal's `reach.values`. The table's city column is now a
+    "Reach" column rendering the same shared components/deal-reach-badge.tsx
+    every other deal listing already uses, instead of plain text. Deals
+    with no reach set don't contribute a filter option and only show
+    under "All locations". Verified live against the real seller's actual
+    mixed-scope deals (one city-scoped, one country-scoped with 3
+    countries) — the grouped dropdown and the filter-to-one-deal behavior
+    both confirmed via direct DOM inspection, not just visual inspection.
 
 ### Not yet built
-- Real API routes backed by Prisma/Supabase, replacing every mock data
-  source (lib/mock/deals.ts's hardcoded MOCK_DEALS, lib/mock/
-  payments-db.ts, sellers/stores/seller-deals-store.ts, and every other
-  buyers/stores/*.ts persist store) with one real Postgres database via
-  Prisma — THE NEXT MILESTONE, starting 2026-09-14. A full phase-by-phase
-  roadmap was written and reviewed on 2026-09-13 (provision Supabase →
-  reconcile prisma/schema.prisma → seed the 8 catalog deals as real rows
-  → build API routes mirroring today's mock function signatures → cut
-  over reads, then seller writes, then participations/likes/
-  notifications → delete the mock layer). This migration structurally
-  fixes several known bugs/gaps at once: the not-scoped-by-user-id
-  limitation on participation-store.ts/likes-store.ts, seed-deal
-  mutations not surviving a reload (today's ~30-duplicate-notification
-  bug), and the seller-deals-store persistence workarounds
-  (persistSellerDealMutations, the SellerNavbar re-link effect,
-  useMockDealsSyncStore) — all of which a real database needs none of.
-  - Once real image upload exists (this needs the database/storage in
-    place first — there's no upload pipeline yet, only pasted image
-    URLs), add a required profile picture step to seller onboarding
-    (app/sellers/page.tsx's OnboardingStep / the "Tell us about your
-    company" form): registration must NOT be able to complete without
-    one. Flagged 2026-09-10 — do this as soon as the database
-    integration milestone starts, i.e. now.
+- Once real image upload exists (this needs the database/storage in
+  place first — there's no upload pipeline yet, only pasted image URLs),
+  add a required profile picture step to seller onboarding
+  (app/sellers/page.tsx's OnboardingStep / the "Tell us about your
+  company" form): registration must NOT be able to complete without one.
+  Flagged 2026-09-10.
 - Real Stripe Connect integration (deferred to Germany move, ~May 2026)
   — the payment engine above is fully mocked and ready to swap in
   lib/payments/gateway.ts once Connect is configured
 - Real job scheduling (BullMQ/Upstash) and email delivery
-  (React Email/Resend) — job logic and notification content already
-  exist as isolated functions in lib/jobs/, just not wired to a real
-  queue or an email send step yet
+  (React Email/Resend) — POST /api/jobs/sweep is the sweep-on-page-load
+  stand-in for the former; notification content already exists in
+  lib/notifications/copy.ts, just not wired to a real email send step yet
 - Seller inventory sync API
 - Testing (Playwright E2E) and security audit
 - Production polish and launch prep

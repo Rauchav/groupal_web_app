@@ -12,14 +12,7 @@ import { useSellerStore, useSellerProfile } from "@/sellers/stores/seller-store"
 import { DEAL_CATEGORIES } from "@/lib/constants/categories"
 import { cn } from "@/lib/utils"
 import { SuccessCelebration } from "@/components/success-celebration"
-// Cross-portal import, same precedent as sellers/stores/seller-deals-store.ts
-// being imported from buyer pages: this one bit of buyer-side state (has
-// this Clerk account ever been signed in on the buyer portal without a
-// seller profile? — see buyer-identity-store's own comment for why that's
-// the actual bar, not just liking/joining a deal) is inherently
-// cross-cutting — it's the only way this page can tell whether the account
-// trying to register as a seller is already a buyer.
-import { useHasBuyerActivity } from "@/buyers/stores/buyer-identity-store"
+import { useApiGet } from "@/lib/api/use-fetch"
 
 // Shared appearance for both the sign-in and sign-up widgets — same
 // treatment as app/sign-in and app/sign-up so switching between the buyer
@@ -61,7 +54,7 @@ function OnboardingStep({ userId, onOnboarded }: { userId: string; onOnboarded: 
     defaultValues: { companyName: "", category: COMPANY_CATEGORIES[0], phone: "", city: "", website: "" },
   })
 
-  function onSubmit(data: OnboardingForm) {
+  async function onSubmit(data: OnboardingForm) {
     createProfile({
       userId,
       companyName: data.companyName,
@@ -69,6 +62,30 @@ function OnboardingStep({ userId, onOnboarded }: { userId: string; onOnboarded: 
       phone:       data.phone,
       city:        data.city,
       website:     data.website || undefined,
+    })
+    // Write-through to the real database — the local zustand store above
+    // stays the synchronous source every other component in the app still
+    // reads (SellerViewOnlyGuard, SellerNavbar, the buyer/seller
+    // cross-registration guards, …), untouched by this migration pass, but
+    // a real SellerProfile row needs to exist too: POST /api/deals looks
+    // one up by the signed-in user, and without it, deal creation would
+    // 403 for every seller who onboarded before this endpoint existed.
+    // Fire-and-forget-ish (awaited so errors surface, but not blocking —
+    // the local profile above is what the UI actually reacts to).
+    fetch("/api/sellers", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        companyName: data.companyName,
+        category: data.category,
+        phone: data.phone,
+        city: data.city,
+        website: data.website || undefined,
+      }),
+    }).catch(() => {
+      // Non-fatal for onboarding itself — the local profile still lets
+      // this seller use the dashboard; deal creation will surface its own
+      // clear error if this row genuinely never landed.
     })
     // Tell the parent page first — its own "already onboarded" redirect
     // effect fires the instant `profile` goes truthy, which would yank us
@@ -195,12 +212,10 @@ export default function SellersGatePage() {
   const profile      = useSellerProfile(user?.id)
   const hasHydrated  = useSellerStore((s) => s.hasHydrated)
   // Blocks a Clerk account that's already been signed in on the buyer
-  // portal (without a seller profile — see buyer-identity-store's own
-  // comment) from also registering as a seller. Deliberately its own
-  // tracked signal rather than reading participation-store/likes-store
-  // directly, since simply signing up as a buyer needs to count on its
-  // own, not just an explicit like or join.
-  const isAlreadyBuyer = useHasBuyerActivity(user?.id)
+  // portal (without a seller profile — see User.hasBuyerActivity's own
+  // comment in schema.prisma) from also registering as a seller.
+  const { data: meData } = useApiGet<{ hasBuyerActivity: boolean }>(isSignedIn ? "/api/users/me" : null)
+  const isAlreadyBuyer = !!meData?.hasBuyerActivity
   // Set the instant a seller finishes onboarding, so the checks below stop
   // treating "profile now exists" as a signal to redirect an ALREADY-
   // onboarded seller straight to their dashboard — a freshly-onboarded one

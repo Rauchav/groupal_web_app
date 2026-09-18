@@ -127,7 +127,7 @@ function EmailSection() {
 
       {step === "view" && (
         <div className="flex items-center gap-3">
-          <div className="flex-1 flex items-center gap-2 h-11 px-3 rounded-xl border border-gray-200 bg-gray-100">
+          <div className="flex-1 min-w-0 flex items-center gap-2 h-11 px-3 rounded-xl border border-gray-200 bg-gray-100">
             <Mail className="h-4 w-4 text-gray-400 flex-shrink-0" />
             <span className="text-sm text-gray-600 truncate">{currentEmail}</span>
           </div>
@@ -294,7 +294,7 @@ export default function SellerSettingsPage() {
             <div className="sm:col-span-2">
               <h2 className="font-heading font-bold text-[#002356] text-sm uppercase tracking-wider mb-1">Company</h2>
             </div>
-            <div>
+            <div className="min-w-0">
               <label className="block text-sm font-semibold text-gray-700 mb-1">Company name</label>
               <input
                 {...register("companyName")}
@@ -306,7 +306,7 @@ export default function SellerSettingsPage() {
               />
               {errors.companyName && <p className="text-xs text-red-500 mt-1">{errors.companyName.message}</p>}
             </div>
-            <div>
+            <div className="min-w-0">
               <label className="block text-sm font-semibold text-gray-700 mb-1">Primary category</label>
               <select
                 {...register("category")}
@@ -320,7 +320,7 @@ export default function SellerSettingsPage() {
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
+            <div className="min-w-0">
               <label className="block text-sm font-semibold text-gray-700 mb-1">Phone number</label>
               <input
                 {...register("phone")}
@@ -332,7 +332,7 @@ export default function SellerSettingsPage() {
               />
               {errors.phone && <p className="text-xs text-red-500 mt-1">{errors.phone.message}</p>}
             </div>
-            <div>
+            <div className="min-w-0">
               <label className="block text-sm font-semibold text-gray-700 mb-1">City</label>
               <input
                 {...register("city")}

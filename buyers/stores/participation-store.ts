@@ -1,21 +1,34 @@
 "use client"
 
+import { useEffect } from "react"
 import { create } from "zustand"
-import { persist } from "zustand/middleware"
+import { useUser } from "@clerk/nextjs"
+import type { Deal } from "@/lib/types/deal"
+import { apiDealToDeal, type ApiDeal } from "@/lib/api/deal-adapter"
+import { useBadgesStore } from "@/lib/dashboard/badges-store"
+
+// The richer engine status (GroupBuyParticipation.status, straight from
+// Prisma) collapses onto this simpler three-state model for the dashboard/
+// purchases UI — AWAITING_FINAL_PAYMENT / PAYMENT_FAILED / IN_GRACE_PERIOD
+// all stay "active", since the buyer sees what's actually happening via
+// the notifications those states already create, not a second copy of
+// this status machine here.
+export type SimpleStatus = "active" | "completed" | "forfeited"
+
+function toSimpleStatus(status: string): SimpleStatus {
+  if (status === "FINAL_PAYMENT_PAID") return "completed"
+  if (status === "FORFEITED" || status === "REFUNDED") return "forfeited"
+  return "active"
+}
 
 export interface MockParticipation {
   id: string
   dealId: string
+  deal: Deal
   joinedAt: string
   reservationPaid: number
-  // The rate actually charged for THIS buyer at checkout (their picked
-  // delivery zone, or 0 for pickup) — not recomputed later, since a
-  // seller could in principle change their zone pricing after someone's
-  // already joined. Optional only so older, already-persisted
-  // participations (saved before this field existed) still parse; read
-  // sites fall back to the flat $9.99 default rate for those.
-  deliveryCost?: number
-  status: "active" | "completed" | "forfeited"
+  deliveryCost: number
+  status: SimpleStatus
   deliveryAddress: {
     street: string
     city: string
@@ -25,99 +38,106 @@ export interface MockParticipation {
   }
 }
 
+interface ApiParticipation {
+  id: string
+  dealId: string
+  deal: ApiDeal
+  createdAt: string
+  reservationAmount: number
+  deliveryCost: number
+  status: string
+  deliveryAddress: { street: string; city: string; state: string; country: string; zipCode?: string } | null
+}
+
+function toMockParticipation(p: ApiParticipation): MockParticipation {
+  return {
+    id: p.id,
+    dealId: p.dealId,
+    deal: apiDealToDeal(p.deal),
+    joinedAt: p.createdAt,
+    reservationPaid: p.reservationAmount,
+    deliveryCost: p.deliveryCost,
+    status: toSimpleStatus(p.status),
+    deliveryAddress: {
+      street: p.deliveryAddress?.street ?? "",
+      city: p.deliveryAddress?.city ?? "",
+      state: p.deliveryAddress?.state ?? "",
+      country: p.deliveryAddress?.country ?? "",
+      zipCode: p.deliveryAddress?.zipCode ?? "",
+    },
+  }
+}
+
 interface ParticipationStore {
   participations: MockParticipation[]
-  // True once this store's persisted state has been read back from
-  // localStorage on the client. Always false during SSR (localStorage
-  // doesn't exist there) and for the first client render, so components
-  // can avoid branching on participations before then — otherwise the
-  // client's first paint diverges from the server-rendered HTML and React
-  // throws a hydration mismatch.
+  // True once the initial GET /api/participations fetch has resolved.
+  // Components avoid branching on `participations` before then, same
+  // reasoning the old localStorage-hydration gate had (SSR/first-paint
+  // shouldn't diverge from what's about to load).
   hasHydrated: boolean
-  // How many participations existed the last time the buyer opened "My
-  // Group Buys" (app/(buyers)/dashboard/page.tsx) — the badge in
-  // DashboardNav.tsx shows participations.length - lastViewedGroupBuysCount,
-  // same unread-count mechanic as the seller portal's deal badges
-  // (sellers/stores/seller-deals-store.ts). Joining a deal always creates
-  // a new participation, so this total only ever grows — a safe thing to
-  // diff against even though a participation can later disappear from
-  // that page once its status leaves "active". Not scoped per-user like
-  // the seller store's equivalent counts are: this whole store already
-  // isn't scoped by buyer id (a known, pre-existing limitation — see
-  // sellers/stores/seller-store.ts's history for the seller-side version
-  // of this same gap), so neither is this.
-  lastViewedGroupBuysCount: number
-  // Same idea for "Purchases" (app/(buyers)/dashboard/purchases/page.tsx)
-  // — how many of this buyer's participations had already left "active"
-  // (i.e. status is "completed" or "forfeited") the last time that page
-  // was opened. Also only ever grows: a closed participation never goes
-  // back to "active".
-  lastViewedClosedCount: number
-  setHasHydrated: (hasHydrated: boolean) => void
-  addParticipation: (p: MockParticipation) => void
+  loading: boolean
+  refresh: () => Promise<void>
   hasJoined: (dealId: string) => boolean
   getParticipation: (dealId: string) => MockParticipation | undefined
-  // Bridges the deal-close job's outcome (lib/jobs/deal-close-job.ts, which
-  // operates on the richer payments engine) back onto this simpler store,
-  // which is what the dashboard/purchases UI actually reads.
-  setParticipationStatus: (dealId: string, status: MockParticipation["status"]) => void
   markGroupBuysViewed: () => void
   markClosedViewed: () => void
 }
 
-export const useParticipationStore = create<ParticipationStore>()(
-  persist(
-    (set, get) => ({
-      participations: [],
-      hasHydrated: false,
-      lastViewedGroupBuysCount: 0,
-      lastViewedClosedCount: 0,
-      setHasHydrated: (hasHydrated) => set({ hasHydrated }),
-      addParticipation: (p) =>
-        set((state) => ({
-          participations: [...state.participations, p],
-        })),
-      hasJoined: (dealId) =>
-        get().participations.some((p) => p.dealId === dealId),
-      getParticipation: (dealId) =>
-        get().participations.find((p) => p.dealId === dealId),
-      setParticipationStatus: (dealId, status) =>
-        set((state) => ({
-          participations: state.participations.map((p) =>
-            p.dealId === dealId ? { ...p, status } : p
-          ),
-        })),
-      markGroupBuysViewed: () =>
-        set((state) => ({ lastViewedGroupBuysCount: state.participations.length })),
-      markClosedViewed: () =>
-        set((state) => ({
-          lastViewedClosedCount: state.participations.filter((p) => p.status !== "active").length,
-        })),
-    }),
-    {
-      name: "groupal-participations",
-      onRehydrateStorage: () => (state) => {
-        state?.setHasHydrated(true)
-      },
+export const useParticipationStore = create<ParticipationStore>((set, get) => ({
+  participations: [],
+  hasHydrated: false,
+  loading: false,
+  async refresh() {
+    if (get().loading) return
+    set({ loading: true })
+    try {
+      const res = await fetch("/api/participations")
+      if (res.ok) {
+        const { participations } = await res.json()
+        set({ participations: (participations as ApiParticipation[]).map(toMockParticipation), hasHydrated: true })
+      }
+    } finally {
+      set({ loading: false })
     }
-  )
-)
+  },
+  hasJoined: (dealId) => get().participations.some((p) => p.dealId === dealId),
+  getParticipation: (dealId) => get().participations.find((p) => p.dealId === dealId),
+  markGroupBuysViewed: () => void useBadgesStore.getState().markViewed("groupBuys"),
+  markClosedViewed: () => void useBadgesStore.getState().markViewed("purchases"),
+}))
 
-// Powers the "My Group Buys" nav badge — how many participations exist
-// that the buyer hasn't opened that page to see yet. Call
-// useParticipationStore((s) => s.markGroupBuysViewed()) when that page
-// mounts to clear it back to 0.
-export function useUnseenGroupBuysCount(): number {
-  const participations = useParticipationStore((s) => s.participations)
-  const lastViewed = useParticipationStore((s) => s.lastViewedGroupBuysCount)
-  return Math.max(0, participations.length - lastViewed)
+// Triggers the initial fetch the first time any consumer needs it — every
+// page/component below just calls this and then reads hasJoined/
+// participations normally.
+export function useEnsureParticipationsLoaded(userId: string | null | undefined) {
+  const hasHydrated = useParticipationStore((s) => s.hasHydrated)
+  const refresh = useParticipationStore((s) => s.refresh)
+  useEffect(() => {
+    if (userId && !hasHydrated) void refresh()
+  }, [userId, hasHydrated, refresh])
 }
 
-// Same badge mechanic for "Purchases" — how many participations have
-// closed (left "active") since the buyer last opened that page.
+// Powers the "My Group Buys" nav badge.
+export function useUnseenGroupBuysCount(): number {
+  useEnsureBadgesLoadedInternal()
+  return useBadgesStore((s) => s.groupBuys)
+}
+
+// Same badge mechanic for "Purchases".
 export function useUnseenClosedCount(): number {
-  const participations = useParticipationStore((s) => s.participations)
-  const lastViewed = useParticipationStore((s) => s.lastViewedClosedCount)
-  const closedTotal = participations.filter((p) => p.status !== "active").length
-  return Math.max(0, closedTotal - lastViewed)
+  useEnsureBadgesLoadedInternal()
+  return useBadgesStore((s) => s.purchases)
+}
+
+// DashboardNav.tsx's useDashboardBadgeCounts() already calls useUser()
+// itself, but these two hooks need userId too to trigger the fetch — reads
+// it fresh here rather than requiring every call site to pass it in,
+// preserving the original (no-argument) call signature.
+function useEnsureBadgesLoadedInternal() {
+  const { user } = useUser()
+  const loaded = useBadgesStore((s) => s.loaded)
+  const refresh = useBadgesStore((s) => s.refresh)
+  useEffect(() => {
+    if (user?.id && !loaded) void refresh()
+  }, [user?.id, loaded, refresh])
 }

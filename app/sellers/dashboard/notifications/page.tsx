@@ -1,11 +1,10 @@
 "use client"
 
-import { useEffect, useState } from "react"
 import Link from "next/link"
 import { useUser } from "@clerk/nextjs"
 import { formatDistanceToNow } from "date-fns"
 import { Bell, PlusCircle } from "lucide-react"
-import { paymentsDb } from "@/lib/mock/payments-db"
+import { useNotificationsStore, useEnsureNotificationsLoaded } from "@/lib/notifications/notifications-store"
 import { NOTIFICATION_STYLE } from "@/lib/notifications/style"
 import type { NotificationRecord } from "@/lib/types/payment"
 
@@ -41,7 +40,7 @@ function NotificationRow({ n, onRead }: { n: NotificationRecord; onRead: (id: st
         <p className="text-sm text-gray-600 mt-0.5 leading-relaxed">{n.message}</p>
         <div className="flex items-center gap-3 mt-2">
           <span className="text-xs text-gray-400">
-            {formatDistanceToNow(n.createdAt, { addSuffix: true })}
+            {formatDistanceToNow(new Date(n.createdAt), { addSuffix: true })}
           </span>
           {dealId && (
             <Link
@@ -60,24 +59,12 @@ function NotificationRow({ n, onRead }: { n: NotificationRecord; onRead: (id: st
 
 export default function SellerNotificationsPage() {
   const { user } = useUser()
-  const [notifications, setNotifications] = useState<NotificationRecord[]>([])
-
-  useEffect(() => {
-    if (user?.id) setNotifications(paymentsDb.listNotificationsForUser(user.id))
-  }, [user?.id])
+  useEnsureNotificationsLoaded(user?.id)
+  const notifications = useNotificationsStore((s) => s.notifications)
+  const markRead = useNotificationsStore((s) => s.markRead)
+  const markAllRead = useNotificationsStore((s) => s.markAllRead)
 
   const unreadCount = notifications.filter((n) => !n.read).length
-
-  function markRead(id: string) {
-    paymentsDb.markNotificationRead(id)
-    setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, read: true } : n)))
-  }
-
-  function markAllRead() {
-    if (!user?.id) return
-    paymentsDb.markAllNotificationsRead(user.id)
-    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })))
-  }
 
   return (
     <>

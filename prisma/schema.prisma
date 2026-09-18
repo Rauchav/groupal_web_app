@@ -3,43 +3,72 @@ generator client {
   output   = "../lib/generated/prisma"
 }
 
+// Prisma 7 moves every connection URL out of the schema file entirely —
+// see prisma.config.ts for the CLI's connection (DIRECT_URL, since
+// Supabase's pooler doesn't support the advisory locks migrations need)
+// and lib/db.ts for the app's own runtime connection (DATABASE_URL, via a
+// driver adapter). Nothing belongs in this block but the provider.
 datasource db {
   provider = "postgresql"
 }
+
+// ── Reconciled 2026-09-14 against the app's actual mock-layer types
+// (lib/types/deal.ts, lib/types/payment.ts, lib/types/review.ts,
+// sellers/stores/seller-store.ts) — the ground truth for every model
+// below, field-for-field, with three deliberate exceptions called out
+// where they're relevant: fields the mock layer denormalized only because
+// it had no real JOIN to fall back on (dropped here in favor of relations),
+// a couple of one-off normalization improvements a real relational DB
+// makes easy (DealReachValue, DealDeliveryZone as proper child tables
+// instead of an embedded array), and BuyerProfile/DeliveryAddress, which
+// existed here before this pass but correspond to no feature the app
+// actually has today (a buyer's name/avatar/email already come from
+// Clerk; delivery info is collected fresh per participation, not saved to
+// a reusable address book) — removed rather than carried forward
+// speculatively. Add them back the day a real "saved addresses" or
+// "buyer settings" feature needs them.
 
 model User {
   id        String   @id @default(cuid())
   clerkId   String   @unique
   email     String   @unique
   role      UserRole @default(BUYER)
+  // Client-side NotificationPreferences shape (buyers/stores/preferences-store.ts,
+  // pre-migration) — 6 booleans, always read/written as a whole object, so
+  // Json rather than 6 columns, same reasoning as Deal.pickupDetails.
+  notificationPreferences  Json?
+  // Snapshots of "how many participations existed last time this buyer
+  // opened My Group Buys / Purchases" — the badge on each nav link is the
+  // live count minus this. Was localStorage state on the old mock
+  // participation-store; moved here so it's per-account, not per-browser.
+  lastViewedGroupBuysCount Int     @default(0)
+  lastViewedPurchasesCount Int     @default(0)
+  // True the first time this account is seen doing anything buyer-side
+  // (liking, joining, or simply browsing signed in on the buyer portal) —
+  // the signal app/sellers/page.tsx's cross-registration guard uses to
+  // block that same account from also registering as a seller. Was
+  // buyer-identity-store.ts's localStorage flag; moving it here makes the
+  // block real (survives a different browser/device) instead of only
+  // ever blocking within the one browser that happened to set it.
+  hasBuyerActivity         Boolean @default(false)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  buyerProfile   BuyerProfile?
   sellerProfile  SellerProfile?
   participations GroupBuyParticipation[]
   notifications  Notification[]
   likedDeals     UserLikedDeal[]
+  reviews        Review[]
 }
 
+// The app enforces one Clerk account can never hold both a buyer and a
+// seller identity (see app/sellers/page.tsx, sellers/components/
+// SellerViewOnlyGuard.tsx, buyers/components/auth/AlreadySellerBlock.tsx)
+// — ADMIN is unused today but kept as a reasonable escape hatch.
 enum UserRole {
   BUYER
   SELLER
   ADMIN
-}
-
-model BuyerProfile {
-  id        String   @id @default(cuid())
-  userId    String   @unique
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  firstName String?
-  lastName  String?
-  phone     String?
-  avatarUrl String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  addresses DeliveryAddress[]
 }
 
 model SellerProfile {
@@ -47,31 +76,30 @@ model SellerProfile {
   userId          String   @unique
   user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   companyName     String
+  category        String
+  city            String
+  phone           String
+  website         String?
   description     String?
   logoUrl         String?
-  website         String?
-  phone           String?
-  apiKey          String   @unique @default(cuid())
   verified        Boolean  @default(false)
+  // Snapshots of "how many of this seller's deals existed last time they
+  // opened Active Deals / Closed Deals" — the nav badge is the live count
+  // minus this. Seller-side counterpart of User.lastViewedGroupBuysCount/
+  // lastViewedPurchasesCount (see that field's own comment); was
+  // sellers/stores/seller-deals-store.ts's localStorage state, which had
+  // been silently dead since deal creation moved to the real API.
+  lastViewedDealsCount       Int @default(0)
+  lastViewedClosedDealsCount Int @default(0)
+  // Placeholders for explicitly-planned future milestones (CLAUDE.md's
+  // "Not yet built": Seller inventory sync API, real Stripe Connect) —
+  // not read or written by any app code yet.
+  apiKey          String   @unique @default(cuid())
   stripeAccountId String?
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
   deals Deal[]
-}
-
-model DeliveryAddress {
-  id             String       @id @default(cuid())
-  buyerProfileId String
-  buyerProfile   BuyerProfile @relation(fields: [buyerProfileId], references: [id], onDelete: Cascade)
-  label          String
-  street         String
-  city           String
-  state          String
-  country        String
-  zipCode        String?
-  isDefault      Boolean      @default(false)
-  createdAt      DateTime     @default(now())
 }
 
 model Deal {
@@ -83,21 +111,39 @@ model Deal {
   productImages      String[]
   category           String
   originalPrice      Float
+  currency           String        @default("USD")
   maxDiscountPercent Float
   maxBuyersRequired  Int
   currentBuyerCount  Int           @default(0)
   deadlineAt         DateTime
   deliveryType       DeliveryType  @default(DELIVERY)
-  deliveryCost       Float         @default(0)
   pickupDetails      Json?
-  region             String
   platformFeePercent Float         @default(1.5)
   status             DealStatus    @default(ACTIVE)
+  // Mutated by lib/jobs/deal-ending-soon-job.ts's sweep so a buyer is
+  // never sent the "ending soon" notification twice for the same deal —
+  // see that file's own comment for the exact bug a real, persisted
+  // column here fixes structurally (a SEED deal's in-memory-only version
+  // of this flag silently reset on every page reload).
+  endingSoonNotified Boolean       @default(false)
+  externalProductUrl String?
   createdAt          DateTime      @default(now())
   updatedAt          DateTime      @updatedAt
 
   milestones     DealMilestone[]
+  deliveryZones  DealDeliveryZone[]
+  reach          DealReachValue[]
   participations GroupBuyParticipation[]
+  likedBy        UserLikedDeal[]
+  reviews        Review[]
+
+  // Not modeled as columns — see the file-level note above:
+  //   sellerName/sellerVerified/sellerUrl/sellerUserId → read via the
+  //     seller relation (deal.seller.companyName/verified/website,
+  //     deal.seller.user.clerkId) instead of denormalizing.
+  //   reservationFeePercent → always 10, platform-wide and non-negotiable
+  //     per CLAUDE.md ("not something you set here" in the create-deal
+  //     form) — an application constant, not a per-deal value.
 }
 
 enum DealStatus {
@@ -120,21 +166,70 @@ model DealMilestone {
   label           String
 }
 
+// One row per flat-rate zone a buyer can pick at checkout when a deal
+// isn't pickup-only (lib/types/deal.ts's DeliveryZone) — replaces an
+// earlier single flat deliveryCost column. The create-deal form already
+// requires at least one zone whenever a deal isn't pickup, so every deal
+// going forward has real rows here; no app-level flat-rate fallback is
+// needed once the seed catalog (Phase 2) gives its own delivered deals a
+// zone too.
+model DealDeliveryZone {
+  id     String @id @default(cuid())
+  dealId String
+  deal   Deal   @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  label  String
+  price  Float
+}
+
+// One row per city/country/continent a deal is available in (lib/types/
+// deal.ts's DealReach — `{ scope, values[] }`). Modeled as its own table
+// rather than a JSON blob so the region-matching feature this is meant to
+// power (not built yet — see the Reports page's cityOf() comment and
+// CLAUDE.md) can filter/join on it directly instead of reaching into
+// JSON. "Never a mix of scopes on one deal" is enforced at the
+// application layer, the same as it already is in the TS type today —
+// Prisma has no clean way to express that constraint at the DB level.
+model DealReachValue {
+  id     String         @id @default(cuid())
+  dealId String
+  deal   Deal           @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  scope  DealReachScope
+  value  String
+}
+
+enum DealReachScope {
+  CITY
+  COUNTRY
+  CONTINENT
+}
+
 model GroupBuyParticipation {
   id                    String        @id @default(cuid())
   dealId                String
   deal                  Deal          @relation(fields: [dealId], references: [id])
   buyerId               String
   buyer                 User          @relation(fields: [buyerId], references: [id])
+  // Captured from Clerk at checkout (lib/payments/reservation-service.ts)
+  // — there's no other way to look up a DIFFERENT user's profile info
+  // later, so it's denormalized onto the participation itself, same as
+  // the mock layer already does. This one stays a real column rather than
+  // a join: unlike seller/deal info, this is a snapshot of what the buyer
+  // looked like AT THE MOMENT they joined, not a live reference.
+  buyerName             String?
+  buyerAvatarUrl        String?
   reservationAmount     Float
   platformFee           Float
   deliveryCost          Float         @default(0)
   status                PaymentStatus @default(RESERVATION_PAID)
-  paymentMethodRef      String?
+  paymentMethodRef      String
   stripePaymentIntentId String?
   finalDiscountPercent  Float?
   finalPrice            Float?
-  deliveryAddress       String?
+  // Structured the same shape as DeliveryAddressSnapshot
+  // (street/city/state/country/zipCode) — Json rather than five flat
+  // columns since it's always read as a whole and nothing filters by
+  // address today, same reasoning as pickupDetails above.
+  deliveryAddress       Json?
   gracePeriodDays       Int?
   graceDeadline         DateTime?
   retryAttempts         Int           @default(0)
@@ -187,16 +282,6 @@ model Notification {
   createdAt DateTime         @default(now())
 }
 
-model UserLikedDeal {
-  id        String   @id @default(cuid())
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  dealId    String
-  createdAt DateTime @default(now())
-
-  @@unique([userId, dealId])
-}
-
 enum NotificationType {
   DEAL_JOINED
   DEAL_PROGRESS
@@ -206,7 +291,40 @@ enum NotificationType {
   PAYMENT_FAILED
   PAYMENT_REMINDER
   RESERVATION_FORFEITED
+  SELLER_DEAL_PUBLISHED
   SELLER_NEW_BUYER
   SELLER_DEAL_COMPLETED
   SELLER_PAYOUT_SENT
+  SELLER_PAYOUT_ISSUE
+}
+
+model UserLikedDeal {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  dealId    String
+  deal      Deal     @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, dealId])
+}
+
+// One review per buyer per deal, editable in place — matches
+// buyers/stores/reviews-store.ts's addOrUpdateReview, which looks up by
+// (dealId, buyerId) and updates rather than inserting a second row.
+// buyerName is denormalized the same way GroupBuyParticipation.buyerName
+// is, for the same reason (a snapshot of the reviewer's display name, not
+// a live reference).
+model Review {
+  id        String   @id @default(cuid())
+  dealId    String
+  deal      Deal     @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  buyerId   String
+  buyer     User     @relation(fields: [buyerId], references: [id], onDelete: Cascade)
+  buyerName String
+  rating    Int
+  comment   String
+  createdAt DateTime @default(now())
+
+  @@unique([dealId, buyerId])
 }

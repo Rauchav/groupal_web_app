@@ -2,7 +2,8 @@
 
 import { Suspense } from "react"
 import { useSearchParams } from "next/navigation"
-import { getMockDealById } from "@/lib/mock/deals"
+import { useApiGet } from "@/lib/api/use-fetch"
+import type { ApiDeal } from "@/lib/api/deal-adapter"
 import { SuccessCelebration } from "@/components/success-celebration"
 
 const REDIRECT_TARGET = "/dashboard" // "My Group Buys"
@@ -12,7 +13,8 @@ const REDIRECT_TARGET = "/dashboard" // "My Group Buys"
 function CheckoutSuccessInner() {
   const searchParams = useSearchParams()
   const dealId       = searchParams.get("dealId") ?? ""
-  const deal         = getMockDealById(dealId)
+  const { data }     = useApiGet<{ deal: ApiDeal }>(dealId ? `/api/deals/${dealId}` : null)
+  const deal         = data?.deal
 
   return (
     <SuccessCelebration

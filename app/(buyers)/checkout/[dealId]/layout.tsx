@@ -1,5 +1,7 @@
 import type { Metadata } from "next"
-import { getMockDealById } from "@/lib/mock/deals"
+import { prisma } from "@/lib/db"
+import { dealInclude, dealRowToApiDeal } from "@/lib/api/deal-include"
+import { apiDealToDeal } from "@/lib/api/deal-adapter"
 import { computeDealValues } from "@/lib/utils/deal-calculator"
 
 // The checkout page itself is a client component ("use client" — it needs
@@ -14,10 +16,11 @@ export async function generateMetadata({
 }: {
   params: { dealId: string }
 }): Promise<Metadata> {
-  const deal = getMockDealById(params.dealId)
-  if (!deal) {
+  const dealRow = await prisma.deal.findUnique({ where: { id: params.dealId }, include: dealInclude })
+  if (!dealRow) {
     return { title: "Deal not found — Groupal" }
   }
+  const deal = apiDealToDeal(dealRowToApiDeal(dealRow))
 
   const computed = computeDealValues(deal)
   const fmt = (n: number) =>

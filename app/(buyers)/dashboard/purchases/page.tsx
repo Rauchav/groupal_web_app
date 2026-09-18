@@ -7,10 +7,8 @@ import Image from "next/image"
 import { useUser } from "@clerk/nextjs"
 import { Clock, Users, LayoutList } from "lucide-react"
 import { toast } from "sonner"
-import { useParticipationStore, MockParticipation } from "@/buyers/stores/participation-store"
+import { useParticipationStore, useEnsureParticipationsLoaded, MockParticipation } from "@/buyers/stores/participation-store"
 import { useIsSeller } from "@/sellers/stores/seller-store"
-import { syncDealClosures } from "@/lib/payments/sync-deal-closures"
-import { MOCK_DEALS } from "@/lib/mock/deals"
 import { computeDealValues } from "@/lib/utils/deal-calculator"
 import { OpenDealPaymentSummary, ClosedDealPaymentSummary, MilestoneScale } from "@/buyers/components/dashboard/DealPaymentSummary"
 import { DealReachBadge } from "@/components/deal-reach-badge"
@@ -41,8 +39,7 @@ function StatusBadge({ status }: { status: "active" | "completed" | "forfeited" 
 // ── Participation card ────────────────────────────────────────────────────────
 
 function ParticipationCard({ p }: { p: MockParticipation }) {
-  const deal = MOCK_DEALS.find((d) => d.id === p.dealId)
-  if (!deal) return null
+  const deal = p.deal
   const computed = computeDealValues(deal)
   const fmt = (n: number) => new Intl.NumberFormat("en-US", { style: "currency", currency: deal.currency ?? "USD", minimumFractionDigits: 2 }).format(n)
 
@@ -134,19 +131,23 @@ export default function PurchasesPage() {
   const { user } = useUser()
   const isSeller = useIsSeller()
   // Gate on hasHydrated so the first client render matches the server's
-  // always-empty SSR state — otherwise the real (persisted) list vs. the
+  // always-empty SSR state — otherwise the real (fetched) list vs. the
   // empty state below diverge and React throws a hydration mismatch.
   const hasHydrated = useParticipationStore((s) => s.hasHydrated)
   const participationsStore = useParticipationStore((s) => s.participations)
+  const refresh = useParticipationStore((s) => s.refresh)
   const markClosedViewed = useParticipationStore((s) => s.markClosedViewed)
+  useEnsureParticipationsLoaded(user?.id)
   const participations = hasHydrated ? participationsStore : []
 
-  // No real job scheduler yet (see lib/jobs/scheduler.ts) — check on every
+  // No real job scheduler yet (see app/api/jobs/sweep) — check on every
   // load whether any of this buyer's active deals are ready to close, and
-  // if so run the close job and reflect the outcome here.
+  // if so run the close job and re-fetch this buyer's participations to
+  // reflect the outcome here.
   useEffect(() => {
-    if (hasHydrated && user?.id) void syncDealClosures(user.id)
-  }, [hasHydrated, user?.id])
+    if (!user?.id) return
+    fetch("/api/jobs/sweep", { method: "POST" }).then(() => refresh()).catch(() => {})
+  }, [user?.id, refresh])
 
   // Clears the "Purchases" nav badge — the buyer has now actually looked
   // at whatever closed since their last visit here.
@@ -156,11 +157,10 @@ export default function PurchasesPage() {
 
   // Same reasoning as app/(buyers)/dashboard/page.tsx's own guard: this page
   // is normally only reachable via a click that SellerViewOnlyGuard already
-  // intercepts, but a direct URL visit would otherwise show a seller
-  // another Clerk account's real purchase history (participation-store.ts
-  // isn't scoped by user id — see useIsSeller's comment). Comes after every
-  // other hook in this component, never around one — conditionally skipping
-  // a hook call itself would violate the Rules of Hooks.
+  // intercepts, but a direct URL visit would otherwise send a seller into
+  // their own buyer purchase history. Comes after every other hook in this
+  // component, never around one — conditionally skipping a hook call
+  // itself would violate the Rules of Hooks.
   useEffect(() => {
     if (isSeller) router.replace("/sellers/dashboard")
   }, [isSeller, router])

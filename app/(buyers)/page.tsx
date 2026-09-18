@@ -23,10 +23,10 @@ import { DealCard, DealCardSkeleton } from "@/buyers/components/marketplace/Deal
 import { CompletedDealCard } from "@/buyers/components/marketplace/CompletedDealCard";
 import { BuyerReviews } from "@/buyers/components/marketplace/BuyerReviews";
 import { HeroCarousel } from "@/buyers/components/marketplace/HeroCarousel";
-import { COMPLETED_DEALS, MOCK_DEALS } from "@/lib/mock/deals";
-import { closeExpiredDeals } from "@/lib/payments/sync-deal-closures";
+import { COMPLETED_DEALS } from "@/lib/mock/deals";
+import { useApiGet } from "@/lib/api/use-fetch";
+import { apiDealToDeal, type ApiDeal } from "@/lib/api/deal-adapter";
 import { computeDealValues } from "@/lib/utils/deal-calculator";
-import { useMockDealsSyncStore } from "@/sellers/stores/seller-deals-store";
 
 // ── Animation variants ──────────────────────────────────────────────────────
 const fadeUp = {
@@ -151,44 +151,28 @@ function StatCounter({
 
 export default function HomePage() {
   const router = useRouter();
-  const [loadingDeals] = useState(false);
-  // Bumped once the deal-closure sweep resolves — MOCK_DEALS is mutated in
-  // place (no real backend yet), so this forces the grid below and "Deals
-  // That Delivered" to recompute against the fresh status/currentBuyerCount.
-  // Unused directly, but setting it forces a re-render once the sweep
-  // below resolves — liveDeals/dealsThatDelivered read MOCK_DEALS fresh on
-  // every render (it's mutated in place, not observed state), so this is
-  // what makes that mutation actually show up on screen.
-  const [, setClosedTick] = useState(0);
+  // Real deals now (app/api/deals — Postgres via Prisma), not MOCK_DEALS.
+  const { data: dealsData, loading: loadingDeals, refetch: refetchActive } = useApiGet<{ deals: ApiDeal[] }>("/api/deals?status=active");
+  const { data: completedData, refetch: refetchCompleted } = useApiGet<{ deals: ApiDeal[] }>("/api/deals?status=completed");
 
-  // No real job scheduler yet — sweep for deals that hit their deadline or
-  // max buyer count on every homepage visit, same as /deals and the
-  // dashboard already do.
+  // No real job scheduler yet (see app/api/jobs/sweep) — sweep for deals
+  // that hit their deadline or max buyer count on every homepage visit,
+  // then re-fetch both lists so a just-closed deal moves from "Active
+  // Group Buys" into "Deals That Delivered" without a second reload.
   useEffect(() => {
-    closeExpiredDeals().then(() => setClosedTick((n) => n + 1));
+    fetch("/api/jobs/sweep", { method: "POST" })
+      .then(() => { refetchActive(); refetchCompleted(); })
+      .catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // A seller-created deal only reaches MOCK_DEALS once
-  // sellers/components/SellerViewOnlyGuard.tsx (mounted in this route
-  // group's layout for every buyer) pushes it there, from an effect gated
-  // to strictly after that component's first commit — see that file for
-  // why. If that lands after this component's own first render, nothing
-  // would otherwise trigger a re-render to pick up the newly-injected deal
-  // since liveDeals/dealsThatDelivered below aren't memoized state.
-  // Subscribing to useMockDealsSyncStore's tick (not seller-deals-store's
-  // own hasHydrated — see that store's comment on why a boolean that can
-  // already be true on mount is an unreliable recompute trigger) is what
-  // guarantees this page re-renders once the sync actually happens,
-  // instead of depending on an unrelated effect race to do it by luck.
-  useMockDealsSyncStore((s) => s.tick);
-
   // Biggest discount first — matches the -X% badge every card leads with,
-  // so the deals buyers save the most on are the first thing they see
-  // instead of being buried wherever they landed in MOCK_DEALS.
-  const liveDeals = MOCK_DEALS.filter((d) => d.status === "active")
+  // so the deals buyers save the most on are the first thing they see.
+  const liveDeals = (dealsData?.deals ?? [])
+    .map(apiDealToDeal)
     .sort((a, b) => b.maxDiscountPercent - a.maxDiscountPercent);
   const dealsThatDelivered = [
-    ...MOCK_DEALS.filter((d) => d.status === "completed").map((deal) => {
+    ...(completedData?.deals ?? []).map(apiDealToDeal).map((deal) => {
       const computed = computeDealValues(deal);
       return {
         id:               deal.id,

@@ -5,8 +5,9 @@ import { useUser } from "@clerk/nextjs"
 import { Share2, Star, Users } from "lucide-react"
 import { Deal } from "@/lib/types/deal"
 import { computeDealValues, computeEstimatedFinalPrice } from "@/lib/utils/deal-calculator"
-import { useReviewsStore } from "@/buyers/stores/reviews-store"
+import { useApiGet } from "@/lib/api/use-fetch"
 import { ReviewModal } from "@/buyers/components/dashboard/ReviewModal"
+import type { DealReview } from "@/lib/types/review"
 
 const MILESTONE_COLORS = ["#eaad00", "#e86300", "#DA1200"] as const
 
@@ -201,22 +202,24 @@ export function ClosedDealPaymentSummary({
 }) {
   const { user } = useUser()
 
-  const addOrUpdateReview = useReviewsStore((s) => s.addOrUpdateReview)
-  const hasHydrated = useReviewsStore((s) => s.hasHydrated)
-  const existingReview = useReviewsStore((s) =>
-    user?.id ? s.reviews.find((r) => r.dealId === deal.id && r.buyerId === user.id) : undefined
+  const { data, refetch } = useApiGet<{ review: DealReview | null }>(
+    user ? `/api/deals/${deal.id}/reviews` : null
   )
+  const existingReview = data?.review ?? undefined
   const [reviewOpen, setReviewOpen] = useState(false)
 
-  function handleSubmitReview(rating: number, comment: string) {
+  async function handleSubmitReview(rating: number, comment: string) {
     if (!user?.id) return
-    addOrUpdateReview({
-      dealId:    deal.id,
-      buyerId:   user.id,
-      buyerName: user.fullName ?? user.firstName ?? "A Groupal buyer",
-      rating,
-      comment,
+    await fetch(`/api/deals/${deal.id}/reviews`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        rating,
+        comment,
+        buyerName: user.fullName ?? user.firstName ?? "A Groupal buyer",
+      }),
     })
+    refetch()
   }
 
   return (
@@ -230,15 +233,13 @@ export function ClosedDealPaymentSummary({
         </button>
       </div>
 
-      {hasHydrated && (
-        <ReviewModal
-          open={reviewOpen}
-          onOpenChange={setReviewOpen}
-          dealName={deal.productName}
-          existingReview={existingReview}
-          onSubmit={handleSubmitReview}
-        />
-      )}
+      <ReviewModal
+        open={reviewOpen}
+        onOpenChange={setReviewOpen}
+        dealName={deal.productName}
+        existingReview={existingReview}
+        onSubmit={handleSubmitReview}
+      />
     </div>
   )
 }

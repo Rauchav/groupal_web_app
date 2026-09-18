@@ -4,22 +4,19 @@ import { useEffect } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { Heart } from "lucide-react"
+import { useUser } from "@clerk/nextjs"
 import { DealCard } from "@/buyers/components/marketplace/DealCard"
 import { DashboardSidebar, DashboardMobileTabs } from "@/buyers/components/dashboard/DashboardNav"
-import { MOCK_DEALS } from "@/lib/mock/deals"
-import { useLikesStore } from "@/buyers/stores/likes-store"
+import { useApiGet } from "@/lib/api/use-fetch"
+import { apiDealToDeal, type ApiDeal } from "@/lib/api/deal-adapter"
 import { useIsSeller } from "@/sellers/stores/seller-store"
 
 export default function LikedDealsPage() {
   const router = useRouter()
+  const { user } = useUser()
   const isSeller = useIsSeller()
-  // Gate on hasHydrated so the first client render matches the server's
-  // always-empty SSR state — otherwise the real (persisted) list vs. the
-  // empty state below diverge and React throws a hydration mismatch.
-  const hasHydrated = useLikesStore((s) => s.hasHydrated)
-  const likedDealIdsStore = useLikesStore((s) => s.likedDealIds)
-  const likedDealIds = hasHydrated ? likedDealIdsStore : []
-  const likedDeals = MOCK_DEALS.filter((d) => likedDealIds.includes(d.id))
+  const { data } = useApiGet<{ deals: ApiDeal[] }>(user ? "/api/likes" : null)
+  const likedDeals = (data?.deals ?? []).map(apiDealToDeal)
 
   // Same reasoning as the other dashboard pages' guard: normally only
   // reachable via a click SellerViewOnlyGuard already intercepts, but a

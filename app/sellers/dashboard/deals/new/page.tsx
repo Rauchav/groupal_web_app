@@ -9,8 +9,6 @@ import { z } from "zod"
 import { toast } from "sonner"
 import { Plus, PlusCircle, Store, Truck, X, MapPin, Flag, Globe2 } from "lucide-react"
 import { useSellerProfile } from "@/sellers/stores/seller-store"
-import { useSellerDealsStore } from "@/sellers/stores/seller-deals-store"
-import { daysFromNow, milestones } from "@/lib/mock/deals"
 import { DEAL_CATEGORIES } from "@/lib/constants/categories"
 import { CONTINENTS } from "@/lib/constants/continents"
 import { REACH_SCOPE_LABEL } from "@/lib/utils/deal-reach"
@@ -144,7 +142,6 @@ export default function NewSellerDealPage() {
   const router = useRouter()
   const { user } = useUser()
   const profile = useSellerProfile(user?.id)
-  const addDeal = useSellerDealsStore((s) => s.addDeal)
   const [isPickup, setIsPickup] = useState(false)
   const [publishing, setPublishing] = useState(false)
   const [reachScope, setReachScope] = useState<DealReachScope>("city")
@@ -224,45 +221,79 @@ export default function NewSellerDealPage() {
         : data.reachContinents,
     }
 
-    const newDealId = `deal_${Date.now().toString(36)}`
-    addDeal({
-      id:                    newDealId,
-      sellerId:              profile.id,
-      sellerUserId:          user.id,
-      sellerName:            profile.companyName,
-      sellerVerified:        profile.verified,
-      productName:           data.productName,
-      productImages:         allUrls,
-      category:              data.category,
-      reach,
-      externalProductUrl:    data.externalProductUrl || undefined,
-      originalPrice:         data.originalPrice,
-      currency:              "USD",
-      maxDiscountPercent:    data.maxDiscountPercent,
-      maxBuyersRequired:     data.maxBuyersRequired,
-      currentBuyerCount:     0,
-      deadlineAt:            daysFromNow(data.daysUntilDeadline),
-      milestones:            milestones(data.maxBuyersRequired, data.maxDiscountPercent),
-      reservationFeePercent: 10,
-      isPickup:              data.isPickup,
-      pickupDetails: data.isPickup
-        ? {
-            location:         data.pickupLocation!,
-            hours:            data.pickupHours!,
-            instructions:     data.pickupInstructions!,
-            codeRequired:     data.pickupCodeRequired || "Order confirmation code",
-            documentsRequired: data.pickupDocuments || "Valid photo ID",
-            contactName:      data.pickupContactName!,
-            contactPhone:     data.pickupContactPhone!,
-            contactEmail:     data.pickupContactEmail!,
-          }
-        : undefined,
-      deliveryZones: data.isPickup ? undefined : data.deliveryZones,
-      status:    "active",
-      createdAt: new Date(),
+    // Upsert-safe (POST /api/sellers), so a seller who onboarded before
+    // this endpoint existed still gets a real SellerProfile row here —
+    // otherwise the deal creation call below would 403 for them. Checked
+    // (not fire-and-forget) so a failure here surfaces clearly instead of
+    // showing up downstream as a confusing "couldn't publish" from the
+    // deal-creation call that follows it.
+    const sellerRes = await fetch("/api/sellers", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        companyName: profile.companyName,
+        category: profile.category,
+        phone: profile.phone,
+        city: profile.city,
+        website: profile.website || undefined,
+      }),
+    }).catch(() => null)
+
+    if (!sellerRes || !sellerRes.ok) {
+      setPublishing(false)
+      const body = await sellerRes?.json().catch(() => null)
+      console.error("Seller profile sync failed:", body)
+      toast.error("Couldn't confirm your seller account before publishing — please try again.")
+      return
+    }
+
+    const res = await fetch("/api/deals", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        productName: data.productName,
+        productImages: allUrls,
+        category: data.category,
+        reach,
+        externalProductUrl: data.externalProductUrl || undefined,
+        originalPrice: data.originalPrice,
+        currency: "USD",
+        maxDiscountPercent: data.maxDiscountPercent,
+        maxBuyersRequired: data.maxBuyersRequired,
+        daysUntilDeadline: data.daysUntilDeadline,
+        isPickup: data.isPickup,
+        pickupDetails: data.isPickup
+          ? {
+              location:          data.pickupLocation!,
+              hours:             data.pickupHours!,
+              instructions:      data.pickupInstructions!,
+              codeRequired:      data.pickupCodeRequired || "Order confirmation code",
+              documentsRequired: data.pickupDocuments || "Valid photo ID",
+              contactName:       data.pickupContactName!,
+              contactPhone:      data.pickupContactPhone!,
+              contactEmail:      data.pickupContactEmail!,
+            }
+          : undefined,
+        deliveryZones: data.isPickup ? undefined : data.deliveryZones,
+      }),
     })
 
-    router.push(`/sellers/dashboard/deals/published?dealId=${newDealId}`)
+    if (!res.ok) {
+      setPublishing(false)
+      const body: { error?: string | { formErrors?: string[]; fieldErrors?: Record<string, string[]> } } | null =
+        await res.json().catch(() => null)
+      console.error("Deal creation failed:", body)
+      const err = body?.error
+      const detail =
+        typeof err === "string"
+          ? err
+          : err?.formErrors?.[0] ?? Object.values(err?.fieldErrors ?? {})[0]?.[0]
+      toast.error(detail ? `Couldn't publish that deal — ${detail}` : "Couldn't publish that deal — please try again.")
+      return
+    }
+    const { deal: newDeal } = await res.json()
+
+    router.push(`/sellers/dashboard/deals/published?dealId=${newDeal.id}`)
   }
 
   return (
@@ -287,7 +318,7 @@ export default function NewSellerDealPage() {
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
+            <div className="min-w-0">
               <label className="block text-sm font-semibold text-gray-700 mb-1">Cover photo</label>
               <input
                 {...register("coverImage", { onChange: () => setCoverPreviewFailed(false) })}
@@ -299,7 +330,7 @@ export default function NewSellerDealPage() {
                 <ImagePreview url={coverImageUrl} failed={coverPreviewFailed} onError={() => setCoverPreviewFailed(true)} />
               )}
             </div>
-            <div>
+            <div className="min-w-0">
               <label className="block text-sm font-semibold text-gray-700 mb-1">Category</label>
               <select {...register("category")} className={cn(inputClass(!!errors.category), "appearance-none cursor-pointer")}>
                 {PRODUCT_CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}

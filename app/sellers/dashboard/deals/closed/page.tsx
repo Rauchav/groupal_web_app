@@ -5,11 +5,12 @@ import Link from "next/link"
 import Image from "next/image"
 import { useUser } from "@clerk/nextjs"
 import { PackageX, Users, CheckCircle2, ArrowRight } from "lucide-react"
-import { useSellerProfile } from "@/sellers/stores/seller-store"
-import { useSellerClosedDeals, useSellerDealsStore } from "@/sellers/stores/seller-deals-store"
+import { useApiGet } from "@/lib/api/use-fetch"
+import { apiDealToDeal, type ApiDeal } from "@/lib/api/deal-adapter"
 import { computeDealValues } from "@/lib/utils/deal-calculator"
 import { SellerComingSoon } from "@/sellers/components/SellerComingSoon"
 import { DealReachBadge } from "@/components/deal-reach-badge"
+import { useSellerBadgesStore } from "@/sellers/stores/seller-badges-store"
 
 function fmt(amount: number) {
   return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(amount)
@@ -17,15 +18,16 @@ function fmt(amount: number) {
 
 export default function SellerClosedDealsPage() {
   const { user } = useUser()
-  const profile = useSellerProfile(user?.id)
-  const deals = useSellerClosedDeals(profile?.id)
-  const markClosedDealsViewed = useSellerDealsStore((s) => s.markClosedDealsViewed)
+  const { data: sellerData } = useApiGet<{ profile: { id: string } | null }>(user ? "/api/sellers" : null)
+  const sellerId = sellerData?.profile?.id
+  const { data: dealsData } = useApiGet<{ deals: ApiDeal[] }>(sellerId ? `/api/deals?sellerId=${sellerId}` : null)
+  const deals = (dealsData?.deals ?? []).map(apiDealToDeal).filter((d) => d.status === "completed")
 
-  // Clears the "Closed Deals" nav badge — the seller has now actually
-  // looked at whatever closed since their last visit.
+  // Clears the "Closed Deals" nav badge.
+  const markViewed = useSellerBadgesStore((s) => s.markViewed)
   useEffect(() => {
-    if (profile?.id) markClosedDealsViewed(profile.id)
-  }, [profile?.id, markClosedDealsViewed])
+    if (user) void markViewed("closed")
+  }, [user, markViewed])
 
   return (
     <>

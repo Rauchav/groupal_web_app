@@ -15,15 +15,15 @@ import {
 } from "lucide-react"
 import { motion } from "framer-motion"
 import { useUser } from "@clerk/nextjs"
-import { getMockDealById, MOCK_DEALS } from "@/lib/mock/deals"
 import { computeDealValues } from "@/lib/utils/deal-calculator"
-import { useParticipationStore } from "@/buyers/stores/participation-store"
-import { useBuyerIdentityStore } from "@/buyers/stores/buyer-identity-store"
+import { useParticipationStore, useEnsureParticipationsLoaded } from "@/buyers/stores/participation-store"
 import { useIsSeller } from "@/sellers/stores/seller-store"
-import { chargeReservation } from "@/lib/payments/reservation-service"
 import { CountdownTimer } from "@/buyers/components/marketplace/CountdownTimer"
 import { DealReachBadge } from "@/components/deal-reach-badge"
 import { cn } from "@/lib/utils"
+import { useApiGet } from "@/lib/api/use-fetch"
+import { apiDealToDeal, type ApiDeal } from "@/lib/api/deal-adapter"
+import type { Deal } from "@/lib/types/deal"
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -120,7 +120,7 @@ function StepReview({
   computed,
   onContinue,
 }: {
-  deal:       ReturnType<typeof getMockDealById>
+  deal:       Deal | null
   computed:   ReturnType<typeof computeDealValues>
   onContinue: () => void
 }) {
@@ -451,7 +451,7 @@ function StepDelivery({
   onContinue,
   onBack,
 }: {
-  deal:       ReturnType<typeof getMockDealById>
+  deal:       Deal | null
   onContinue: (data: DeliveryForm) => void
   onBack:     () => void
 }) {
@@ -660,7 +660,7 @@ function StepConfirm({
   onComplete,
   loading,
 }: {
-  deal:         ReturnType<typeof getMockDealById>
+  deal:         Deal | null
   computed:     ReturnType<typeof computeDealValues>
   deliveryData: DeliveryForm | null
   onBack:       () => void
@@ -854,18 +854,23 @@ export default function CheckoutPage() {
   const router     = useRouter()
   const { user, isSignedIn } = useUser()
   const isSeller = useIsSeller()
-  const { addParticipation } = useParticipationStore()
+  const refreshParticipations = useParticipationStore((s) => s.refresh)
   const hasHydrated = useParticipationStore((s) => s.hasHydrated)
   const alreadyJoined = useParticipationStore((s) => s.hasJoined(dealId))
-  const markAsBuyer = useBuyerIdentityStore((s) => s.markAsBuyer)
+  useEnsureParticipationsLoaded(user?.id)
 
   const [step,            setStep]            = useState(0)
   const [deliveryData,    setDeliveryData]    = useState<DeliveryForm | null>(null)
   const [loading,         setLoading]         = useState(false)
   const [selectedImgIdx,  setSelectedImgIdx]  = useState(0)
 
-  const deal     = getMockDealById(dealId)
+  const { data: dealData, loading: dealLoading } = useApiGet<{ deal: ApiDeal }>(
+    dealId ? `/api/deals/${dealId}` : null
+  )
+  const deal     = dealData?.deal ? apiDealToDeal(dealData.deal) : null
   const computed = deal ? computeDealValues(deal) : null
+
+  const { data: allDealsData } = useApiGet<{ deals: ApiDeal[] }>("/api/deals?status=active")
 
   // A buyer can only reach checkout for a deal they've already joined by
   // navigating here directly (the deal card's CTA already routes them to
@@ -901,7 +906,18 @@ export default function CheckoutPage() {
   }, [step])
 
   const galleryImages = deal ? deal.productImages : []
-  const relatedDeals  = MOCK_DEALS.filter(d => d.id !== dealId).slice(0, 3)
+  const relatedDeals  = (allDealsData?.deals ?? [])
+    .map(apiDealToDeal)
+    .filter((d) => d.id !== dealId)
+    .slice(0, 3)
+
+  if (dealLoading) {
+    return (
+      <main className="min-h-screen bg-gray-50 flex items-center justify-center" style={{ paddingTop: "6.5rem" }}>
+        <div className="text-center text-gray-400 text-sm">Loading...</div>
+      </main>
+    )
+  }
 
   if (!deal || !computed) {
     return (
@@ -941,26 +957,29 @@ export default function CheckoutPage() {
     const deliveryCost = isPickup
       ? 0
       : deal!.deliveryZones?.[deliveryData?.deliveryZoneIndex ?? -1]?.price ?? 9.99
-    const result = await chargeReservation({
-      deal:            deal!,
-      buyerId:         user.id,
-      buyerName:       user.fullName ?? user.firstName ?? "A Groupal buyer",
-      buyerAvatarUrl:  user.imageUrl,
-      deliveryCost,
-      deliveryAddress: deliveryData
-        ? {
-            street:  deliveryData.street,
-            city:    deliveryData.city,
-            state:   deliveryData.state,
-            country: deliveryData.country,
-            zipCode: deliveryData.zipCode,
-          }
-        : undefined,
+    const res = await fetch(`/api/deals/${deal!.id}/join`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        buyerName:       user.fullName ?? user.firstName ?? "A Groupal buyer",
+        buyerAvatarUrl:  user.imageUrl,
+        deliveryCost,
+        deliveryAddress: deliveryData
+          ? {
+              street:  deliveryData.street,
+              city:    deliveryData.city,
+              state:   deliveryData.state,
+              country: deliveryData.country,
+              zipCode: deliveryData.zipCode,
+            }
+          : undefined,
+      }),
     })
 
-    if (!result.success) {
+    if (!res.ok) {
       setLoading(false)
-      if (result.failureReason === "already_joined") {
+      const body = await res.json().catch(() => null)
+      if (body?.error === "already_joined") {
         toast.info("You've already joined this deal — here's where it's at.")
         router.replace("/dashboard")
         return
@@ -969,25 +988,9 @@ export default function CheckoutPage() {
       return
     }
 
-    // Kept in sync with the mock payment engine above so the dashboard /
-    // purchases pages (which still read this simplified client-side store)
-    // reflect the same reservation.
-    addParticipation({
-      id:              result.participation!.id,
-      dealId:          deal!.id,
-      joinedAt:        result.participation!.createdAt.toISOString(),
-      reservationPaid: result.participation!.reservationAmount,
-      deliveryCost,
-      status:          "active",
-      deliveryAddress: {
-        street:  deliveryData?.street  ?? "",
-        city:    deliveryData?.city    ?? "",
-        state:   deliveryData?.state   ?? "",
-        country: deliveryData?.country ?? "",
-        zipCode: deliveryData?.zipCode ?? "",
-      },
-    })
-    markAsBuyer(user.id)
+    // Re-fetches this buyer's own participations so the dashboard/
+    // purchases pages reflect the reservation that just landed.
+    await refreshParticipations()
     toast.success("You're in! Welcome to the group!")
     router.push(`/checkout/success?dealId=${deal!.id}`)
   }

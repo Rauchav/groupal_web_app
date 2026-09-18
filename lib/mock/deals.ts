@@ -162,7 +162,7 @@ export const MOCK_DEALS: Deal[] = [
     currency:             "USD",
     maxDiscountPercent:   50,
     maxBuyersRequired:    40,
-    currentBuyerCount:    40, // TEMP: bumped to maxBuyersRequired to force-close for testing — revert to 36 after
+    currentBuyerCount:    36,
     deadlineAt:           daysFromNow(10),
     milestones:           milestones(40, 50),
     reservationFeePercent: 10,
@@ -274,25 +274,3 @@ export const MOCK_DEALS: Deal[] = [
   },
 ];
 
-export function getMockDealById(id: string) {
-  return MOCK_DEALS.find((d) => d.id === id) ?? null;
-}
-
-// Pushes a seller-created deal (sellers/stores/seller-deals-store.ts) into
-// the same array every buyer-side page/lookup already reads from — a new
-// offer needs zero changes anywhere else in the browse/checkout/payment
-// code to show up and become joinable. Guards against double-inserting the
-// same deal twice, since this also runs on every store rehydration.
-export function addMockDeal(deal: Deal): void {
-  if (MOCK_DEALS.some((d) => d.id === deal.id)) return;
-  MOCK_DEALS.push(deal);
-}
-
-// Called when a buyer's reservation is forfeited after the grace period —
-// their spot goes back to the group, so the live buyer count drops by one.
-export function releaseDealSpot(dealId: string): void {
-  const deal = MOCK_DEALS.find((d) => d.id === dealId);
-  if (deal && deal.currentBuyerCount > 0) {
-    deal.currentBuyerCount -= 1;
-  }
-}

@@ -1,15 +1,17 @@
 "use client"
 
-import { useEffect } from "react"
+import { useEffect, useState } from "react"
 import Link from "next/link"
 import Image from "next/image"
 import { useUser } from "@clerk/nextjs"
-import { PackageCheck, PlusCircle, Users, ArrowRight } from "lucide-react"
-import { useSellerProfile } from "@/sellers/stores/seller-store"
-import { useSellerDeals, useSellerDealsStore } from "@/sellers/stores/seller-deals-store"
+import { toast } from "sonner"
+import { PackageCheck, PlusCircle, Users, ArrowRight, Trash2 } from "lucide-react"
+import { useApiGet } from "@/lib/api/use-fetch"
+import { apiDealToDeal, type ApiDeal } from "@/lib/api/deal-adapter"
 import { computeDealValues, getDiscountColor } from "@/lib/utils/deal-calculator"
 import { SellerComingSoon } from "@/sellers/components/SellerComingSoon"
 import { DealReachBadge } from "@/components/deal-reach-badge"
+import { useSellerBadgesStore } from "@/sellers/stores/seller-badges-store"
 
 function fmt(amount: number) {
   return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(amount)
@@ -17,15 +19,34 @@ function fmt(amount: number) {
 
 export default function SellerActiveDealsPage() {
   const { user } = useUser()
-  const profile = useSellerProfile(user?.id)
-  const deals = useSellerDeals(profile?.id).filter((d) => d.status === "active")
-  const markDealsViewed = useSellerDealsStore((s) => s.markDealsViewed)
+  const { data: sellerData } = useApiGet<{ profile: { id: string } | null }>(user ? "/api/sellers" : null)
+  const sellerId = sellerData?.profile?.id
+  const { data: dealsData, refetch } = useApiGet<{ deals: ApiDeal[] }>(sellerId ? `/api/deals?sellerId=${sellerId}` : null)
+  const deals = (dealsData?.deals ?? []).map(apiDealToDeal).filter((d) => d.status === "active")
+  const [deletingId, setDeletingId] = useState<string | null>(null)
 
   // Clears the "Active Deals" nav badge — the seller has now actually
-  // looked at whatever was new.
+  // looked at whatever's new since their last visit here.
+  const markViewed = useSellerBadgesStore((s) => s.markViewed)
   useEffect(() => {
-    if (profile?.id) markDealsViewed(profile.id)
-  }, [profile?.id, markDealsViewed])
+    if (user) void markViewed("active")
+  }, [user, markViewed])
+
+  async function handleDelete(e: React.MouseEvent, dealId: string, productName: string) {
+    e.preventDefault()
+    e.stopPropagation()
+    if (!window.confirm(`Delete "${productName}"? This can't be undone.`)) return
+
+    setDeletingId(dealId)
+    const res = await fetch(`/api/deals/${dealId}`, { method: "DELETE" })
+    setDeletingId(null)
+    if (!res.ok) {
+      toast.error("Couldn't delete that deal — please try again.")
+      return
+    }
+    toast.success("Deal deleted.")
+    refetch()
+  }
 
   return (
     <>
@@ -88,6 +109,15 @@ export default function SellerActiveDealsPage() {
                   {deal.reach && <DealReachBadge reach={deal.reach} className="text-xs text-gray-400 mt-1.5" />}
                 </div>
 
+                <button
+                  type="button"
+                  onClick={(e) => handleDelete(e, deal.id, deal.productName)}
+                  disabled={deletingId === deal.id}
+                  aria-label="Delete deal"
+                  className="flex-shrink-0 h-9 w-9 flex items-center justify-center rounded-xl text-gray-300 hover:text-red-600 hover:bg-red-50 transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </button>
                 <ArrowRight className="h-4 w-4 text-gray-300 flex-shrink-0" />
               </Link>
             )

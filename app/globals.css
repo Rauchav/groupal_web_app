@@ -48,6 +48,14 @@
   html {
     scroll-behavior: smooth;
     -webkit-text-size-adjust: 100%;
+    /* Always reserves the vertical scrollbar's width, whether or not the
+       current page is tall enough to need it. Without this, switching
+       between a short dashboard page (no scrollbar) and a tall one (has
+       one) changes the viewport's usable width, and every centered
+       layout on the page (e.g. the seller/buyer dashboard's max-w-[…]
+       mx-auto shell) re-centers into the new width — a visible sideways
+       shift of the whole page on navigation. */
+    scrollbar-gutter: stable;
     @apply font-sans;
   }
 

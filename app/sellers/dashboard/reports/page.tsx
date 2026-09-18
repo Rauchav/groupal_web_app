@@ -7,20 +7,19 @@ import {
   DollarSign, TrendingUp, Users, PackageCheck, CheckCircle2,
   ChevronDown, BarChart3,
 } from "lucide-react"
-import { useSellerProfile } from "@/sellers/stores/seller-store"
-import { useSellerDeals } from "@/sellers/stores/seller-deals-store"
+import { useApiGet } from "@/lib/api/use-fetch"
+import { apiDealToDeal, type ApiDeal } from "@/lib/api/deal-adapter"
 import { computeDealValues } from "@/lib/utils/deal-calculator"
 import { SellerComingSoon } from "@/sellers/components/SellerComingSoon"
+import { DealReachBadge } from "@/components/deal-reach-badge"
 import { cn } from "@/lib/utils"
-import type { Deal } from "@/lib/types/deal"
+import type { Deal, DealReachScope } from "@/lib/types/deal"
 
 // A first, deliberately simple pass at a sales-reporting view — real KPI
 // cards, real filters, real (hand-drawn, no charting library added yet)
 // charts, and a real per-deal table, all computed from this seller's own
 // deals. Built as a base to escalate from later (more chart types, saved
-// filter presets, CSV export, etc.) rather than a finished product — see
-// the note on `cityOf()` below for the one piece of data this can't do
-// properly yet.
+// filter presets, CSV export, etc.) rather than a finished product.
 
 function fmt(n: number) {
   return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(n)
@@ -34,28 +33,18 @@ type StatusOption = (typeof STATUS_OPTIONS)[number]
 
 const CHART_COLORS = ["#eaad00", "#e86300", "#048943", "#1b4487", "#6B7A99", "#DA1200"]
 
-// Deal.reach (lib/types/deal.ts) now carries the real per-deal city/country/
-// continent a seller picks at creation, but the region-matching rules that
-// data is meant to power haven't been defined yet, so this report still
-// groups every one of a seller's deals under their own registered city
-// (SellerProfile.city) rather than reading deal.reach. Swap this for a real
-// read of deal.reach once that matching logic exists — every filter/chart
-// below already reads through this function rather than deal.* directly,
-// so nothing else here would need to change.
-function cityOf(_deal: Deal, sellerCity: string): string {
-  return sellerCity || "Unknown"
-}
+const ALL_LOCATIONS = "All locations"
+const REACH_OPTGROUP_LABEL: Record<DealReachScope, string> = { city: "Cities", country: "Countries", continent: "Continents" }
 
 interface SalesRow {
   deal: Deal
-  city: string
   grossRevenue: number
   commission: number
   netPayout: number
   discountPercent: number
 }
 
-function buildRow(deal: Deal, sellerCity: string): SalesRow {
+function buildRow(deal: Deal): SalesRow {
   const computed = computeDealValues(deal)
   const isClosed = deal.status === "completed"
   // Matches app/sellers/dashboard/page.tsx's own "Revenue" stat exactly —
@@ -65,7 +54,6 @@ function buildRow(deal: Deal, sellerCity: string): SalesRow {
   const commission = isClosed ? computed.sellerPlatformFeeAmount : 0
   return {
     deal,
-    city: cityOf(deal, sellerCity),
     grossRevenue,
     commission,
     netPayout: grossRevenue - commission,
@@ -106,27 +94,36 @@ function FilterSelect<T extends string>({ label, value, options, onChange }: { l
 
 export default function SellerReportsPage() {
   const { user } = useUser()
-  const profile = useSellerProfile(user?.id)
-  const allDeals = useSellerDeals(profile?.id)
+  const { data: sellerData } = useApiGet<{ profile: { id: string } | null }>(user ? "/api/sellers" : null)
+  const sellerId = sellerData?.profile?.id
+  const { data: dealsData } = useApiGet<{ deals: ApiDeal[] }>(sellerId ? `/api/deals?sellerId=${sellerId}` : null)
+  const allDeals = (dealsData?.deals ?? []).map(apiDealToDeal)
 
   const [datePreset, setDatePreset] = useState<DatePreset>("All time")
   const [category, setCategory] = useState("All categories")
-  const [city, setCity] = useState("All cities")
+  const [reach, setReach] = useState(ALL_LOCATIONS)
   const [status, setStatus] = useState<StatusOption>("All statuses")
 
-  const rows = useMemo(
-    () => allDeals.map((d) => buildRow(d, profile?.city ?? "Unknown")),
-    [allDeals, profile?.city]
-  )
+  const rows = useMemo(() => allDeals.map(buildRow), [allDeals])
 
   const categoryOptions = useMemo(
     () => ["All categories", ...Array.from(new Set(allDeals.map((d) => d.category))).sort()],
     [allDeals]
   )
-  const cityOptions = useMemo(
-    () => ["All cities", ...Array.from(new Set(rows.map((r) => r.city))).sort()],
-    [rows]
-  )
+  // Every reach value across this seller's deals, grouped by scope — a
+  // seller can have city-scoped deals and country-scoped deals side by
+  // side, so this is a grouped list (Cities / Countries / Continents), not
+  // a flat one. Deals with no reach set (the seed catalog, or anything
+  // created before this field existed) simply don't contribute an option
+  // and won't match any specific selection — only "All locations" still
+  // includes them.
+  const reachOptionsByScope = useMemo(() => {
+    const bucket: Record<DealReachScope, Set<string>> = { city: new Set(), country: new Set(), continent: new Set() }
+    allDeals.forEach((d) => d.reach?.values.forEach((v) => bucket[d.reach!.scope].add(v)))
+    return (Object.keys(bucket) as DealReachScope[])
+      .map((scope) => ({ scope, values: Array.from(bucket[scope]).sort() }))
+      .filter((g) => g.values.length > 0)
+  }, [allDeals])
 
   const filteredRows = useMemo(() => {
     const cutoff =
@@ -137,12 +134,12 @@ export default function SellerReportsPage() {
     return rows.filter((r) => {
       if (cutoff && r.deal.createdAt < cutoff) return false
       if (category !== "All categories" && r.deal.category !== category) return false
-      if (city !== "All cities" && r.city !== city) return false
+      if (reach !== ALL_LOCATIONS && !r.deal.reach?.values.includes(reach)) return false
       if (status === "Active" && r.deal.status !== "active") return false
       if (status === "Closed" && r.deal.status !== "completed") return false
       return true
     }).sort((a, b) => b.deal.createdAt.getTime() - a.deal.createdAt.getTime())
-  }, [rows, datePreset, category, city, status])
+  }, [rows, datePreset, category, reach, status])
 
   const closedRows = filteredRows.filter((r) => r.deal.status === "completed")
 
@@ -194,7 +191,7 @@ export default function SellerReportsPage() {
       <div>
         <h1 className="font-heading font-extrabold text-[#002356] text-2xl">Sales Reports</h1>
         <p className="text-gray-500 text-sm mt-1">
-          Revenue, commission, and payout across your deals — filterable by date, category, and city.
+          Revenue, commission, and payout across your deals — filterable by date, category, and reach.
         </p>
       </div>
 
@@ -202,7 +199,24 @@ export default function SellerReportsPage() {
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 flex flex-wrap gap-4">
         <FilterSelect label="Date range" value={datePreset} options={DATE_PRESETS} onChange={setDatePreset} />
         <FilterSelect label="Category" value={category} options={categoryOptions} onChange={setCategory} />
-        <FilterSelect label="City" value={city} options={cityOptions} onChange={setCity} />
+        <div className="flex flex-col gap-1">
+          <label className="text-[11px] font-bold text-gray-400 uppercase tracking-wide">Reach</label>
+          <div className="relative">
+            <select
+              value={reach}
+              onChange={(e) => setReach(e.target.value)}
+              className="h-9 pl-3 pr-8 rounded-lg border border-gray-200 text-sm font-medium text-gray-700 outline-none focus:border-[#1b4487] appearance-none bg-white cursor-pointer min-w-[9rem]"
+            >
+              <option value={ALL_LOCATIONS}>{ALL_LOCATIONS}</option>
+              {reachOptionsByScope.map(({ scope, values }) => (
+                <optgroup key={scope} label={REACH_OPTGROUP_LABEL[scope]}>
+                  {values.map((v) => <option key={v} value={v}>{v}</option>)}
+                </optgroup>
+              ))}
+            </select>
+            <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400 pointer-events-none" />
+          </div>
+        </div>
         <FilterSelect label="Status" value={status} options={STATUS_OPTIONS} onChange={setStatus} />
       </div>
 
@@ -286,7 +300,7 @@ export default function SellerReportsPage() {
             <tr className="border-b border-gray-100 text-left">
               <th className="px-4 py-3 font-semibold text-gray-400 text-xs uppercase tracking-wide">Deal</th>
               <th className="px-4 py-3 font-semibold text-gray-400 text-xs uppercase tracking-wide">Category</th>
-              <th className="px-4 py-3 font-semibold text-gray-400 text-xs uppercase tracking-wide">City</th>
+              <th className="px-4 py-3 font-semibold text-gray-400 text-xs uppercase tracking-wide">Reach</th>
               <th className="px-4 py-3 font-semibold text-gray-400 text-xs uppercase tracking-wide">Status</th>
               <th className="px-4 py-3 font-semibold text-gray-400 text-xs uppercase tracking-wide text-right">Buyers</th>
               <th className="px-4 py-3 font-semibold text-gray-400 text-xs uppercase tracking-wide text-right">Discount</th>
@@ -305,7 +319,11 @@ export default function SellerReportsPage() {
                 <tr key={r.deal.id} className="border-b border-gray-50 last:border-0 hover:bg-gray-50/60">
                   <td className="px-4 py-3 font-semibold text-[#002356] max-w-[220px] truncate">{r.deal.productName}</td>
                   <td className="px-4 py-3 text-gray-500">{r.deal.category}</td>
-                  <td className="px-4 py-3 text-gray-500">{r.city}</td>
+                  <td className="px-4 py-3 text-gray-500">
+                    {r.deal.reach
+                      ? <DealReachBadge reach={r.deal.reach} className="text-gray-500 [&_svg]:text-gray-400" />
+                      : <span className="text-gray-300">—</span>}
+                  </td>
                   <td className="px-4 py-3">
                     <span
                       className={cn(

@@ -6,12 +6,11 @@ import { Search, Zap, ChevronDown } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
 import { toast } from "sonner"
 import { DealCard, DealCardSkeleton } from "@/buyers/components/marketplace/DealCard"
-import { MOCK_DEALS } from "@/lib/mock/deals"
-import { closeExpiredDeals } from "@/lib/payments/sync-deal-closures"
+import { useApiGet } from "@/lib/api/use-fetch"
+import { apiDealToDeal, type ApiDeal } from "@/lib/api/deal-adapter"
 import { cn } from "@/lib/utils"
 import { Deal } from "@/lib/types/deal"
 import { DEAL_CATEGORIES } from "@/lib/constants/categories"
-import { useMockDealsSyncStore } from "@/sellers/stores/seller-deals-store"
 
 type SortOption = "ending-soon" | "most-popular" | "biggest-discount" | "newest"
 
@@ -56,36 +55,21 @@ function DealsPageInner() {
   const [search,   setSearch]   = useState("")
   const [category, setCategory] = useState("All")
   const [sort,     setSort]     = useState<SortOption>("ending-soon")
-  const [loading,  setLoading]  = useState(true)
-  // Bumped once the deal-closure sweep resolves so the memos below (which
-  // read the mutated MOCK_DEALS array directly) recompute — MOCK_DEALS
-  // itself isn't observed state, so nothing re-renders this page otherwise.
-  const [closedTick, setClosedTick] = useState(0)
 
+  const { data: dealsData, loading, refetch } = useApiGet<{ deals: ApiDeal[] }>("/api/deals?status=active")
+  const activeDeals = useMemo(
+    () => (dealsData?.deals ?? []).map(apiDealToDeal),
+    [dealsData]
+  )
+
+  // No real job scheduler yet (see app/api/jobs/sweep) — sweep for deals
+  // that hit their deadline or max buyer count on every visit to the
+  // browse page, then re-fetch so a just-closed deal actually drops out of
+  // this list instead of waiting for the next full reload.
   useEffect(() => {
-    const t = setTimeout(() => setLoading(false), 500)
-    return () => clearTimeout(t)
+    fetch("/api/jobs/sweep", { method: "POST" }).then(() => refetch()).catch(() => {})
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
-
-  // No real job scheduler yet — sweep for deals that hit their deadline or
-  // max buyer count on every visit to the browse page, same as the
-  // dashboard already does for the buyer's own joined deals.
-  useEffect(() => {
-    closeExpiredDeals().then(() => setClosedTick((n) => n + 1))
-  }, [])
-
-  // A seller-created deal only reaches MOCK_DEALS once
-  // sellers/components/SellerViewOnlyGuard.tsx pushes it there, from an
-  // effect gated to strictly after this route's first commit (see that
-  // file for why). useMockDealsSyncStore's tick (not seller-deals-store's
-  // own hasHydrated — see that store's comment for why a boolean that can
-  // already be true on mount is an unreliable recompute trigger) only ever
-  // increases, and only from that same effect, so including it in
-  // activeDeals' dependency array guarantees a recompute exactly when the
-  // sync actually lands — not depending on closedTick's unrelated effect
-  // happening to fire again afterward, which is a race (reported as: the
-  // same deal showing up on some reloads and not others).
-  const sellerDealsSyncTick = useMockDealsSyncStore((s) => s.tick)
 
   // Picks up ?category=... and ?search=... whenever they change — including
   // a click on the Navbar's category chips or a Navbar search submit while
@@ -97,14 +81,6 @@ function DealsPageInner() {
     setCategory(isValid ? fromUrl! : "All")
     setSearch(searchParams.get("search") ?? "")
   }, [searchParams])
-
-  // Deals that filled up or hit their deadline are closed by the sweep
-  // above and no longer belong in the public browse grid — they move to
-  // "Deals That Delivered" on the homepage instead.
-  const activeDeals = useMemo(
-    () => MOCK_DEALS.filter((d) => d.status === "active"),
-    [closedTick, sellerDealsSyncTick]
-  )
 
   const endingSoon = useMemo(
     () => activeDeals.filter((d) => {

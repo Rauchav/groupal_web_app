@@ -3,9 +3,8 @@
 import Link from "next/link"
 import { useUser } from "@clerk/nextjs"
 import { LayoutDashboard, PackageCheck, PackageX, PlusCircle, BarChart3, Bell, Settings, ShoppingCart } from "lucide-react"
-import { useSellerProfile } from "@/sellers/stores/seller-store"
-import { useUnseenDealsCount, useUnseenClosedDealsCount } from "@/sellers/stores/seller-deals-store"
-import { useUnreadNotificationsCount } from "@/lib/mock/payments-db"
+import { useUnseenDealsCount, useUnseenClosedDealsCount } from "@/sellers/stores/seller-badges-store"
+import { useUnreadNotificationsCount } from "@/lib/notifications/notifications-store"
 
 const NAV_ITEMS = [
   { href: "/sellers/dashboard",               icon: LayoutDashboard, label: "Dashboard" },
@@ -38,9 +37,8 @@ function UnseenBadge({ count }: { count: number }) {
 // CTA since creating a deal is the seller portal's core action.
 export function SellerDashboardSidebar({ active }: { active: string }) {
   const { user } = useUser()
-  const profile = useSellerProfile(user?.id)
-  const unseenCount = useUnseenDealsCount(profile?.id)
-  const unseenClosedCount = useUnseenClosedDealsCount(profile?.id)
+  const unseenCount = useUnseenDealsCount(user?.id)
+  const unseenClosedCount = useUnseenClosedDealsCount(user?.id)
   const unreadNotifications = useUnreadNotificationsCount(user?.id)
 
   return (
@@ -89,9 +87,8 @@ export function SellerDashboardSidebar({ active }: { active: string }) {
 // Mobile tab strip — same tabs, plus the marketplace escape hatch.
 export function SellerDashboardMobileTabs({ active }: { active: string }) {
   const { user } = useUser()
-  const profile = useSellerProfile(user?.id)
-  const unseenCount = useUnseenDealsCount(profile?.id)
-  const unseenClosedCount = useUnseenClosedDealsCount(profile?.id)
+  const unseenCount = useUnseenDealsCount(user?.id)
+  const unseenClosedCount = useUnseenClosedDealsCount(user?.id)
   const unreadNotifications = useUnreadNotificationsCount(user?.id)
 
   return (

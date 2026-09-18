@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useState } from "react"
 import { useParams } from "next/navigation"
 import Image from "next/image"
 import Link from "next/link"
@@ -12,8 +12,8 @@ import {
   Users, PackageX, Share2, BarChart3,
 } from "lucide-react"
 import { useSellerProfile } from "@/sellers/stores/seller-store"
-import { useSellerDealsStore } from "@/sellers/stores/seller-deals-store"
-import { paymentsDb } from "@/lib/mock/payments-db"
+import { useApiGet } from "@/lib/api/use-fetch"
+import { apiDealToDeal, type ApiDeal } from "@/lib/api/deal-adapter"
 import {
   computeDealValues, computeEstimatedFinalPrice, getDiscountColor, getProgressBarColor,
 } from "@/lib/utils/deal-calculator"
@@ -81,19 +81,27 @@ export default function SellerDealDetailPage() {
   const { id } = useParams<{ id: string }>()
   const { user } = useUser()
   const profile = useSellerProfile(user?.id)
-  const deals = useSellerDealsStore((s) => s.deals)
-  const deal = deals.find((d) => d.id === id && d.sellerId === profile?.id)
+  const { data: dealData, loading: dealLoading } = useApiGet<{ deal: ApiDeal }>(`/api/deals/${id}`)
+  const fetchedDeal = dealData ? apiDealToDeal(dealData.deal) : null
+  // Ownership check against the real Clerk id (sellerUserId, via the
+  // seller relation) rather than the local zustand seller-store's id,
+  // which no longer matches a deal created through the real API.
+  const deal = fetchedDeal && fetchedDeal.sellerUserId === user?.id ? fetchedDeal : null
 
-  const [participations, setParticipations] = useState<Participation[]>([])
+  const { data: participantsData } = useApiGet<{ participations: (Omit<Participation, "createdAt" | "updatedAt" | "graceDeadline"> & { createdAt: string })[] }>(
+    deal ? `/api/deals/${deal.id}/participants` : null
+  )
+  const participations: Participation[] = (participantsData?.participations ?? []).map((p) => ({
+    ...p,
+    createdAt: new Date(p.createdAt),
+    updatedAt: new Date(p.createdAt),
+  }))
   const [buyersExpanded, setBuyersExpanded] = useState(false)
   const [selectedImgIdx, setSelectedImgIdx] = useState(0)
   const [shareOpen, setShareOpen] = useState(false)
 
-  useEffect(() => {
-    if (deal) setParticipations(paymentsDb.listParticipationsByDeal(deal.id))
-  }, [deal?.id])
-
   if (!deal) {
+    if (dealLoading) return null
     return (
       <SellerComingSoon
         icon={PackageX}

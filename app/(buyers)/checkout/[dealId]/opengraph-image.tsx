@@ -1,8 +1,15 @@
 import { ImageResponse } from "next/og"
-import { getMockDealById } from "@/lib/mock/deals"
+import { prisma } from "@/lib/db"
+import { dealInclude, dealRowToApiDeal } from "@/lib/api/deal-include"
+import { apiDealToDeal } from "@/lib/api/deal-adapter"
 import { computeDealValues, getDiscountColor } from "@/lib/utils/deal-calculator"
 
-export const runtime = "edge"
+// Was "edge" — switched to the default Node.js runtime because fetching
+// the real deal needs the shared Prisma client (lib/db.ts), whose
+// @prisma/adapter-pg driver relies on Node's net/tls modules and doesn't
+// run on the Edge runtime. next/og's ImageResponse works the same either
+// way; edge was never load-bearing for this route, just next/og's
+// original default.
 export const alt = "Groupal group buy deal"
 export const size = { width: 1200, height: 630 }
 export const contentType = "image/png"
@@ -16,7 +23,8 @@ function fmt(amount: number, currency = "USD") {
 }
 
 export default async function Image({ params }: { params: { dealId: string } }) {
-  const deal = getMockDealById(params.dealId)
+  const dealRow = await prisma.deal.findUnique({ where: { id: params.dealId }, include: dealInclude })
+  const deal = dealRow ? apiDealToDeal(dealRowToApiDeal(dealRow)) : null
 
   if (!deal) {
     return new ImageResponse(

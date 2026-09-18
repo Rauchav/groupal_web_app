@@ -8,9 +8,6 @@ import {
   ChevronDown, LayoutDashboard, PackageCheck, PackageX, BarChart3, Bell, Settings, LogOut, ShieldCheck,
 } from "lucide-react"
 import { useSellerProfile } from "@/sellers/stores/seller-store"
-import { useSellerDealsStore, useMockDealsSyncStore } from "@/sellers/stores/seller-deals-store"
-import { addMockDeal } from "@/lib/mock/deals"
-import { closeExpiredDeals } from "@/lib/payments/sync-deal-closures"
 
 // The seller portal's own top bar — deliberately not a shared/branching
 // component with components/layout/Navbar.tsx (the buyer navbar). That
@@ -32,8 +29,6 @@ export function SellerNavbar() {
   const profile = useSellerProfile(user?.id)
   const [menuOpen, setMenuOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
-  const sellerDeals = useSellerDealsStore((s) => s.deals)
-  const bumpMockDealsSync = useMockDealsSyncStore((s) => s.bump)
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -43,39 +38,14 @@ export function SellerNavbar() {
     return () => document.removeEventListener("mousedown", handleClickOutside)
   }, [])
 
-  // Same plain useState/useEffect "mounted" gate as
-  // sellers/components/SellerViewOnlyGuard.tsx uses for this exact
-  // purpose on the buyer side — see that file's comment for why gating on
-  // zustand's own hasHydrated instead can land a MOCK_DEALS mutation
-  // inside the first render and produce a hydration mismatch.
-  const [mounted, setMounted] = useState(false)
-  useEffect(() => setMounted(true), [])
-
-  // No real job scheduler yet — sweep for deals that hit their deadline or
-  // max buyer count on every seller-portal page load, same mock stand-in
-  // buyer pages already run (see app/(buyers)/page.tsx and
-  // app/(buyers)/deals/page.tsx). Sellers might never visit a buyer page
-  // in a session, so without this sweep here too, a deal could sit past
-  // its deadline forever from the seller's point of view.
-  //
-  // A fresh page load resets the MOCK_DEALS module array back to just the
-  // 8 seed deals — it's in-memory only, not persisted. A seller's own
-  // created deals only rejoin it once addMockDeal below re-pushes them
-  // from the persisted store, and it's essential that this happens BEFORE
-  // closeExpiredDeals() runs: addMockDeal reuses these exact deal object
-  // references, so mutating deal.status inside closeExpiredDeals (which
-  // only iterates MOCK_DEALS) also mutates the very same objects sitting
-  // in useSellerDealsStore's `deals` — which is what Active/Closed Deals
-  // and their nav badges actually render from. Skip this re-linking step
-  // and a seller's own deals would never close from their own portal.
-  // Bumping the shared sync tick afterward is what makes those pages
-  // actually recompute against the mutation — see useMockDealsSyncStore's
-  // comment in sellers/stores/seller-deals-store.ts for why.
+  // No real job scheduler yet (see app/api/jobs/sweep) — sweep for deals
+  // that hit their deadline or max buyer count on every seller-portal page
+  // load. Sellers might never visit a buyer page in a session, so without
+  // this sweep here too, a deal could sit past its deadline forever from
+  // the seller's point of view.
   useEffect(() => {
-    if (!mounted) return
-    sellerDeals.forEach(addMockDeal)
-    closeExpiredDeals().then(() => bumpMockDealsSync())
-  }, [mounted, sellerDeals, bumpMockDealsSync])
+    fetch("/api/jobs/sweep", { method: "POST" }).catch(() => {})
+  }, [])
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50 bg-groupal-navy" style={{ fontFamily: "'Inter', sans-serif" }}>

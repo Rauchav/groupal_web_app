@@ -4,7 +4,8 @@ import Link from "next/link"
 import { useUser } from "@clerk/nextjs"
 import { PlusCircle, PackageCheck, Users, DollarSign, TrendingUp } from "lucide-react"
 import { useSellerProfile } from "@/sellers/stores/seller-store"
-import { useSellerDeals } from "@/sellers/stores/seller-deals-store"
+import { useApiGet } from "@/lib/api/use-fetch"
+import { apiDealToDeal, type ApiDeal } from "@/lib/api/deal-adapter"
 import { computeDealValues } from "@/lib/utils/deal-calculator"
 
 function StatCard({ label, value, sub, icon: Icon }: { label: string; value: string | number; sub?: string; icon: React.ElementType }) {
@@ -23,7 +24,10 @@ function StatCard({ label, value, sub, icon: Icon }: { label: string; value: str
 export default function SellerDashboardPage() {
   const { user } = useUser()
   const profile = useSellerProfile(user?.id)
-  const deals = useSellerDeals(profile?.id)
+  const { data: sellerData } = useApiGet<{ profile: { id: string } | null }>(user ? "/api/sellers" : null)
+  const sellerId = sellerData?.profile?.id
+  const { data: dealsData } = useApiGet<{ deals: ApiDeal[] }>(sellerId ? `/api/deals?sellerId=${sellerId}` : null)
+  const deals = (dealsData?.deals ?? []).map(apiDealToDeal)
 
   const activeDeals = deals.filter((d) => d.status === "active").length
   const buyersJoined = deals.reduce((sum, d) => sum + d.currentBuyerCount, 0)

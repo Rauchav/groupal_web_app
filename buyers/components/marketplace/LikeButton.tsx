@@ -5,7 +5,6 @@ import { Heart } from "lucide-react"
 import { motion } from "framer-motion"
 import { useUser } from "@clerk/nextjs"
 import { useLikesStore } from "@/buyers/stores/likes-store"
-import { useBuyerIdentityStore } from "@/buyers/stores/buyer-identity-store"
 import { useIsSeller } from "@/sellers/stores/seller-store"
 import { cn } from "@/lib/utils"
 
@@ -15,9 +14,8 @@ interface LikeButtonProps {
 }
 
 export function LikeButton({ dealId, className }: LikeButtonProps) {
-  const { isSignedIn, user } = useUser()
+  const { isSignedIn } = useUser()
   const isSeller = useIsSeller()
-  const markAsBuyer = useBuyerIdentityStore((s) => s.markAsBuyer)
   const router = useRouter()
   const { toggleLike, isLiked } = useLikesStore()
   // Same SSR/localStorage timing issue as the participation store — don't
@@ -40,7 +38,6 @@ export function LikeButton({ dealId, className }: LikeButtonProps) {
       return
     }
     toggleLike(dealId)
-    if (user) markAsBuyer(user.id)
   }
 
   return (
