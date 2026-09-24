@@ -119,7 +119,7 @@ export function ShareDealModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent overlayClassName="bg-[#002356]/60 backdrop-blur-sm" className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Share this deal</DialogTitle>
           <DialogDescription>The more buyers who see it, the faster the discount grows.</DialogDescription>

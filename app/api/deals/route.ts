@@ -4,6 +4,9 @@ import { prisma } from "@/lib/db"
 import { requireUser } from "@/lib/auth/current-user"
 import { dealInclude } from "@/lib/api/deal-include"
 import { sellerDealPublishedCopy } from "@/lib/notifications/copy"
+import { createNotification } from "@/lib/notifications/create-notification"
+import { sendNewDealMarketingEmails } from "@/lib/email/send"
+import { getCategoryRule } from "@/lib/constants/category-rules"
 
 // GET /api/deals — list, optionally filtered:
 //   ?sellerId=<SellerProfile.id>   a seller's own deals (any status) —
@@ -45,9 +48,15 @@ const createSchema = z
     category: z.string().min(1),
     originalPrice: z.number().positive(),
     currency: z.string().default("USD"),
-    maxDiscountPercent: z.number().min(5).max(90),
-    maxBuyersRequired: z.number().int().min(2),
-    daysUntilDeadline: z.number().int().min(1).max(60),
+    // No hardcoded min/max here — the real bounds are per-category
+    // (lib/constants/category-rules.ts) and enforced below in
+    // superRefine, since a single flat range can't express "Motors tops
+    // out at 25% but Fashion goes to 65%". Kept as bare positive-number
+    // checks so a wildly invalid value (negative, zero) still fails fast
+    // with a clear error even before the category lookup runs.
+    maxDiscountPercent: z.number().positive(),
+    maxBuyersRequired: z.number().int().positive(),
+    daysUntilDeadline: z.number().int().positive(),
     isPickup: z.boolean(),
     pickupDetails: pickupDetailsSchema.optional(),
     deliveryZones: z.array(z.object({ label: z.string().min(1), price: z.number().positive() })).optional(),
@@ -62,6 +71,40 @@ const createSchema = z
   .refine((d) => !d.isPickup || !!d.pickupDetails, { message: "pickupDetails required when isPickup" })
   .refine((d) => d.isPickup || (d.deliveryZones && d.deliveryZones.length > 0), {
     message: "At least one delivery zone required when not isPickup",
+  })
+  // Hard guardrails per category (lib/constants/category-rules.ts) — the
+  // server-side half of the same two-tier validation the create-deal form
+  // enforces client-side. Never trust the client alone for this: a
+  // request built by hand (or a future non-form caller, e.g. the seller
+  // inventory sync API) must not be able to publish a deal outside its
+  // category's bounds just because it skipped the browser form.
+  .superRefine((d, ctx) => {
+    const rule = getCategoryRule(d.category)
+    if (!rule) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["category"], message: `Unknown category: ${d.category}` })
+      return
+    }
+    if (d.maxDiscountPercent < rule.minDiscountPercent || d.maxDiscountPercent > rule.maxDiscountPercent) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["maxDiscountPercent"],
+        message: `${d.category} deals must offer between ${rule.minDiscountPercent}% and ${rule.maxDiscountPercent}% max discount`,
+      })
+    }
+    if (d.daysUntilDeadline < rule.minDurationDays || d.daysUntilDeadline > rule.maxDurationDays) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["daysUntilDeadline"],
+        message: `${d.category} deals must run between ${rule.minDurationDays} and ${rule.maxDurationDays} days`,
+      })
+    }
+    if (d.maxBuyersRequired < rule.minBuyersRequired || d.maxBuyersRequired > rule.maxBuyersRequired) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["maxBuyersRequired"],
+        message: `${d.category} deals need between ${rule.minBuyersRequired} and ${rule.maxBuyersRequired} buyers`,
+      })
+    }
   })
 
 // 3 milestone markers at 25%, 50%, and 100% of maxBuyers — same math as
@@ -129,12 +172,23 @@ export async function POST(req: Request) {
   // Was wired in the old mock seller-deals-store's addDeal() before deal
   // creation moved to this real route (2026-09-14) — never ported over, so
   // sellers stopped getting this notification. See lib/notifications/copy.ts.
-  await prisma.notification.create({
-    data: {
-      userId: user.id,
-      ...sellerDealPublishedCopy({ productName: deal.productName }),
-      data: { dealId: deal.id },
-    },
+  await createNotification({
+    userId: user.id,
+    ...sellerDealPublishedCopy({ productName: deal.productName }),
+    data: { dealId: deal.id },
+  })
+
+  // Marketing trigger 1 (lib/email/send.ts) — a new deal clearing the
+  // "huge discount" bar goes out to every marketing-opted-in buyer.
+  // Awaited, not fire-and-forget: this runs inside a serverless route
+  // handler, where an un-awaited promise can be killed the instant the
+  // response is sent — see createNotification's own comment on the same
+  // issue. Never throws itself (errors are caught and logged inside).
+  await sendNewDealMarketingEmails({
+    id: deal.id,
+    productName: deal.productName,
+    productImages: deal.productImages,
+    maxDiscountPercent: deal.maxDiscountPercent,
   })
 
   return NextResponse.json({ deal }, { status: 201 })

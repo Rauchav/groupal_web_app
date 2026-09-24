@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db"
 import { requireUser } from "@/lib/auth/current-user"
 import { chargeOffSession } from "@/lib/payments/gateway"
 import { paymentSuccessCopy } from "@/lib/notifications/copy"
+import { createNotification } from "@/lib/notifications/create-notification"
 
 // POST /api/participations/[id]/retry — a buyer-initiated retry of the
 // final charge, from the "update payment method" link in a grace-period
@@ -45,12 +46,10 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
 
   const deal = await prisma.deal.findUnique({ where: { id: participation.dealId }, select: { productName: true } })
   await prisma.groupBuyParticipation.update({ where: { id: participation.id }, data: { status: "FINAL_PAYMENT_PAID" } })
-  await prisma.notification.create({
-    data: {
-      userId: user.id,
-      ...paymentSuccessCopy({ productName: deal?.productName ?? "your deal", firstAttempt: false }),
-      data: { dealId: participation.dealId, participationId: participation.id },
-    },
+  await createNotification({
+    userId: user.id,
+    ...paymentSuccessCopy({ productName: deal?.productName ?? "your deal", firstAttempt: false }),
+    data: { dealId: participation.dealId, participationId: participation.id },
   })
 
   return NextResponse.json({ success: true })

@@ -243,10 +243,19 @@ function StepReview({
           </div>
 
           <p className="text-sm text-white">
-            Join now and save from{" "}
-            <span className="font-bold" style={{ color: "#eaad00" }}>{fmtShort(computed.savingsAmount, deal.currency)}</span>
-            {" "}up to{" "}
-            <span className="font-bold" style={{ color: "#eaad00" }}>{fmtShort(maxSavings, deal.currency)}</span>
+            {deal.currentBuyerCount === 0 ? (
+              <>
+                Join now and save up to{" "}
+                <span className="font-bold" style={{ color: "#eaad00" }}>{fmtShort(maxSavings, deal.currency)}</span>
+              </>
+            ) : (
+              <>
+                Join now and save from{" "}
+                <span className="font-bold" style={{ color: "#eaad00" }}>{fmtShort(computed.savingsAmount, deal.currency)}</span>
+                {" "}up to{" "}
+                <span className="font-bold" style={{ color: "#eaad00" }}>{fmtShort(maxSavings, deal.currency)}</span>
+              </>
+            )}
           </p>
 
           {/* Milestone pills */}
@@ -269,19 +278,27 @@ function StepReview({
           </div>
 
           {/* Progress bar */}
-          <div className="space-y-2">
-            <div className="relative h-3 rounded-full overflow-hidden" style={{ backgroundColor: "rgba(255,255,255,0.12)" }}>
-              <motion.div
-                className={cn("h-full rounded-full", zoneColor.bar)}
-                initial={{ width: 0 }}
-                animate={{ width: `${Math.min(computed.progressPercent, 100)}%` }}
-                transition={{ duration: 0.9, ease: "easeOut" }}
-              />
+          {deal.currentBuyerCount === 0 ? (
+            <div className="rounded-xl px-3.5 py-3" style={{ backgroundColor: "rgba(234,173,0,0.12)" }}>
+              <p className="text-sm font-semibold" style={{ color: "white" }}>
+                <span style={{ color: "#eaad00" }}>Be the first to join this deal!</span>, and make sure to let everyone know about it.
+              </p>
             </div>
-            <p className="text-white/60 text-xs">
-              Every new buyer adds <span className="font-extrabold text-white">{computed.discountPerBuyer.toFixed(2)}%</span> more discount for everyone in the group
-            </p>
-          </div>
+          ) : (
+            <div className="space-y-2">
+              <div className="relative h-3 rounded-full overflow-hidden" style={{ backgroundColor: "rgba(255,255,255,0.12)" }}>
+                <motion.div
+                  className={cn("h-full rounded-full", zoneColor.bar)}
+                  initial={{ width: 0 }}
+                  animate={{ width: `${Math.min(computed.progressPercent, 100)}%` }}
+                  transition={{ duration: 0.9, ease: "easeOut" }}
+                />
+              </div>
+              <p className="text-white/60 text-xs">
+                Every new buyer adds <span className="font-extrabold text-white">{computed.discountPerBuyer.toFixed(2)}%</span> more discount for everyone in the group
+              </p>
+            </div>
+          )}
 
           {/* Now vs. max scenario comparison */}
           <div className="space-y-1.5">

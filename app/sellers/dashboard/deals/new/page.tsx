@@ -1,15 +1,16 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { useUser } from "@clerk/nextjs"
 import { useForm, useFieldArray } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
 import { toast } from "sonner"
-import { Plus, PlusCircle, Store, Truck, X, MapPin, Flag, Globe2 } from "lucide-react"
+import { Plus, PlusCircle, Store, Truck, X, MapPin, Flag, Globe2, Lightbulb } from "lucide-react"
 import { useSellerProfile } from "@/sellers/stores/seller-store"
 import { DEAL_CATEGORIES } from "@/lib/constants/categories"
+import { getCategoryRule } from "@/lib/constants/category-rules"
 import { CONTINENTS } from "@/lib/constants/continents"
 import { REACH_SCOPE_LABEL } from "@/lib/utils/deal-reach"
 import type { DealReach, DealReachScope } from "@/lib/types/deal"
@@ -46,9 +47,15 @@ const dealSchema = z
     // path productImages/deliveryZones already went through.
     externalProductUrl: z.string().url("Enter a valid URL").optional().or(z.literal("")),
     originalPrice:       z.coerce.number().positive("Enter a price above $0"),
-    maxDiscountPercent:  z.coerce.number().min(5, "At least 5%").max(90, "Keep it under 90%"),
-    maxBuyersRequired:   z.coerce.number().int().min(2, "Needs at least 2 buyers"),
-    daysUntilDeadline:   z.coerce.number().int().min(1, "At least 1 day").max(60, "60 days max"),
+    // No hardcoded min/max here — the real bounds are per-category
+    // (lib/constants/category-rules.ts) and enforced below in
+    // superRefine, since a single flat range can't express "Motors tops
+    // out at 25% but Fashion goes to 65%". Kept as bare positive-number
+    // checks so a wildly invalid value still fails fast with a clear
+    // error even before the category lookup runs.
+    maxDiscountPercent:  z.coerce.number().positive("Enter a discount above 0%"),
+    maxBuyersRequired:   z.coerce.number().int().positive("Needs at least 1 buyer"),
+    daysUntilDeadline:   z.coerce.number().int().positive("At least 1 day"),
     isPickup:            z.boolean(),
     pickupLocation:      z.string().optional(),
     pickupHours:         z.string().optional(),
@@ -87,6 +94,36 @@ const dealSchema = z
     },
     { message: "Add at least one value for the selected reach", path: ["reachScope"] }
   )
+  // Hard guardrails per category (lib/constants/category-rules.ts) —
+  // blocking, unlike the discount field's soft "recommended minimum"
+  // tooltip below, which never blocks submission. Mirrored server-side in
+  // POST /api/deals's own superRefine — never trust this client copy
+  // alone, since a request can always bypass the browser form.
+  .superRefine((data, ctx) => {
+    const rule = getCategoryRule(data.category)
+    if (!rule) return
+    if (data.maxDiscountPercent < rule.minDiscountPercent || data.maxDiscountPercent > rule.maxDiscountPercent) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["maxDiscountPercent"],
+        message: `${data.category} deals must offer between ${rule.minDiscountPercent}% and ${rule.maxDiscountPercent}% max discount`,
+      })
+    }
+    if (data.daysUntilDeadline < rule.minDurationDays || data.daysUntilDeadline > rule.maxDurationDays) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["daysUntilDeadline"],
+        message: `${data.category} deals must run between ${rule.minDurationDays} and ${rule.maxDurationDays} days`,
+      })
+    }
+    if (data.maxBuyersRequired < rule.minBuyersRequired || data.maxBuyersRequired > rule.maxBuyersRequired) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["maxBuyersRequired"],
+        message: `${data.category} deals need between ${rule.minBuyersRequired} and ${rule.maxBuyersRequired} buyers`,
+      })
+    }
+  })
 
 type DealFormInput = z.input<typeof dealSchema>
 type DealForm = z.output<typeof dealSchema>
@@ -135,6 +172,42 @@ function ImagePreview({ url, failed, onError }: { url: string; failed: boolean; 
       className="h-14 w-14 rounded-lg object-cover border border-gray-200 mt-2"
       onError={onError}
     />
+  )
+}
+
+// Non-blocking discount guidance — shown only once the chosen discount is
+// already a VALID number within the category's hard min/max (an
+// out-of-range value gets its own blocking zod error instead; the two
+// never show at the same time), and only while it's below that
+// category's recommendedMinDiscountPercent. Purely advisory: dismissing
+// it, or publishing anyway, is always allowed. Re-appears if the seller
+// switches category or changes the discount back down after dismissing,
+// since "dismissed for a 12% Electronics deal" shouldn't silently also
+// dismiss it for a 12% Fashion deal.
+function RecommendedDiscountTooltip({ category, discount }: { category: string; discount: number }) {
+  const [dismissed, setDismissed] = useState(false)
+  useEffect(() => setDismissed(false), [category, discount])
+  const rule = getCategoryRule(category)
+  if (!rule || dismissed) return null
+  if (!Number.isFinite(discount) || discount < rule.minDiscountPercent || discount > rule.maxDiscountPercent) return null
+  if (discount >= rule.recommendedMinDiscountPercent) return null
+
+  return (
+    <div className="mt-2 flex items-start gap-2.5 rounded-xl border border-[#eaad00]/40 bg-[#eaad00]/10 p-3">
+      <Lightbulb className="h-4 w-4 flex-shrink-0 mt-0.5" style={{ color: "#eaad00" }} />
+      <p className="flex-1 text-xs text-gray-700 leading-relaxed">
+        We strongly recommend at least <span className="font-bold">{rule.recommendedMinDiscountPercent}%</span> for{" "}
+        {category} deals to attract buyers — you can still publish at {discount}% if you prefer.
+      </p>
+      <button
+        type="button"
+        onClick={() => setDismissed(true)}
+        aria-label="Dismiss"
+        className="flex-shrink-0 text-gray-400 hover:text-gray-600 cursor-pointer"
+      >
+        <X className="h-3.5 w-3.5" />
+      </button>
+    </div>
   )
 }
 
@@ -191,6 +264,10 @@ export default function NewSellerDealPage() {
       deliveryZones.replace([{ label: "", price: "" as unknown as number }])
     }
   }
+
+  const watchedCategory = watch("category")
+  const categoryRule = getCategoryRule(watchedCategory)
+  const watchedDiscount = Number(watch("maxDiscountPercent"))
 
   const coverImageUrl = watch("coverImage")
   const [coverPreviewFailed, setCoverPreviewFailed] = useState(false)
@@ -486,24 +563,42 @@ export default function NewSellerDealPage() {
         <div className="space-y-4 pt-2 border-t border-gray-100">
           <h2 className="font-heading font-bold text-[#002356] text-sm uppercase tracking-wider">Pricing & Group Terms</h2>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div>
+            <div className="min-w-0">
               <label className="block text-sm font-semibold text-gray-700 mb-1">Store price ($)</label>
               <input type="number" step="0.01" {...register("originalPrice")} placeholder="1799" className={inputClass(!!errors.originalPrice)} />
               {errors.originalPrice && <p className="text-xs text-red-500 mt-1">{errors.originalPrice.message}</p>}
             </div>
-            <div>
+            <div className="min-w-0">
               <label className="block text-sm font-semibold text-gray-700 mb-1">Max discount (%)</label>
+              {categoryRule && (
+                <p className="text-xs text-gray-400 mb-1">
+                  {categoryRule.minDiscountPercent}–{categoryRule.maxDiscountPercent}% for {watchedCategory}
+                </p>
+              )}
               <input type="number" {...register("maxDiscountPercent")} className={inputClass(!!errors.maxDiscountPercent)} />
               {errors.maxDiscountPercent && <p className="text-xs text-red-500 mt-1">{errors.maxDiscountPercent.message}</p>}
+              {!errors.maxDiscountPercent && (
+                <RecommendedDiscountTooltip category={watchedCategory} discount={watchedDiscount} />
+              )}
             </div>
-            <div>
+            <div className="min-w-0">
               <label className="block text-sm font-semibold text-gray-700 mb-1">Max buyers</label>
+              {categoryRule && (
+                <p className="text-xs text-gray-400 mb-1">
+                  {categoryRule.minBuyersRequired}–{categoryRule.maxBuyersRequired} for {watchedCategory}
+                </p>
+              )}
               <input type="number" {...register("maxBuyersRequired")} className={inputClass(!!errors.maxBuyersRequired)} />
               {errors.maxBuyersRequired && <p className="text-xs text-red-500 mt-1">{errors.maxBuyersRequired.message}</p>}
             </div>
           </div>
-          <div className="sm:w-1/3">
+          <div className="sm:w-1/3 min-w-0">
             <label className="block text-sm font-semibold text-gray-700 mb-1">Closes in (days)</label>
+            {categoryRule && (
+              <p className="text-xs text-gray-400 mb-1">
+                {categoryRule.minDurationDays}–{categoryRule.maxDurationDays} days for {watchedCategory}
+              </p>
+            )}
             <input type="number" {...register("daysUntilDeadline")} className={inputClass(!!errors.daysUntilDeadline)} />
             {errors.daysUntilDeadline && <p className="text-xs text-red-500 mt-1">{errors.daysUntilDeadline.message}</p>}
           </div>

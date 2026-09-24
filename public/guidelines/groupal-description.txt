@@ -78,8 +78,8 @@ This creates genuine social incentive to share and recruit.
 
   STEP 2 — RESERVE YOUR SPOT (10% UPFRONT)
   ─────────────────────────────────────────
-  To join a group buy, buyers pay just 10% of the current item price as a
-  reservation fee. This small upfront payment:
+  To join a group buy, buyers pay just 10% of the product's original store
+  price as a reservation fee. This small upfront payment:
 
     · Locks in their spot in the group buy
     · Confirms their intent to purchase
@@ -91,8 +91,10 @@ This creates genuine social incentive to share and recruit.
   join before the deal closes. The buyer's discount grows with every new
   person who joins after them.
 
-  The reservation fee is proportional to the current price at join time,
-  not the final price. This ensures early joiners always benefit more.
+  The reservation fee is fixed the moment a buyer joins: it's always 10%
+  of the original store price, never the current or final group price —
+  and it never changes, no matter how many more buyers join afterward.
+  Only the final payment shrinks as the group grows.
 
   ─────────────────────────────────────────────────────────────────────────
 

@@ -23,15 +23,6 @@ const SORT_OPTIONS: { value: SortOption; label: string }[] = [
 
 function dealMatchesCategory(deal: Deal, category: string): boolean {
   if (category === "All") return true
-  const map: Record<string, string[]> = {
-    "Cars & Motorcycles": ["Cars", "Motorcycles"],
-    "Smartphones":        ["Cell Phones", "Smartphones"],
-    "Furniture":          ["Furniture", "Home"],
-    "Travel":             ["Travel"],
-    "Vacations":          ["Vacations", "Travel"],
-  }
-  const aliases = map[category]
-  if (aliases) return aliases.includes(deal.category)
   return deal.category === category
 }
 

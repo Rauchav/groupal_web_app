@@ -58,7 +58,7 @@ export function dealJoinedCopy({ productName }: { productName: string }): Notifi
   return {
     type:    "DEAL_JOINED",
     title:   "You're in!",
-    message: `Your spot in ${productName} is reserved. We'll charge the remaining balance automatically when the deal closes — nothing else for you to do.`,
+    message: `Your spot in ${productName} is reserved. We'll charge the remaining balance automatically when the deal closes, nothing else for you to do.`,
   }
 }
 
@@ -72,7 +72,7 @@ export function dealProgressCopy({
   return {
     type:    "DEAL_PROGRESS",
     title:   "Your discount just grew!",
-    message: `Another buyer joined ${productName} — the group is now at ${buyerCount} of ${maxBuyers} buyers, and your price just dropped to ${pct(discountPercent)} off. Share the deal to help it fill up even faster.`,
+    message: `Another buyer joined ${productName}, the group is now at ${buyerCount} of ${maxBuyers} buyers, and your price just dropped to ${pct(discountPercent)} off. Share the deal to help it fill up even faster.`,
   }
 }
 
@@ -82,7 +82,7 @@ export function dealEndingSoonCopy({ productName }: { productName: string }): No
   return {
     type:    "DEAL_ENDING_SOON",
     title:   "Your deal ends in less than 24 hours",
-    message: `${productName} closes soon. If you haven't already, this is a great time to share it with friends — every new buyer before the deadline grows everyone's discount, including yours.`,
+    message: `${productName} closes soon. If you haven't already, this is a great time to share it with all your contacts, every new buyer before the deadline grows everyone's discount, including yours.`,
   }
 }
 
@@ -97,7 +97,7 @@ export function dealCompletedCopy({
 }: { productName: string; buyerCount: number; discountPercent: number; savingsAmount: number; currency?: string }): NotificationCopy {
   return {
     type:    "DEAL_COMPLETED",
-    title:   "The group buy is complete — congrats!",
+    title:   "The group buy is complete, congrats!",
     message: `${productName} closed with ${buyerCount} buyer${buyerCount === 1 ? "" : "s"} and a final group discount of ${pct(discountPercent)}. Together you saved ${fmt(savingsAmount, currency)} off the store price. Thanks for buying together with Groupal!`,
   }
 }
@@ -111,10 +111,10 @@ export function paymentSuccessCopy({
 }: { productName: string; firstAttempt: boolean }): NotificationCopy {
   return {
     type:    "PAYMENT_SUCCESS",
-    title:   "Final payment complete — your order is on its way!",
+    title:   "Final payment complete, your order is on its way!",
     message: firstAttempt
       ? `We charged the remaining balance for ${productName}. Thanks for group buying with Groupal!`
-      : `Your updated payment method worked — we've charged the remaining balance for ${productName}. Thanks for your patience!`,
+      : `Your updated payment method worked, we've charged the remaining balance for ${productName}. Thanks for your patience!`,
   }
 }
 
@@ -126,7 +126,7 @@ export function paymentFailedCopy({
   return {
     type:    "PAYMENT_FAILED",
     title:   "We couldn't process your final payment",
-    message: `No worries — this happens. You have ${gracePeriodDays} days to update your payment method before your spot is affected, and we'll automatically try again in the meantime.`,
+    message: `No worries, this happens. You have ${gracePeriodDays} days to update your payment method before your spot is affected, and we'll automatically try again in the meantime.`,
   }
 }
 
@@ -152,7 +152,7 @@ export function paymentReminderRetryFailedCopy({
   return {
     type:    "PAYMENT_REMINDER",
     title:   "Still couldn't process your payment",
-    message: `We tried again for ${productName} and it didn't go through. Update your payment method any time before ${graceDeadline.toDateString()} and we'll retry right away — no pressure.`,
+    message: `We tried again for ${productName} and it didn't go through. Update your payment method any time before ${graceDeadline.toDateString()} and we'll retry right away, no pressure.`,
   }
 }
 
@@ -164,7 +164,7 @@ export function reservationForfeitedCopy({ productName }: { productName: string 
   return {
     type:    "RESERVATION_FORFEITED",
     title:   "Your spot has been released",
-    message: `We weren't able to complete the final payment for ${productName} even after a few tries, so your reserved spot has been released back to the group. Your 10% reservation isn't refunded in this case — but you're always welcome to join another deal any time.`,
+    message: `We weren't able to complete the final payment for ${productName} even after a few tries, so your reserved spot has been released back to the group. Your 10% reservation isn't refunded in this case, but you're always welcome to join another deal any time.`,
   }
 }
 
@@ -191,7 +191,7 @@ export function sellerNewBuyerCopy({
   return {
     type:    "SELLER_NEW_BUYER",
     title:   "New buyer joined!",
-    message: `${buyerCount} of ${maxBuyers} buyers have now joined ${productName} — the group discount is at ${pct(discountPercent)}. Every new buyer moves you closer to selling out.`,
+    message: `${buyerCount} of ${maxBuyers} buyers have now joined ${productName}, the group discount is at ${pct(discountPercent)}. Every new buyer moves you closer to selling out.`,
   }
 }
 
@@ -210,7 +210,7 @@ export function sellerDealCompletedCopy({
 }): NotificationCopy {
   return {
     type:    "SELLER_DEAL_COMPLETED",
-    title:   "Your deal just closed — nice work!",
+    title:   "Your deal just closed, nice work!",
     message: `${productName} sold ${unitsSold} unit${unitsSold === 1 ? "" : "s"} at a final group discount of ${pct(discountPercent)}. Total revenue: ${fmt(grossRevenue, currency)}. After Groupal's commission (${fmt(commission, currency)}), your payout is ${fmt(netPayout, currency)} — it's on its way to your account.`,
   }
 }
@@ -239,6 +239,6 @@ export function sellerPayoutIssueCopy({
   return {
     type:    "SELLER_PAYOUT_ISSUE",
     title:   "We hit a snag sending your payout",
-    message: `We ran into an issue sending your ${fmt(netPayout, currency)} payout for ${productName}. Nothing you need to do right now — our team is already reviewing it. Reach out to Groupal support any time if you'd like an update.`,
+    message: `We ran into an issue sending your ${fmt(netPayout, currency)} payout for ${productName}. Nothing you need to do right now, our team is already reviewing it. Reach out to Groupal support any time if you'd like an update.`,
   }
 }

@@ -8,13 +8,16 @@ import {
   Users,
   Zap,
   ArrowRight,
-  Cog,
-  Shirt,
-  Cpu,
+  Tv,
+  Car,
+  Laptop,
+  Smartphone,
   Home,
-  Gauge,
-  Plane,
+  HeartPulse,
+  Shirt,
   Sparkles,
+  Dumbbell,
+  Plane,
   ChevronRight,
   CheckCircle2,
 } from "lucide-react";
@@ -44,24 +47,22 @@ const stagger = {
 };
 
 // ── Category data ────────────────────────────────────────────────────────────
+// Every label here is a real category (lib/constants/categories.ts) now, so
+// each tile links straight into /deals?category=<label> with no alias
+// translation needed — see that file's own comment for why this list is the
+// single source of truth every category picker in the app reads from.
 const CATEGORIES = [
-  { label: "Motors",       icon: Cog,        count: 62  },
-  { label: "Fashion",      icon: Shirt,      count: 97  },
-  { label: "Technology",   icon: Cpu,        count: 89  },
-  { label: "Home",         icon: Home,       count: 67  },
-  { label: "Gadgets",      icon: Gauge,      count: 115 },
-  { label: "Travel",       icon: Plane,      count: 53  },
-  { label: "Experiences",  icon: Sparkles,   count: 31  },
+  { label: "Electronics", icon: Tv,         count: 89  },
+  { label: "Motors",      icon: Car,        count: 62  },
+  { label: "Computers",   icon: Laptop,     count: 74  },
+  { label: "Smartphones", icon: Smartphone, count: 115 },
+  { label: "Home",        icon: Home,       count: 67  },
+  { label: "Health",      icon: HeartPulse, count: 41  },
+  { label: "Fashion",     icon: Shirt,      count: 97  },
+  { label: "Leisure",     icon: Sparkles,   count: 38  },
+  { label: "Sports",      icon: Dumbbell,   count: 53  },
+  { label: "Travels",     icon: Plane,      count: 53  },
 ] as const;
-
-// Routes into /deals' real category filter (see lib/constants/categories.ts)
-// wherever this marketing label has a confident match; falls back to the
-// unfiltered marketplace rather than a filter that would show zero deals.
-const CATEGORY_HREF: Partial<Record<(typeof CATEGORIES)[number]["label"], string>> = {
-  Motors: "/deals?category=" + encodeURIComponent("Cars & Motorcycles"),
-  Home:   "/deals?category=Furniture",
-  Travel: "/deals?category=Travel",
-};
 
 // ── How it works ────────────────────────────────────────────────────────────
 const HOW_IT_WORKS = [
@@ -372,7 +373,7 @@ export default function HomePage() {
           </motion.div>
 
           <motion.div
-            className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3"
+            className="grid grid-cols-2 sm:grid-cols-5 gap-3"
             initial="hidden"
             whileInView="visible"
             viewport={{ once: true }}
@@ -381,7 +382,7 @@ export default function HomePage() {
             {CATEGORIES.map(({ label, icon: Icon, count }, i) => (
               <motion.a
                 key={label}
-                href={CATEGORY_HREF[label] ?? "/deals"}
+                href={`/deals?category=${encodeURIComponent(label)}`}
                 variants={fadeUp}
                 custom={i}
                 className="group flex flex-col items-center gap-2.5 rounded-2xl p-4 cursor-pointer transition-all duration-200"

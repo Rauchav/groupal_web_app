@@ -10,6 +10,7 @@ import { useUser } from "@clerk/nextjs"
 import { useSellerStore, useSellerProfile } from "@/sellers/stores/seller-store"
 import { DEAL_CATEGORIES } from "@/lib/constants/categories"
 import { cn } from "@/lib/utils"
+import { CityAutocomplete } from "@/sellers/components/CityAutocomplete"
 
 // Pulls the human-readable message out of a Clerk API error — these come
 // back as { errors: [{ message, longMessage, code }] }, not a plain Error.
@@ -245,6 +246,8 @@ export default function SellerSettingsPage() {
   const {
     register,
     handleSubmit,
+    setValue,
+    watch,
     formState: { errors },
   } = useForm<CompanyForm>({
     resolver: zodResolver(companySchema),
@@ -257,6 +260,7 @@ export default function SellerSettingsPage() {
       description: profile?.description ?? "",
     },
   })
+  const city = watch("city")
 
   function onSubmit(data: CompanyForm) {
     if (!user) return
@@ -333,14 +337,11 @@ export default function SellerSettingsPage() {
               {errors.phone && <p className="text-xs text-red-500 mt-1">{errors.phone.message}</p>}
             </div>
             <div className="min-w-0">
-              <label className="block text-sm font-semibold text-gray-700 mb-1">City</label>
-              <input
-                {...register("city")}
-                className={cn(
-                  "w-full h-11 px-3 rounded-xl border text-sm outline-none transition-all",
-                  "focus:ring-2 focus:ring-[#002356]/20 focus:border-[#002356]",
-                  errors.city ? "border-red-400 bg-red-50" : "border-gray-200 bg-gray-50"
-                )}
+              <label className="block text-sm font-semibold text-gray-700 mb-1">Headquarters City</label>
+              <CityAutocomplete
+                value={city}
+                onChange={(v) => setValue("city", v, { shouldValidate: true })}
+                hasError={!!errors.city}
               />
               {errors.city && <p className="text-xs text-red-500 mt-1">{errors.city.message}</p>}
             </div>

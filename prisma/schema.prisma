@@ -126,6 +126,15 @@ model Deal {
   // column here fixes structurally (a SEED deal's in-memory-only version
   // of this flag silently reset on every page reload).
   endingSoonNotified Boolean       @default(false)
+  // Dedupe flag for the separate "closing soon, don't miss it" MARKETING
+  // email blast (lib/email/send.ts's sendMarketingEndingSoonEmails,
+  // triggered from the sweep job) — independent of endingSoonNotified
+  // above, which only dedupes the in-app/email notification sent to
+  // buyers already PARTICIPATING in the deal. This one goes out once, to
+  // opted-in buyers who are NOT yet in the deal, only if the deal's
+  // current discount clears MARKETING_DISCOUNT_THRESHOLD_PERCENT
+  // (lib/email/constants.ts).
+  marketingEndingSoonSent Boolean  @default(false)
   externalProductUrl String?
   createdAt          DateTime      @default(now())
   updatedAt          DateTime      @updatedAt

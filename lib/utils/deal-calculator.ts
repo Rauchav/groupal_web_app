@@ -1,8 +1,5 @@
 import { Deal, DealComputedValues } from "@/lib/types/deal";
-
-// Groupal's cut of each sale — a SELLER-side cost only, deducted from the
-// seller's payout when a deal closes. Never charged to or shown to buyers.
-const SELLER_PLATFORM_FEE_PERCENT = 1.5;
+import { getCommissionPercentForPrice } from "@/lib/constants/commission-schedule";
 
 export function computeDealValues(deal: Deal): DealComputedValues {
   const discountPerBuyer = deal.maxDiscountPercent / deal.maxBuyersRequired;
@@ -17,8 +14,10 @@ export function computeDealValues(deal: Deal): DealComputedValues {
   // This is the ONLY amount buyers pay at checkout.
   const reservationAmount = deal.originalPrice * (deal.reservationFeePercent / 100);
   // Seller-side only — NOT part of what the buyer pays. Deducted from the
-  // seller's payout at deal completion.
-  const sellerPlatformFeeAmount = deal.originalPrice * (SELLER_PLATFORM_FEE_PERCENT / 100);
+  // seller's payout at deal completion. Groupal's cut tapers down as the
+  // store price climbs (lib/constants/commission-schedule.ts) rather than
+  // staying a flat percentage.
+  const sellerPlatformFeeAmount = deal.originalPrice * (getCommissionPercentForPrice(deal.originalPrice) / 100);
   // Remaining balance = store price minus the 10% upfront already paid (90% of store price)
   const remainingAmount   = deal.originalPrice - reservationAmount;
 

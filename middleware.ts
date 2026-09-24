@@ -28,6 +28,10 @@ const isPublicRoute = createRouteMatcher([
   // requireUser() call in the route itself), so there's nothing to
   // protect here.
   "/api/jobs/sweep",
+  // City-autocomplete lookup (sellers/components/CityAutocomplete.tsx) —
+  // a stateless geocoding proxy with no user-specific data, same reasoning
+  // as the public routes above.
+  "/api/geocode(.*)",
 ])
 
 const isSellerRoute = createRouteMatcher(["/sellers/dashboard(.*)"])

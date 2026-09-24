@@ -7,6 +7,7 @@ import { apiDealToDeal } from "@/lib/api/deal-adapter"
 import { computeDealValues } from "@/lib/utils/deal-calculator"
 import { saveMockPaymentMethod, chargeOffSession } from "@/lib/payments/gateway"
 import { dealJoinedCopy, dealProgressCopy, sellerNewBuyerCopy } from "@/lib/notifications/copy"
+import { createNotification, createNotifications } from "@/lib/notifications/create-notification"
 
 // POST /api/deals/[id]/join — the reservation charge (the "today" 10%
 // payment) and everything it triggers: the buyer's GroupBuyParticipation +
@@ -113,33 +114,29 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const updatedDeal = apiDealToDeal(dealRowToApiDeal(updatedDealRow))
   const updatedComputed = computeDealValues(updatedDeal)
 
-  await prisma.notification.create({
-    data: {
-      userId: user.id,
-      ...dealJoinedCopy({ productName: deal.productName }),
-      data: { dealId, participationId: participation.id },
-    },
+  await createNotification({
+    userId: user.id,
+    ...dealJoinedCopy({ productName: deal.productName }),
+    data: { dealId, participationId: participation.id },
   })
 
-  await prisma.notification.create({
-    data: {
-      userId: dealRow.seller.userId,
-      ...sellerNewBuyerCopy({
-        productName: deal.productName,
-        buyerCount: updatedDeal.currentBuyerCount,
-        maxBuyers: deal.maxBuyersRequired,
-        discountPercent: updatedComputed.currentDiscountPercent,
-      }),
-      data: { dealId },
-    },
+  await createNotification({
+    userId: dealRow.seller.userId,
+    ...sellerNewBuyerCopy({
+      productName: deal.productName,
+      buyerCount: updatedDeal.currentBuyerCount,
+      maxBuyers: deal.maxBuyersRequired,
+      discountPercent: updatedComputed.currentDiscountPercent,
+    }),
+    data: { dealId },
   })
 
   // Same "one notification per existing participant on every join" note as
   // the old engine — intentional given the discount mechanic (everyone's
   // price really does move every time), not a bug.
   if (otherParticipants.length > 0) {
-    await prisma.notification.createMany({
-      data: otherParticipants.map((other) => ({
+    await createNotifications(
+      otherParticipants.map((other) => ({
         userId: other.buyerId,
         ...dealProgressCopy({
           productName: deal.productName,
@@ -148,8 +145,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
           discountPercent: updatedComputed.currentDiscountPercent,
         }),
         data: { dealId, participationId: other.id },
-      })),
-    })
+      }))
+    )
   }
 
   return NextResponse.json({ participation }, { status: 201 })

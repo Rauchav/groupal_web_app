@@ -11,6 +11,8 @@ import {
   paymentReminderCardIssueCopy, paymentReminderRetryFailedCopy, reservationForfeitedCopy,
   sellerDealCompletedCopy, sellerPayoutSentCopy, sellerPayoutIssueCopy,
 } from "@/lib/notifications/copy"
+import { createNotification } from "@/lib/notifications/create-notification"
+import { sendEndingSoonMarketingEmails } from "@/lib/email/send"
 
 const ENDING_SOON_WINDOW_HOURS = 24
 
@@ -50,15 +52,33 @@ export async function POST() {
           where: { userId: p.buyerId, type: "DEAL_ENDING_SOON", data: { path: ["participationId"], equals: p.id } },
         })
         if (already) continue
-        await prisma.notification.create({
-          data: {
-            userId: p.buyerId,
-            ...dealEndingSoonCopy({ productName: deal.productName }),
-            data: { dealId: deal.id, participationId: p.id },
-          },
+        await createNotification({
+          userId: p.buyerId,
+          ...dealEndingSoonCopy({ productName: deal.productName }),
+          data: { dealId: deal.id, participationId: p.id },
         })
       }
       await prisma.deal.update({ where: { id: deal.id }, data: { endingSoonNotified: true } })
+    }
+
+    // ── 1b. Marketing "closing soon, don't miss it" blast ──────────
+    // Independent dedup flag (marketingEndingSoonSent) and independent
+    // audience (opted-in buyers NOT already in the deal) from the
+    // transactional ending-soon notification above — see
+    // lib/email/send.ts's sendEndingSoonMarketingEmails for the full
+    // reasoning and Deal.marketingEndingSoonSent's own schema comment.
+    if (!dealRow.marketingEndingSoonSent && hoursLeft > 0 && hoursLeft < ENDING_SOON_WINDOW_HOURS) {
+      const computed = computeDealValues(deal)
+      const participants = await prisma.groupBuyParticipation.findMany({
+        where: { dealId: deal.id },
+        select: { buyerId: true },
+      })
+      await sendEndingSoonMarketingEmails(
+        { id: deal.id, productName: deal.productName, productImages: deal.productImages },
+        computed.currentDiscountPercent,
+        participants.map((p) => p.buyerId)
+      )
+      await prisma.deal.update({ where: { id: deal.id }, data: { marketingEndingSoonSent: true } })
     }
 
     // ── 2. Card health-check ────────────────────────────────────────
@@ -74,12 +94,10 @@ export async function POST() {
           where: { userId: p.buyerId, type: "PAYMENT_REMINDER", data: { path: ["participationId"], equals: p.id } },
         })
         if (already) continue
-        await prisma.notification.create({
-          data: {
-            userId: p.buyerId,
-            ...paymentReminderCardIssueCopy({ productName: deal.productName }),
-            data: { dealId: deal.id, participationId: p.id, kind: "card_health" },
-          },
+        await createNotification({
+          userId: p.buyerId,
+          ...paymentReminderCardIssueCopy({ productName: deal.productName }),
+          data: { dealId: deal.id, participationId: p.id, kind: "card_health" },
         })
       }
     }
@@ -97,18 +115,16 @@ export async function POST() {
           where: { id: p.id },
           data: { status: "AWAITING_FINAL_PAYMENT", finalDiscountPercent: computed.currentDiscountPercent, finalPrice },
         })
-        await prisma.notification.create({
-          data: {
-            userId: p.buyerId,
-            ...dealCompletedCopy({
-              productName: deal.productName,
-              buyerCount: deal.currentBuyerCount,
-              discountPercent: computed.currentDiscountPercent,
-              savingsAmount: computed.savingsAmount,
-              currency: deal.currency,
-            }),
-            data: { dealId: deal.id, participationId: p.id },
-          },
+        await createNotification({
+          userId: p.buyerId,
+          ...dealCompletedCopy({
+            productName: deal.productName,
+            buyerCount: deal.currentBuyerCount,
+            discountPercent: computed.currentDiscountPercent,
+            savingsAmount: computed.savingsAmount,
+            currency: deal.currency,
+          }),
+          data: { dealId: deal.id, participationId: p.id },
         })
 
         const charge = await chargeOffSession(p.paymentMethodRef, finalPrice)
@@ -125,12 +141,10 @@ export async function POST() {
 
         if (charge.success) {
           await prisma.groupBuyParticipation.update({ where: { id: p.id }, data: { status: "FINAL_PAYMENT_PAID" } })
-          await prisma.notification.create({
-            data: {
-              userId: p.buyerId,
-              ...paymentSuccessCopy({ productName: deal.productName, firstAttempt: true }),
-              data: { dealId: deal.id, participationId: p.id },
-            },
+          await createNotification({
+            userId: p.buyerId,
+            ...paymentSuccessCopy({ productName: deal.productName, firstAttempt: true }),
+            data: { dealId: deal.id, participationId: p.id },
           })
         } else {
           const gracePeriodDays = getGracePeriodDays(deal.originalPrice)
@@ -139,12 +153,10 @@ export async function POST() {
             where: { id: p.id },
             data: { status: "IN_GRACE_PERIOD", gracePeriodDays, graceDeadline },
           })
-          await prisma.notification.create({
-            data: {
-              userId: p.buyerId,
-              ...paymentFailedCopy({ productName: deal.productName, gracePeriodDays }),
-              data: { dealId: deal.id, participationId: p.id },
-            },
+          await createNotification({
+            userId: p.buyerId,
+            ...paymentFailedCopy({ productName: deal.productName, gracePeriodDays }),
+            data: { dealId: deal.id, participationId: p.id },
           })
         }
       }
@@ -154,31 +166,27 @@ export async function POST() {
         const commission = computed.sellerPlatformFeeAmount * participants.length
         const netPayout = grossRevenue - commission
 
-        await prisma.notification.create({
-          data: {
-            userId: dealRow.seller.userId,
-            ...sellerDealCompletedCopy({
-              productName: deal.productName,
-              unitsSold: participants.length,
-              discountPercent: computed.currentDiscountPercent,
-              grossRevenue,
-              commission,
-              netPayout,
-              currency: deal.currency,
-            }),
-            data: { dealId: deal.id },
-          },
+        await createNotification({
+          userId: dealRow.seller.userId,
+          ...sellerDealCompletedCopy({
+            productName: deal.productName,
+            unitsSold: participants.length,
+            discountPercent: computed.currentDiscountPercent,
+            grossRevenue,
+            commission,
+            netPayout,
+            currency: deal.currency,
+          }),
+          data: { dealId: deal.id },
         })
 
         const payout = await sendPayout(netPayout)
-        await prisma.notification.create({
-          data: {
-            userId: dealRow.seller.userId,
-            ...(payout.success
-              ? sellerPayoutSentCopy({ productName: deal.productName, netPayout, currency: deal.currency })
-              : sellerPayoutIssueCopy({ productName: deal.productName, netPayout, currency: deal.currency })),
-            data: { dealId: deal.id },
-          },
+        await createNotification({
+          userId: dealRow.seller.userId,
+          ...(payout.success
+            ? sellerPayoutSentCopy({ productName: deal.productName, netPayout, currency: deal.currency })
+            : sellerPayoutIssueCopy({ productName: deal.productName, netPayout, currency: deal.currency })),
+          data: { dealId: deal.id },
         })
       }
 
@@ -203,12 +211,10 @@ export async function POST() {
       if (p.deal.currentBuyerCount > 0) {
         await prisma.deal.update({ where: { id: p.deal.id }, data: { currentBuyerCount: { decrement: 1 } } })
       }
-      await prisma.notification.create({
-        data: {
-          userId: p.buyerId,
-          ...reservationForfeitedCopy({ productName: p.deal.productName }),
-          data: { dealId: p.deal.id, participationId: p.id },
-        },
+      await createNotification({
+        userId: p.buyerId,
+        ...reservationForfeitedCopy({ productName: p.deal.productName }),
+        data: { dealId: p.deal.id, participationId: p.id },
       })
       continue
     }
@@ -234,21 +240,17 @@ export async function POST() {
 
     if (charge.success) {
       await prisma.groupBuyParticipation.update({ where: { id: p.id }, data: { status: "FINAL_PAYMENT_PAID" } })
-      await prisma.notification.create({
-        data: {
-          userId: p.buyerId,
-          ...paymentSuccessCopy({ productName: p.deal.productName, firstAttempt: false }),
-          data: { dealId: p.deal.id, participationId: p.id },
-        },
+      await createNotification({
+        userId: p.buyerId,
+        ...paymentSuccessCopy({ productName: p.deal.productName, firstAttempt: false }),
+        data: { dealId: p.deal.id, participationId: p.id },
       })
     } else {
       await prisma.groupBuyParticipation.update({ where: { id: p.id }, data: { retryAttempts: p.retryAttempts + 1 } })
-      await prisma.notification.create({
-        data: {
-          userId: p.buyerId,
-          ...paymentReminderRetryFailedCopy({ productName: p.deal.productName, graceDeadline: p.graceDeadline }),
-          data: { dealId: p.deal.id, participationId: p.id },
-        },
+      await createNotification({
+        userId: p.buyerId,
+        ...paymentReminderRetryFailedCopy({ productName: p.deal.productName, graceDeadline: p.graceDeadline }),
+        data: { dealId: p.deal.id, participationId: p.id },
       })
     }
   }

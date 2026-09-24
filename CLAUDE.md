@@ -129,13 +129,129 @@ each retry — creates its own Payment row for a full audit trail.
      success above.
    - **End of grace period, still unresolved:** status → FORFEITED.
      The reservation is kept, NOT refunded. The spot is released back
-     to the group (releaseDealSpot() decrements the deal's live
-     buyer count). Buyer gets one final, kind RESERVATION_FORFEITED
-     notification explaining what happened. This is the ONLY way a
-     buyer loses their reservation — never because "not enough
-     buyers joined."
+     to the group (POST /api/jobs/sweep decrements the deal's live
+     buyer count directly). Buyer gets one final, kind
+     RESERVATION_FORFEITED notification explaining what happened.
+     This is the ONLY way a buyer loses their reservation — never
+     because "not enough buyers joined."
 - Always communicate every step of this to users in warm, friendly,
   non-punitive language — never threatening, never implying fault.
+
+## Category System & Deal-Creation Guardrails
+
+Finalized 2026-09-19. The category list and the hard/soft guardrail
+STRUCTURE below are meant to stay stable; the actual numbers (discount
+ranges, duration ranges, buyer-count ranges, commission brackets) are a
+first pass and are EXPECTED to change once real market research comes
+in. That's exactly why every one of these numbers lives in exactly two
+files — `lib/constants/category-rules.ts` and `lib/constants/
+commission-schedule.ts` — and nowhere else. Retuning a number later
+should never require touching the create-deal form, the API route, or
+`deal-calculator.ts` — only one of those two constants files.
+
+### Categories
+
+The marketplace's fixed category list (`lib/constants/categories.ts`,
+`DEAL_CATEGORIES`) is: **Electronics, Motors, Computers, Smartphones,
+Home, Health, Fashion, Leisure, Sports, Travels** (plus "All" as a
+buyer-side filter-only option, not a real category any deal or seller
+profile can be tagged with). Every category picker in the app — the
+Navbar's chips, the /deals filter bar, the homepage's "Shop by
+Category" tiles, seller onboarding's primary category, and the
+create-deal form's Category field — reads from this one array. The
+homepage's category tiles route straight to `/deals?category=<label>`
+with no alias translation needed, since every tile label is already a
+real category name.
+
+### Per-category deal-creation rules
+
+`lib/constants/category-rules.ts` — one `CategoryRule` per category:
+`minDiscountPercent`/`maxDiscountPercent` (the seller's allowed max-
+discount range), `recommendedMinDiscountPercent` (advisory only — see
+"Two-tier validation" below), `minDurationDays`/`maxDurationDays`, and
+`minBuyersRequired`/`maxBuyersRequired`. Current values (first pass,
+expected to change):
+
+| Category    | Discount %  | Rec. min | Days  | Buyers |
+|-------------|-------------|----------|-------|--------|
+| Electronics | 5–40        | 15       | 3–21  | 10–50  |
+| Motors      | 5–25        | 12       | 3–30  | 5–20   |
+| Computers   | 5–35        | 15       | 3–30  | 5–20   |
+| Smartphones | 5–30        | 12       | 3–21  | 5–20   |
+| Home        | 10–55       | 20       | 3–14  | 10–50  |
+| Health      | 10–60       | 20       | 3–21  | 10–20  |
+| Fashion     | 15–65       | 25       | 3–14  | 10–50  |
+| Leisure     | 15–35       | 20       | 3–21  | 10–50  |
+| Sports      | 10–45       | 18       | 3–14  | 10–50  |
+| Travels     | 5–15        | 8        | 3–21  | 10–50  |
+
+A module-load guard in category-rules.ts throws if `DEAL_CATEGORIES`
+ever gains a category without a matching rule, so an incomplete retune
+fails immediately (a missing-tab build error) instead of silently
+letting hard validation no-op for that one category.
+
+### Two-tier validation (hard block vs. soft tooltip)
+
+Every deal-creation surface enforces the SAME two tiers, and the
+pattern itself — not just today's numbers — is meant to be permanent:
+
+1. **Hard limits — blocking.** Once a category is picked, max discount,
+   deal duration, and max buyers must fall within that category's
+   min/max. Enforced in TWO places, both reading `getCategoryRule()`
+   from the same constants file so they can never drift apart:
+   - Client-side: the create-deal form's zod schema
+     (app/sellers/dashboard/deals/new/page.tsx) via a `superRefine`
+     that looks up the rule for whatever category is currently
+     selected and pushes a field-specific error
+     ("{Category} deals must offer between X% and Y% max discount",
+     etc.) if a value is out of range. Live range hints ("5–40% for
+     Electronics") render under each of the three fields regardless of
+     error state, so a seller sees the bounds before typing, not just
+     after failing.
+   - Server-side: POST /api/deals (app/api/deals/route.ts) runs the
+     identical check in its own `superRefine`, independent of the
+     client. **Never trust the client-side copy alone** — a request
+     built by hand, or a future non-form caller (e.g. the not-yet-built
+     seller inventory sync API), must not be able to publish outside a
+     category's bounds just because it skipped the browser form.
+2. **Soft guidance — advisory only, never blocking.** If the chosen
+   discount is within the hard range but below that category's
+   `recommendedMinDiscountPercent`, a dismissible, warm-toned tooltip
+   appears near the discount field ("We strongly recommend at least
+   15% for Electronics deals to attract buyers — you can still publish
+   at 10% if you prefer.") — `RecommendedDiscountTooltip` in the
+   create-deal form. It never adds a zod issue and never blocks
+   `handleSubmit`; dismissing it, or just ignoring it and publishing
+   anyway, always works. Re-appears if the seller changes category or
+   discount after dismissing, so a dismissal for one combination
+   doesn't silently suppress the same warning for a different one.
+
+### Commission schedule
+
+`lib/constants/commission-schedule.ts` replaced the old flat 1.5%
+`SELLER_PLATFORM_FEE_PERCENT` in `lib/utils/deal-calculator.ts`.
+Groupal's commission now tapers down as a deal's store price climbs,
+via `getCommissionPercentForPrice(originalPrice)`:
+
+| Store price bracket | Commission range |
+|----------------------|-------------------|
+| $1 – $100             | 12% → 8%          |
+| $100 – $1,000          | 8% → 5%           |
+| $1,000 – $10,000        | 5% → 3%           |
+| $10,000 – $100,000       | 3% → 1.5%         |
+| $100,000 – $500,000      | 1.5% → 0.5%       |
+
+Within a bracket the percentage interpolates **log-linearly** —
+a straight line against log(price), not against price itself — so the
+decline reads as smooth per order of magnitude rather than front-
+loaded at the bracket's low end. Every bracket's `endPercent` equals
+the next bracket's `startPercent` exactly, on purpose, so the curve is
+continuous at every boundary (verified: no jump at $100/$1,000/$10,000/
+$100,000). Prices below $1 clamp to 12%; prices above $500,000 clamp to
+0.5% — no extrapolation past the schedule's ends.
+`computeDealValues()` (lib/utils/deal-calculator.ts) calls this for
+`sellerPlatformFeeAmount` — still seller-side only, still never shown
+to or charged to buyers, per the CRITICAL PAYMENT LOGIC section above.
 
 ## Brand Identity
 
@@ -1061,6 +1177,51 @@ Located over the product image, next to the share button.
     mixed-scope deals (one city-scoped, one country-scoped with 3
     countries) — the grouped dropdown and the filter-to-one-deal behavior
     both confirmed via direct DOM inspection, not just visual inspection.
+- (2026-09-19) Finalized category system, deal-creation guardrails, and
+  commission schedule — see the new "Category System & Deal-Creation
+  Guardrails" section above for the full table/logic writeup; this entry
+  is just the changelog.
+  - Replaced `DEAL_CATEGORIES` (Electronics, Cars & Motorcycles,
+    Computers, Smartphones, Furniture, Travel, Vacations) with the final
+    10: Electronics, Motors, Computers, Smartphones, Home, Health,
+    Fashion, Leisure, Sports, Travels. Updated every consumer: lib/mock/
+    deals.ts and prisma/seed.ts's category strings remapped to the new
+    names (Cars/Motorcycles → Motors, Cell Phones → Smartphones, Travel/
+    Vacations → Travels, Gadgets → Electronics, Furniture → Home);
+    app/(buyers)/deals/page.tsx's `dealMatchesCategory` alias-map deleted
+    entirely (was only ever compensating for the old inconsistent seed
+    category strings — a plain equality check is correct now); app/
+    (buyers)/page.tsx's homepage "Shop by Category" tiles rebuilt to use
+    the 10 real category names directly (5×2 grid), dropping the old
+    CATEGORY_HREF alias table since every tile now links straight into
+    `/deals?category=<label>` with no translation; app/layout.tsx's meta
+    description copy updated. Also directly updated the 8 already-seeded
+    Deal/SellerProfile rows already sitting in the real Supabase DB
+    (prisma/seed.ts's `upsert` doesn't touch existing rows' fields on a
+    re-run, so re-running the seed script alone would NOT have fixed
+    already-seeded data) — confirmed via a live query that only the 6
+    valid new category names remain in use.
+  - New lib/constants/category-rules.ts and lib/constants/
+    commission-schedule.ts (see the section above for both tables).
+    lib/utils/deal-calculator.ts's flat `SELLER_PLATFORM_FEE_PERCENT`
+    constant replaced with `getCommissionPercentForPrice(deal.
+    originalPrice)`.
+  - Two-tier validation (hard block + soft tooltip) added to the create-
+    deal form (client) and mirrored in POST /api/deals (server) — see
+    the section above for exactly how the two stay in sync.
+  - Verified: npx tsc --noEmit and npx next build both clean. A
+    standalone script confirmed the commission curve is continuous at
+    every bracket boundary (no jump at $100/$1,000/$10,000/$100,000) and
+    correctly clamps below $1 and above $500,000. Live in the browser,
+    signed in as the real seller: the three range hints render under
+    Discount/Buyers/Days for the selected category; entering 10% (within
+    Electronics' 5–40% range but below its 15% recommended minimum)
+    showed the exact advisory tooltip copy specified, non-blocking;
+    entering 2% (below the 5% hard minimum) blocked submission with
+    "Electronics deals must offer between 5% and 40% max discount" and
+    correctly cleared once changed back into range. The /deals category
+    chips and the homepage tiles were both confirmed routing to the
+    correct, already-filtered results.
 
 ### Not yet built
 - Once real image upload exists (this needs the database/storage in

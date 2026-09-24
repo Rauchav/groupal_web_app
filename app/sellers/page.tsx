@@ -13,6 +13,7 @@ import { DEAL_CATEGORIES } from "@/lib/constants/categories"
 import { cn } from "@/lib/utils"
 import { SuccessCelebration } from "@/components/success-celebration"
 import { useApiGet } from "@/lib/api/use-fetch"
+import { CityAutocomplete } from "@/sellers/components/CityAutocomplete"
 
 // Shared appearance for both the sign-in and sign-up widgets — same
 // treatment as app/sign-in and app/sign-up so switching between the buyer
@@ -48,11 +49,14 @@ function OnboardingStep({ userId, onOnboarded }: { userId: string; onOnboarded: 
   const {
     register,
     handleSubmit,
+    setValue,
+    watch,
     formState: { errors },
   } = useForm<OnboardingForm>({
     resolver: zodResolver(onboardingSchema),
     defaultValues: { companyName: "", category: COMPANY_CATEGORIES[0], phone: "", city: "", website: "" },
   })
+  const city = watch("city")
 
   async function onSubmit(data: OnboardingForm) {
     createProfile({
@@ -159,15 +163,12 @@ function OnboardingStep({ userId, onOnboarded }: { userId: string; onOnboarded: 
             {errors.phone && <p className="text-xs text-red-500 mt-1">{errors.phone.message}</p>}
           </div>
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-1">City</label>
-            <input
-              {...register("city")}
+            <label className="block text-sm font-semibold text-gray-700 mb-1">Headquarters City</label>
+            <CityAutocomplete
+              value={city}
+              onChange={(v) => setValue("city", v, { shouldValidate: true })}
               placeholder="La Paz"
-              className={cn(
-                "w-full h-11 px-3 rounded-xl border text-sm outline-none transition-all",
-                "focus:ring-2 focus:ring-[#002356]/20 focus:border-[#002356]",
-                errors.city ? "border-red-400 bg-red-50" : "border-gray-200 bg-gray-50"
-              )}
+              hasError={!!errors.city}
             />
             {errors.city && <p className="text-xs text-red-500 mt-1">{errors.city.message}</p>}
           </div>

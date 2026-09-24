@@ -17,7 +17,7 @@ export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? "https://groupal-web-app.vercel.app"),
   title: "Groupal — Buy Together. Save Massive.",
   description:
-    "Join group buys on big-ticket items and unlock discounts of up to 70%. Electronics, cars, vacations, furniture and more.",
+    "Join group buys on big-ticket items and unlock discounts of up to 70%. Electronics, motors, fashion, travel and more.",
   keywords: [
     "group buying",
     "group deals",
@@ -28,7 +28,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: "Groupal — Buy Together. Save Massive.",
     description:
-      "Join group buys and unlock discounts up to 70% on electronics, cars, travel and more.",
+      "Join group buys and unlock discounts up to 70% on electronics, motors, fashion, travel and more.",
     type: "website",
   },
 }

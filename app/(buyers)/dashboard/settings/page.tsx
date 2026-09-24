@@ -12,24 +12,10 @@ import { Switch } from "@/components/ui/switch"
 import { DashboardSidebar, DashboardMobileTabs } from "@/buyers/components/dashboard/DashboardNav"
 import { useApiGet } from "@/lib/api/use-fetch"
 import { cn } from "@/lib/utils"
-
-interface NotificationPreferences {
-  emailNewBuyer: boolean
-  emailEndingSoon: boolean
-  emailDealCompleted: boolean
-  emailPaymentReminders: boolean
-  pushBuyerUpdates: boolean
-  pushCountdownAlerts: boolean
-}
-
-const DEFAULT_PREFERENCES: NotificationPreferences = {
-  emailNewBuyer: true,
-  emailEndingSoon: true,
-  emailDealCompleted: true,
-  emailPaymentReminders: true,
-  pushBuyerUpdates: false,
-  pushCountdownAlerts: false,
-}
+import {
+  DEFAULT_BUYER_NOTIFICATION_PREFERENCES as DEFAULT_PREFERENCES,
+  type BuyerNotificationPreferences as NotificationPreferences,
+} from "@/lib/notifications/preferences"
 
 // ── Profile tab ───────────────────────────────────────────────────────────────
 
@@ -188,6 +174,7 @@ type NotifKey =
   | "emailPaymentReminders"
   | "pushBuyerUpdates"
   | "pushCountdownAlerts"
+  | "marketingEmails"
 
 function NotificationsTab() {
   const { user } = useUser()
@@ -216,6 +203,14 @@ function NotificationsTab() {
   const pushToggles: { key: NotifKey; label: string; desc: string }[] = [
     { key: "pushBuyerUpdates",    label: "Real-time buyer updates",   desc: "Instant alerts when buyers join your deals" },
     { key: "pushCountdownAlerts", label: "Countdown alerts",          desc: "Push notifications for deal countdown" },
+  ]
+
+  const marketingToggles: { key: NotifKey; label: string; desc: string }[] = [
+    {
+      key: "marketingEmails",
+      label: "New deals & closing-soon alerts",
+      desc: "Get emailed about new deals, deals about to close, and deals you might like with huge discounts — even ones you haven't joined yet",
+    },
   ]
 
   return (
@@ -248,6 +243,28 @@ function NotificationsTab() {
         </div>
         <div className="divide-y divide-gray-100">
           {pushToggles.map(({ key, label, desc }) => (
+            <div key={key} className="flex items-center justify-between px-5 py-4 gap-4">
+              <div>
+                <p className="font-semibold text-gray-700 text-sm">{label}</p>
+                <p className="text-xs text-gray-400 mt-0.5">{desc}</p>
+              </div>
+              <Switch
+                checked={notifications[key]}
+                onCheckedChange={(v) => handleToggle(key, v)}
+              />
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Marketing / deal alerts — opt-in, unlike every toggle above */}
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+        <div className="px-5 py-4 border-b border-gray-100">
+          <h3 className="font-bold text-[#002356] text-sm">Deal Alerts</h3>
+          <p className="text-xs text-gray-400 mt-0.5">Optional — off by default</p>
+        </div>
+        <div className="divide-y divide-gray-100">
+          {marketingToggles.map(({ key, label, desc }) => (
             <div key={key} className="flex items-center justify-between px-5 py-4 gap-4">
               <div>
                 <p className="font-semibold text-gray-700 text-sm">{label}</p>

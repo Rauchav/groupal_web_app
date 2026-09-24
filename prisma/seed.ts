@@ -28,12 +28,12 @@ const prisma = new PrismaClient({ adapter })
 const SELLER_META: Record<string, { category: string; city: string; phone: string }> = {
   "seller-001": { category: "Electronics", city: "Seoul",     phone: "+82 2 1234 5678" },
   "seller-002": { category: "Computers",    city: "Austin",   phone: "+1 512 555 0102" },
-  "seller-003": { category: "Motorcycles",  city: "Milan",    phone: "+39 02 5550 1234" },
-  "seller-004": { category: "Travel",       city: "La Paz",   phone: "+591 2 244 1122" },
-  "seller-005": { category: "Cell Phones",  city: "Shenzhen", phone: "+86 755 5550 1122" },
+  "seller-003": { category: "Motors",  city: "Milan",    phone: "+39 02 5550 1234" },
+  "seller-004": { category: "Travels",       city: "La Paz",   phone: "+591 2 244 1122" },
+  "seller-005": { category: "Smartphones",  city: "Shenzhen", phone: "+86 755 5550 1122" },
   "seller-006": { category: "Electronics",  city: "Tokyo",    phone: "+81 3 5550 1234" },
   "seller-007": { category: "Home",         city: "London",   phone: "+44 20 7946 0958" },
-  "seller-008": { category: "Gadgets",      city: "Zurich",   phone: "+41 44 555 0123" },
+  "seller-008": { category: "Electronics",      city: "Zurich",   phone: "+41 44 555 0123" },
 }
 
 async function main() {
