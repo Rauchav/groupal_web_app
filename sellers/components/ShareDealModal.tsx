@@ -74,7 +74,7 @@ export function ShareDealModal({
     return `${window.location.origin}/checkout/${dealId}`
   }
   function shareWhatsApp() {
-    window.open(`https://wa.me/?text=${encodeURIComponent(`Check out this group buy: ${dealTitle} — ${dealUrl()}`)}`, "_blank")
+    window.open(`https://wa.me/?text=${encodeURIComponent(`Check out this group buy: ${dealTitle}, ${dealUrl()}`)}`, "_blank")
   }
   function shareTwitter() {
     window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(`Check out this group buy for ${dealTitle} at Groupal! ${dealUrl()}`)}`, "_blank")
@@ -93,7 +93,7 @@ export function ShareDealModal({
       const parsed = parseCsv(String(reader.result ?? ""))
       setContacts(parsed)
       if (parsed.length === 0) {
-        toast.error("Couldn't find any contacts — make sure your CSV has a name column.")
+        toast.error("Couldn't find any contacts, make sure your CSV has a name column.")
       }
     }
     reader.readAsText(file)
@@ -198,7 +198,7 @@ export function ShareDealModal({
                   {sending ? "Sending..." : `Send to ${contacts.length} customer${contacts.length === 1 ? "" : "s"}`}
                 </button>
                 <p className="text-[11px] text-gray-400 mt-2 text-center">
-                  Simulated for now — real SMS/email/WhatsApp delivery is coming soon.
+                  Simulated for now, real SMS/email/WhatsApp delivery is coming soon.
                 </p>
               </>
             )}

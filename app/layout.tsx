@@ -15,7 +15,7 @@ export const metadata: Metadata = {
   // Next.js guessing one — required for WhatsApp/iMessage/etc. previews to
   // actually load the image rather than silently failing.
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? "https://groupal-web-app.vercel.app"),
-  title: "Groupal — Buy Together. Save Massive.",
+  title: "Groupal, buy together, save massive",
   description:
     "Join group buys on big-ticket items and unlock discounts of up to 70%. Electronics, motors, fashion, travel and more.",
   keywords: [
@@ -26,7 +26,7 @@ export const metadata: Metadata = {
     "marketplace",
   ],
   openGraph: {
-    title: "Groupal — Buy Together. Save Massive.",
+    title: "Groupal, buy together, save massive",
     description:
       "Join group buys and unlock discounts up to 70% on electronics, motors, fashion, travel and more.",
     type: "website",

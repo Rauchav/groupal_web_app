@@ -94,7 +94,7 @@ export default function SellerNotificationsPage() {
           </div>
           <h3 className="font-bold text-gray-700 text-lg mb-1">No notifications yet</h3>
           <p className="text-gray-400 text-sm mb-6">
-            Publish a deal and we&apos;ll let you know here whenever something about it changes — new
+            Publish a deal and we&apos;ll let you know here whenever something about it changes, new
             buyers, when it closes, and when your payout lands.
           </p>
           <Link

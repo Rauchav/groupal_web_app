@@ -187,6 +187,7 @@ export default function HomePage() {
         discountAchieved: Math.round(computed.currentDiscountPercent),
         category:         deal.category,
         reach:            deal.reach,
+        externalProductUrl: deal.externalProductUrl || deal.sellerUrl,
       };
     }),
     ...COMPLETED_DEALS,
@@ -463,21 +464,21 @@ export default function HomePage() {
               </h2>
             </div>
             <p className="text-gray-500 text-sm">
-              Real group buys that reached their target — and changed the price.
+              Real group buys that reached their target, and changed the price.
             </p>
           </motion.div>
 
-          <motion.div
-            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5"
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true }}
-            variants={stagger}
-          >
+          {/* Plain grid, not a motion.div: each CompletedDealCard now
+              triggers its own whileInView independently (see that
+              component's own comment) rather than inheriting a stagger
+              orchestrated here, since the real deals in this list arrive
+              from an async fetch and can mount well after this section's
+              own one-time viewport trigger would have already fired. */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
             {dealsThatDelivered.map((deal, i) => (
               <CompletedDealCard key={deal.id} deal={deal} variants={fadeUp} custom={i} />
             ))}
-          </motion.div>
+          </div>
 
           <BuyerReviews variants={fadeUp} custom={dealsThatDelivered.length} />
         </div>

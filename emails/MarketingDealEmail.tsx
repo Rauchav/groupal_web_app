@@ -24,7 +24,7 @@ export function MarketingDealEmail({
   const pct = `${discountPercent.toFixed(0)}%`
   return (
     <EmailShell
-      previewText={`${productName} — up to ${pct} off`}
+      previewText={`${productName}, up to ${pct} off`}
       appUrl={appUrl}
       footerNote="You're receiving this because you opted into deal alerts on Groupal."
     >
@@ -41,7 +41,7 @@ export function MarketingDealEmail({
       <Heading style={{ color: "#002356", fontSize: 20, fontWeight: 800, margin: "0 0 8px" }}>{productName}</Heading>
 
       <Text style={{ display: "inline-block", backgroundColor: "#eaad00", color: "#002356", fontWeight: 800, fontSize: 13, padding: "4px 12px", borderRadius: 999, margin: "0 0 16px" }}>
-        Up to {pct} off — buy together
+        Up to {pct} off, buy together
       </Text>
 
       <Text style={{ color: "#4b5563", fontSize: 14, lineHeight: "22px", margin: "0 0 24px" }}>

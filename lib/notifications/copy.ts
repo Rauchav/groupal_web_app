@@ -211,7 +211,7 @@ export function sellerDealCompletedCopy({
   return {
     type:    "SELLER_DEAL_COMPLETED",
     title:   "Your deal just closed, nice work!",
-    message: `${productName} sold ${unitsSold} unit${unitsSold === 1 ? "" : "s"} at a final group discount of ${pct(discountPercent)}. Total revenue: ${fmt(grossRevenue, currency)}. After Groupal's commission (${fmt(commission, currency)}), your payout is ${fmt(netPayout, currency)} — it's on its way to your account.`,
+    message: `${productName} sold ${unitsSold} unit${unitsSold === 1 ? "" : "s"} at a final group discount of ${pct(discountPercent)}. Total revenue: ${fmt(grossRevenue, currency)}. After Groupal's commission (${fmt(commission, currency)}), your payout is ${fmt(netPayout, currency)}, it's on its way to your account.`,
   }
 }
 

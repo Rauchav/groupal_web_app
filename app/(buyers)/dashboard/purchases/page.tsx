@@ -181,7 +181,7 @@ export default function PurchasesPage() {
                 All Purchases
               </h1>
               <p className="text-gray-500 text-sm mt-1">
-                Every group buy you&apos;ve joined — past and present.
+                Every group buy you&apos;ve joined, past and present.
               </p>
             </div>
 

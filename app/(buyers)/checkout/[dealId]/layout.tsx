@@ -18,20 +18,21 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const dealRow = await prisma.deal.findUnique({ where: { id: params.dealId }, include: dealInclude })
   if (!dealRow) {
-    return { title: "Deal not found — Groupal" }
+    return { title: "Deal not found, Groupal" }
   }
   const deal = apiDealToDeal(dealRowToApiDeal(dealRow))
 
   const computed = computeDealValues(deal)
+  const maxSavings = deal.originalPrice * (deal.maxDiscountPercent / 100)
   const fmt = (n: number) =>
     new Intl.NumberFormat("en-US", { style: "currency", currency: deal.currency ?? "USD", maximumFractionDigits: 0 }).format(n)
   const deadline = new Intl.DateTimeFormat("en-US", { month: "long", day: "numeric", year: "numeric" }).format(deal.deadlineAt)
 
-  const title = `${deal.productName} — ${fmt(computed.currentPrice)} on Groupal (${computed.currentDiscountPercent.toFixed(0)}% off)`
+  const title = `${deal.productName} for only ${fmt(computed.currentPrice)} at Groupal, save up to ${fmt(maxSavings)}`
   const description =
     `Store price ${fmt(deal.originalPrice)} → Groupal price ${fmt(computed.currentPrice)} right now ` +
     `(${computed.currentDiscountPercent.toFixed(1)}% off, up to ${deal.maxDiscountPercent}% off if the group fills up). ` +
-    `Deal ends ${deadline} — join and drop the price for everyone!`
+    `Deal ends ${deadline}, join and drop the price for everyone!`
 
   return {
     title,

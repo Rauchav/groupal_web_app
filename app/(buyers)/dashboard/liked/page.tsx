@@ -42,7 +42,7 @@ export default function LikedDealsPage() {
                 Liked Deals
               </h1>
               <p className="text-gray-500 text-sm mt-1">
-                Your saved group buys — {likedDeals.length} deal{likedDeals.length !== 1 ? "s" : ""}.
+                Your saved group buys, {likedDeals.length} deal{likedDeals.length !== 1 ? "s" : ""}.
               </p>
             </div>
 

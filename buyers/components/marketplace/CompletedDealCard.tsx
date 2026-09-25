@@ -4,20 +4,22 @@ import Image from "next/image";
 import { motion, type Variants } from "framer-motion";
 import { Share2, ShieldCheck, Users } from "lucide-react";
 import { DealReachBadge } from "@/components/deal-reach-badge";
+import { InStorePriceButton } from "./InStorePriceButton";
 import type { DealReach } from "@/lib/types/deal";
 
 type CompletedDeal = {
-  id:               string;
-  productName:      string;
-  productImage:     string;
-  sellerName:       string;
-  buyersJoined:     number;
-  buyersTarget:     number;
-  originalPrice:    number;
-  finalPrice:       number;
-  discountAchieved: number;
-  category:         string;
-  reach?:           DealReach;
+  id:                  string;
+  productName:         string;
+  productImage:        string;
+  sellerName:          string;
+  buyersJoined:        number;
+  buyersTarget:        number;
+  originalPrice:       number;
+  finalPrice:          number;
+  discountAchieved:    number;
+  category:            string;
+  reach?:              DealReach;
+  externalProductUrl?: string;
 };
 
 function fmt(amount: number): string {
@@ -43,6 +45,17 @@ export function CompletedDealCard({
     <motion.div
       variants={variants}
       custom={custom}
+      // Fades in on MOUNT, not on scroll-into-view. whileInView (tried
+      // first) relies on an IntersectionObserver that, empirically, some
+      // cards in this long, dynamically-growing grid never fire for —
+      // they'd stay stuck at opacity:0 forever even scrolled dead center
+      // in the viewport, even after a full hard reload. That's a much
+      // worse failure mode than losing the scroll-reveal flourish, so
+      // every card just fades in immediately instead — guaranteed to
+      // become visible, with no dependency on scroll position, mount
+      // timing relative to siblings, or observer reliability at all.
+      initial="hidden"
+      animate="visible"
       className="group relative flex flex-col rounded-2xl overflow-hidden bg-white border border-gray-100 shadow-card hover:shadow-card-hover transition-shadow duration-200 cursor-pointer"
       whileHover={{ y: -4 }}
       transition={{ duration: 0.2, ease: "easeOut" }}
@@ -104,16 +117,6 @@ export function CompletedDealCard({
           {deal.productName}
         </h3>
 
-        {/* Price in store */}
-        <div className="inline-flex items-center justify-between gap-2 w-full rounded-lg border border-gray-200 px-3 py-2">
-          <span className="text-[9px] font-extrabold uppercase tracking-[0.12em] text-gray-400">
-            Price in Store
-          </span>
-          <span className="text-sm font-bold text-gray-400 tabular-nums">
-            {fmt(deal.originalPrice)}
-          </span>
-        </div>
-
         {deal.reach && <DealReachBadge reach={deal.reach} className="text-xs text-gray-400" />}
 
       </div>
@@ -121,24 +124,21 @@ export function CompletedDealCard({
       {/* ── Grooopal price section (navy) ───────────────────── */}
       <div style={{ backgroundColor: "#002356" }}>
 
-        {/* "groopal price" heading */}
+        {/* In-store price — same position/styling as every other deal
+            card's navy block and the checkout page's Review Deal step. */}
+        <div className="px-3 pt-3">
+          <InStorePriceButton price={deal.originalPrice} url={deal.externalProductUrl} />
+        </div>
+
+        {/* "groopal price" — now the label for the final price paid,
+            instead of standing alone as its own separate heading above it. */}
         <div className="px-3 pt-2.5 pb-0">
-          <span className="font-heading font-extrabold leading-none" style={{ fontSize: "0.85rem" }}>
+          <span className="font-heading font-extrabold leading-none" style={{ fontSize: "0.7rem" }}>
             <span className="text-white">groo</span>
             <span style={{ color: "#eaad00" }}>pal</span>
             <span className="text-white"> price</span>
           </span>
-        </div>
-
-        {/* PRICED PAYED + large final price */}
-        <div className="px-3 pt-1.5 pb-0">
-          <span
-            className="font-semibold uppercase tracking-wider"
-            style={{ color: "rgb(255, 255, 255)", fontSize: "0.65rem" }}
-          >
-            Priced Payed
-          </span>
-          <div className="font-heading font-extrabold tabular-nums leading-none text-3xl text-white mt-0.5" >
+          <div className="font-heading font-extrabold tabular-nums leading-none text-3xl text-white mt-0.5">
             {fmt(deal.finalPrice)}
           </div>
         </div>

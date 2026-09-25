@@ -191,7 +191,7 @@ export default function SellerReportsPage() {
       <div>
         <h1 className="font-heading font-extrabold text-[#002356] text-2xl">Sales Reports</h1>
         <p className="text-gray-500 text-sm mt-1">
-          Revenue, commission, and payout across your deals — filterable by date, category, and reach.
+          Revenue, commission, and payout across your deals, filterable by date, category, and reach.
         </p>
       </div>
 

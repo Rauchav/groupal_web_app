@@ -11,7 +11,7 @@ import { toast } from "sonner"
 import {
   Check, AlertTriangle, Lock, Clock, Truck, ShoppingBag,
   ShieldCheck, CreditCard, ArrowLeft, Share2, Copy,
-  Info, ExternalLink, Phone, Mail,
+  Info, Phone, Mail,
 } from "lucide-react"
 import { motion } from "framer-motion"
 import { useUser } from "@clerk/nextjs"
@@ -19,6 +19,7 @@ import { computeDealValues } from "@/lib/utils/deal-calculator"
 import { useParticipationStore, useEnsureParticipationsLoaded } from "@/buyers/stores/participation-store"
 import { useIsSeller } from "@/sellers/stores/seller-store"
 import { CountdownTimer } from "@/buyers/components/marketplace/CountdownTimer"
+import { InStorePriceButton } from "@/buyers/components/marketplace/InStorePriceButton"
 import { DealReachBadge } from "@/components/deal-reach-badge"
 import { cn } from "@/lib/utils"
 import { useApiGet } from "@/lib/api/use-fetch"
@@ -138,7 +139,7 @@ function StepReview({
 
   function shareWhatsApp() {
     window.open(
-      `https://wa.me/?text=${encodeURIComponent(`Check out this group buy: ${deal!.productName} — ${window.location.href}`)}`,
+      `https://wa.me/?text=${encodeURIComponent(`Check out this group buy: ${deal!.productName}, ${window.location.href}`)}`,
       "_blank"
     )
   }
@@ -213,25 +214,7 @@ function StepReview({
 
           {/* Store price vs Groupal price */}
           <div className="flex flex-col gap-5">
-            <div>
-              <p className="text-white/50 text-xs font-extrabold uppercase tracking-widest mb-1">
-                Regular Store Price
-              </p>
-              <a
-                href={deal.externalProductUrl || deal.sellerUrl || "#"}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="group inline-flex items-center gap-1.5 cursor-pointer"
-              >
-                <span
-                  className="font-bold text-white/60 tabular-nums line-through leading-none"
-                  style={{ fontSize: "1.5rem" }}
-                >
-                  {fmtShort(deal.originalPrice, deal.currency)}
-                </span>
-                <ExternalLink className="h-4 w-4 text-white/40 transition-colors group-hover:text-groupal-gold flex-shrink-0" />
-              </a>
-            </div>
+            <InStorePriceButton price={deal.originalPrice} currency={deal.currency} url={deal.externalProductUrl || deal.sellerUrl} />
             <div>
               <p className="font-heading font-extrabold leading-none mb-1 text-white">
                 Current grou<span className="text-groupal-gold">pal</span> price
@@ -513,7 +496,7 @@ function StepDelivery({
             </div>
             <div>
               <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">When</p>
-              <p className="text-gray-700">{pd?.hours ?? "During business hours"} — available once the deal closes</p>
+              <p className="text-gray-700">{pd?.hours ?? "During business hours"}, available once the deal closes</p>
             </div>
             <div>
               <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">How it works</p>
@@ -583,7 +566,7 @@ function StepDelivery({
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
           <h3 className="font-bold text-[#002356] text-base mb-1">Delivery Zone</h3>
           <p className="text-gray-500 text-xs mb-4">
-            Pick the area closest to your delivery address — the exact delivery cost shows up on the next
+            Pick the area closest to your delivery address, the exact delivery cost shows up on the next
             step, alongside the rest of your payment breakdown.
           </p>
           <div className="flex flex-col gap-2">
@@ -821,7 +804,7 @@ function StepConfirm({
         </div>
 
         <p className="text-center text-xs text-gray-400">
-          Stripe integration coming soon — this is a simulated checkout
+          Stripe integration coming soon, this is a simulated checkout
         </p>
       </div>
 
@@ -852,7 +835,7 @@ function StepConfirm({
               Processing...
             </>
           ) : (
-            `Complete Reservation — ${fmt(totalToday, deal.currency)}`
+            `Complete Reservation, ${fmt(totalToday, deal.currency)}`
           )}
         </button>
       </div>
@@ -910,7 +893,7 @@ export default function CheckoutPage() {
     // seller who lands here directly could get redirected based on a
     // completely different Clerk account's real "joined" state.
     if (isSignedIn && !isSeller && alreadyJoined) {
-      toast.info("You've already joined this deal — here's where it's at.")
+      toast.info("You've already joined this deal, here's where it's at.")
       router.replace("/dashboard")
     }
   }, [hasHydrated, alreadyJoined, isSignedIn, isSeller, router])
@@ -997,7 +980,7 @@ export default function CheckoutPage() {
       setLoading(false)
       const body = await res.json().catch(() => null)
       if (body?.error === "already_joined") {
-        toast.info("You've already joined this deal — here's where it's at.")
+        toast.info("You've already joined this deal, here's where it's at.")
         router.replace("/dashboard")
         return
       }

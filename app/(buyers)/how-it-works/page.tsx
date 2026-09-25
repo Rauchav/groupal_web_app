@@ -26,7 +26,7 @@ const STEPS = [
     title: "Find Your Deal",
     image: "/display/step 1.png",
     description:
-      "Browse hundreds of active group buy deals on electronics, cars, motorcycles, furniture, travel packages, and much more. Every deal shows you the current group price — which gets better as more people join. No sign-up needed to explore!",
+      "Browse hundreds of active group buy deals on electronics, cars, motorcycles, furniture, travel packages, and much more. Every deal shows you the current group price, which gets better as more people join. No sign-up needed to explore!",
   },
   {
     number: 2,
@@ -40,21 +40,21 @@ const STEPS = [
     title: "Share & Watch the Price Drop",
     image: "/display/step 3.png",
     description:
-      "Here's where the magic happens. Every single person who joins the group adds more discount for everyone — including you! Share the deal with friends, family, and colleagues. The more people join, the lower the price gets for the whole group. It's that simple.",
+      "Here's where the magic happens. Every single person who joins the group adds more discount for everyone, including you! Share the deal with friends, family, and colleagues. The more people join, the lower the price gets for the whole group. It's that simple.",
   },
   {
     number: 4,
     title: "Enjoy Your Savings",
     image: "/display/step 4.png",
     description:
-      "When the deal closes, you automatically pay the remaining balance — the group price minus the discount your group earned, plus delivery. Then just sit back and wait for your amazing purchase to arrive!",
+      "When the deal closes, you automatically pay the remaining balance, the group price minus the discount your group earned, plus delivery. Then just sit back and wait for your amazing purchase to arrive!",
   },
 ]
 
 const FAQS = [
   {
     q: "Is my reservation refundable?",
-    a: "Your 10% reservation payment is refundable only if the seller cancels the deal. If the deal completes normally — whether at the deadline or when the group fills up — the reservation is applied toward your final payment.",
+    a: "Your 10% reservation payment is refundable only if the seller cancels the deal. If the deal completes normally, whether at the deadline or when the group fills up, the reservation is applied toward your final payment.",
   },
   {
     q: "What if I change my mind after joining?",
@@ -66,7 +66,7 @@ const FAQS = [
   },
   {
     q: "How do I receive my purchase after the deal closes?",
-    a: "It depends on the deal. Most items are delivered directly to your address. Some items — like vehicles — may require pickup at the seller's location. This information is clearly shown on every deal page before you join.",
+    a: "It depends on the deal. Most items are delivered directly to your address. Some items, like vehicles, may require pickup at the seller's location. This information is clearly shown on every deal page before you join.",
   },
   {
     q: "Is Groupal safe to use?",
@@ -74,7 +74,7 @@ const FAQS = [
   },
   {
     q: "How does Groupal make money?",
-    a: "Groupal charges a small service fee (between 0.5% and 3%) on each reservation. This fee is shown clearly before you confirm any purchase — no hidden costs, ever.",
+    a: "Groupal charges a small service fee (between 0.5% and 3%) on each reservation. This fee is shown clearly before you confirm any purchase, no hidden costs, ever.",
   },
 ]
 
@@ -92,7 +92,7 @@ export default function HowItWorksPage() {
             How Groupal Works
           </h1>
           <p className="mt-4 text-white/80 text-xl md:text-2xl font-medium">
-            The smarter way to buy big-ticket items — together.
+            The smarter way to buy big-ticket items, together.
           </p>
           <p className="mt-4 text-white/60 text-base md:text-lg max-w-xl mx-auto">
             Join a group, watch the price drop, and only pay in full once your deal is complete.
@@ -245,7 +245,7 @@ export default function HowItWorksPage() {
               When does a group buy close?
             </h2>
             <p className="mt-3 text-gray-500 text-base max-w-xl mx-auto">
-              Every deal closes in one of two ways — and either way, everyone wins.
+              Every deal closes in one of two ways, and either way, everyone wins.
             </p>
           </div>
 
@@ -264,7 +264,7 @@ export default function HowItWorksPage() {
               <p className="text-gray-600 text-sm leading-relaxed">
                 Every group buy has a deadline set by the seller. When that time is up, the deal closes automatically
                 with whatever discount the group has earned up to that point. Even if the group is not full, the deal still
-                completes — you pay the remaining balance at whatever discount your group achieved.{" "}
+                completes, you pay the remaining balance at whatever discount your group achieved.{" "}
                 <strong className="text-[#002356]">No deal ever fails!</strong>
               </p>
             </div>
@@ -281,8 +281,8 @@ export default function HowItWorksPage() {
                 The Group is Full
               </h3>
               <p className="text-gray-600 text-sm leading-relaxed">
-                When the maximum number of buyers joins before the deadline — boom! The deal closes immediately at the maximum
-                discount. Everyone in the group gets the best possible price. This is the dream scenario — and why sharing the
+                When the maximum number of buyers joins before the deadline, boom! The deal closes immediately at the maximum
+                discount. Everyone in the group gets the best possible price. This is the dream scenario, and why sharing the
                 deal with friends pays off so much!
               </p>
             </div>
@@ -294,7 +294,7 @@ export default function HowItWorksPage() {
             style={{ backgroundColor: "#eaad00" }}
           >
             <p className="font-bold text-[#002356] text-base">
-              ✨ Either way — your deal always completes. There is no such thing as a failed group buy on Groupal.
+              ✨ Either way, your deal always completes. There is no such thing as a failed group buy on Groupal.
             </p>
           </div>
         </div>
@@ -337,7 +337,7 @@ export default function HowItWorksPage() {
                 When the Deal Closes: Final Payment
               </h3>
               <p className="text-gray-600 text-sm leading-relaxed">
-                Once the deal closes — either at the deadline or when the group is full — we'll automatically charge your
+                Once the deal closes, either at the deadline or when the group is full, we'll automatically charge your
                 saved payment method for the remaining 90% of the final group price, minus the discount your group earned.
                 You'll receive a notification and email with all the details before this happens.
               </p>
@@ -353,7 +353,7 @@ export default function HowItWorksPage() {
               </h3>
               <div className="text-gray-600 text-sm leading-relaxed space-y-3">
                 <p>
-                  Life happens, and we completely understand that sometimes a payment might not go through — perhaps because
+                  Life happens, and we completely understand that sometimes a payment might not go through, perhaps because
                   of insufficient funds, an expired card, or a temporary bank issue.
                 </p>
                 <p className="font-medium text-[#002356]">Don't worry! Here's what we do:</p>

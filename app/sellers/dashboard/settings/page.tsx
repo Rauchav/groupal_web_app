@@ -92,7 +92,7 @@ function EmailSection() {
       await pendingEmail.prepareVerification({ strategy: "email_code" })
       toast.success(`Verification code resent to ${newEmail}`)
     } catch (err) {
-      toast.error(clerkErrorMessage(err, "Couldn't resend the code — try again."))
+      toast.error(clerkErrorMessage(err, "Couldn't resend the code, try again."))
     } finally {
       setSubmitting(false)
     }
@@ -113,7 +113,7 @@ function EmailSection() {
       toast.success("Email updated!")
       resetToView()
     } catch (err) {
-      toast.error(clerkErrorMessage(err, "That code didn't match — check it and try again."))
+      toast.error(clerkErrorMessage(err, "That code didn't match, check it and try again."))
     } finally {
       setSubmitting(false)
     }

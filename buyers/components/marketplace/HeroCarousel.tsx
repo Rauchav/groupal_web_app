@@ -8,8 +8,8 @@ import { ArrowRight, Shield, CheckCircle2, BadgePercent, Star } from "lucide-rea
 import { Button } from "@/components/ui/button";
 
 const PRODUCT_IMAGES = [
-  { id: "laptop",     src: "/references/hero product one.png", alt: "MacBook Pro — group buy deal"    },
-  { id: "smartwatch", src: "/references/hero product two.png", alt: "Smartwatch — group buy deal" },
+  { id: "laptop",     src: "/references/hero product one.png", alt: "MacBook Pro, group buy deal"    },
+  { id: "smartwatch", src: "/references/hero product two.png", alt: "Smartwatch, group buy deal" },
 ] as const;
 
 const TRUST = [
@@ -80,7 +80,7 @@ export function HeroCarousel() {
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-groupal-gold opacity-75" />
                   <span className="relative inline-flex h-2 w-2 rounded-full bg-groupal-gold" />
                 </span>
-                12,847 buyers saved this month
+                <span  style={{color: "white"}}>12,847</span> buyers saved this month
               </span>
             </motion.div>
 

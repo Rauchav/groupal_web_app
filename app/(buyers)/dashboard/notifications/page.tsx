@@ -98,7 +98,7 @@ export default function NotificationsPage() {
                 </div>
                 <h3 className="font-bold text-gray-700 text-lg mb-1">No notifications yet</h3>
                 <p className="text-gray-400 text-sm mb-6">
-                  Join a group buy and we&apos;ll let you know here whenever something about it changes —
+                  Join a group buy and we&apos;ll let you know here whenever something about it changes,
                   new buyers, payment reminders, and when the deal closes.
                 </p>
                 <Link

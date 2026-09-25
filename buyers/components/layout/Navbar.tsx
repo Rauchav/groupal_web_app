@@ -96,7 +96,7 @@ export function Navbar() {
           <a
             href="/"
             className="flex-shrink-0 flex items-center focus:outline-none focus-visible:ring-2 focus-visible:ring-groupal-gold rounded-lg"
-            aria-label="Groupal — home"
+            aria-label="Groupal, home"
           >
             <Image
               src="/brand/isotipo1.svg"

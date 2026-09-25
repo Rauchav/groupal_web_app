@@ -69,7 +69,7 @@ export default function SellerDashboardPage() {
           </div>
           <h3 className="font-bold text-gray-700 text-lg mb-1">Create your first deal</h3>
           <p className="text-gray-400 text-sm mb-6 max-w-sm mx-auto">
-            Set a retail price, a target discount, and a closing date — Groupal handles the rest, from the
+            Set a retail price, a target discount, and a closing date, Groupal handles the rest, from the
             countdown to the final charge.
           </p>
           <Link

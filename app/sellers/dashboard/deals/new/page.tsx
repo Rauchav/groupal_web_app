@@ -156,7 +156,7 @@ function ImagePreview({ url, failed, onError }: { url: string; failed: boolean; 
   if (failed) {
     return (
       <p className="text-xs text-red-500 mt-2">
-        Couldn&apos;t load an image from that URL — make sure it&apos;s a direct link to the image
+        Couldn&apos;t load an image from that URL, make sure it&apos;s a direct link to the image
         file, not a page link (e.g. an Unsplash photo page won&apos;t work, but its &quot;copy image
         address&quot; link will).
       </p>
@@ -197,7 +197,7 @@ function RecommendedDiscountTooltip({ category, discount }: { category: string; 
       <Lightbulb className="h-4 w-4 flex-shrink-0 mt-0.5" style={{ color: "#eaad00" }} />
       <p className="flex-1 text-xs text-gray-700 leading-relaxed">
         We strongly recommend at least <span className="font-bold">{rule.recommendedMinDiscountPercent}%</span> for{" "}
-        {category} deals to attract buyers — you can still publish at {discount}% if you prefer.
+        {category} deals to attract buyers, you can still publish at {discount}% if you prefer.
       </p>
       <button
         type="button"
@@ -286,7 +286,7 @@ export default function NewSellerDealPage() {
       setPublishing(false)
       setCoverPreviewFailed(!loadResults[0])
       setFailedPreviewIndexes(new Set(loadResults.slice(1).map((ok, i) => (ok ? -1 : i)).filter((i) => i >= 0)))
-      toast.error("One of those image URLs doesn't load as an image — use a direct link to the image file, not a page link.")
+      toast.error("One of those image URLs doesn't load as an image, use a direct link to the image file, not a page link.")
       return
     }
 
@@ -320,7 +320,7 @@ export default function NewSellerDealPage() {
       setPublishing(false)
       const body = await sellerRes?.json().catch(() => null)
       console.error("Seller profile sync failed:", body)
-      toast.error("Couldn't confirm your seller account before publishing — please try again.")
+      toast.error("Couldn't confirm your seller account before publishing, please try again.")
       return
     }
 
@@ -365,7 +365,7 @@ export default function NewSellerDealPage() {
         typeof err === "string"
           ? err
           : err?.formErrors?.[0] ?? Object.values(err?.fieldErrors ?? {})[0]?.[0]
-      toast.error(detail ? `Couldn't publish that deal — ${detail}` : "Couldn't publish that deal — please try again.")
+      toast.error(detail ? `Couldn't publish that deal, ${detail}` : "Couldn't publish that deal, please try again.")
       return
     }
     const { deal: newDeal } = await res.json()
@@ -378,7 +378,7 @@ export default function NewSellerDealPage() {
       <div>
         <h1 className="font-heading font-extrabold text-[#002356] text-2xl">Create a Group Buy Deal</h1>
         <p className="text-gray-500 text-sm mt-1">
-          Set a retail price, a target discount, and a closing date — Groupal handles the countdown, the
+          Set a retail price, a target discount, and a closing date, Groupal handles the countdown, the
           live discount math, and the final charge.
         </p>
       </div>
@@ -552,7 +552,7 @@ export default function NewSellerDealPage() {
             />
             {errors.externalProductUrl && <p className="text-xs text-red-500 mt-1">{errors.externalProductUrl.message}</p>}
             <p className="text-xs text-gray-400 mt-1">
-              A deep link to this product on your own website or marketplace listing — lets buyers see the
+              A deep link to this product on your own website or marketplace listing, lets buyers see the
               original page (reviews, full specs) alongside the group deal. Optional for now; a future update
               will require it.
             </p>
@@ -604,7 +604,7 @@ export default function NewSellerDealPage() {
           </div>
           <p className="text-xs text-gray-400">
             The 10% upfront reservation is fixed platform-wide and calculated automatically from the store
-            price — it&apos;s not something you set here.
+            price, it&apos;s not something you set here.
           </p>
         </div>
 

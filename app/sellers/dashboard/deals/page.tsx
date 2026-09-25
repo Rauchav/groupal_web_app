@@ -41,7 +41,7 @@ export default function SellerActiveDealsPage() {
     const res = await fetch(`/api/deals/${dealId}`, { method: "DELETE" })
     setDeletingId(null)
     if (!res.ok) {
-      toast.error("Couldn't delete that deal — please try again.")
+      toast.error("Couldn't delete that deal, please try again.")
       return
     }
     toast.success("Deal deleted.")

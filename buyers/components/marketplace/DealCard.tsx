@@ -8,11 +8,12 @@ import { toast } from "sonner";
 import { useUser } from "@clerk/nextjs";
 import {
   Share2, ShieldCheck, Clock, Users,
-  Zap, ExternalLink, CheckCircle, ImageOff,
+  Zap, CheckCircle, ImageOff,
 } from "lucide-react";
 import { CTA_BUTTON_CLASS } from "@/buyers/components/dashboard/DealPaymentSummary";
 import { CountdownTimer } from "./CountdownTimer";
 import { LikeButton } from "./LikeButton";
+import { InStorePriceButton } from "./InStorePriceButton";
 import { cn } from "@/lib/utils";
 import { Deal } from "@/lib/types/deal";
 import { computeDealValues } from "@/lib/utils/deal-calculator";
@@ -56,6 +57,12 @@ function GroupalPricing({
 
   return (
     <div style={{ backgroundColor: "#002356", borderRadius: 0 }}>
+      {/* In-store price — same position/styling as the checkout page's
+          Review Deal step, right above the groupal price. */}
+      <div className="px-3 pt-3">
+        <InStorePriceButton price={deal.originalPrice} currency={deal.currency} url={deal.externalProductUrl || deal.sellerUrl} />
+      </div>
+
       {/* "groopal price" heading */}
       <div className="px-3 pt-2.5 pb-0">
         <span className="font-heading font-extrabold leading-none" style={{ fontSize: "0.85rem" }}>
@@ -322,39 +329,8 @@ export function DealCard({
             {deal.productName}
           </h3>
 
-          {/* IN STORE price — opens this exact product's page on the
-              seller's own site (deal.externalProductUrl, set at deal
-              creation — see app/sellers/dashboard/deals/new/page.tsx),
-              falling back to the seller's general storefront (sellerUrl)
-              for a deal created before that field existed. A plain button,
-              not an <a>: cards on /deals and /dashboard/liked are
-              themselves wrapped in a full-card <a href="/checkout/...">,
-              and a nested <a> is invalid HTML — browsers auto-correct that
-              at parse time (closing the outer anchor early), which
-              corrupts the whole card's layout. stopPropagation alone can't
-              fix that, since it's a markup problem, not an event one. */}
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation()
-              e.preventDefault()
-              const url = deal.externalProductUrl || deal.sellerUrl
-              if (url) window.open(url, "_blank", "noopener,noreferrer")
-            }}
-            className="inline-flex items-center justify-between gap-2 w-full rounded-lg border border-gray-200 px-3 py-2 hover:border-gray-400 hover:bg-gray-50 transition-all duration-150 cursor-pointer group/store"
-          >
-            <div className="flex flex-col leading-none">
-              <span className="text-[9px] font-extrabold uppercase tracking-[0.12em] text-gray-400 group-hover/store:text-gray-500">
-                In Store Price
-              </span>
-              <span className="text-sm font-bold text-gray-400 line-through tabular-nums mt-0.5">
-                {formatPrice(deal.originalPrice, deal.currency)}
-              </span>
-            </div>
-            <ExternalLink className="h-3.5 w-3.5 text-gray-300 group-hover/store:text-gray-500 flex-shrink-0 transition-colors" />
-          </button>
-
-          {/* Groupal pricing block */}
+          {/* Groupal pricing block (now also carries the in-store price
+              button at its top — see GroupalPricing above) */}
           <div className="-mx-4">
             <GroupalPricing deal={deal} computed={computed} />
           </div>

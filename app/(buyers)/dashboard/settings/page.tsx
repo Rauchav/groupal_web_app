@@ -209,7 +209,7 @@ function NotificationsTab() {
     {
       key: "marketingEmails",
       label: "New deals & closing-soon alerts",
-      desc: "Get emailed about new deals, deals about to close, and deals you might like with huge discounts — even ones you haven't joined yet",
+      desc: "Get emailed about new deals, deals about to close, and deals you might like with huge discounts, even ones you haven't joined yet",
     },
   ]
 
@@ -261,7 +261,7 @@ function NotificationsTab() {
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
         <div className="px-5 py-4 border-b border-gray-100">
           <h3 className="font-bold text-[#002356] text-sm">Deal Alerts</h3>
-          <p className="text-xs text-gray-400 mt-0.5">Optional — off by default</p>
+          <p className="text-xs text-gray-400 mt-0.5">Optional, off by default</p>
         </div>
         <div className="divide-y divide-gray-100">
           {marketingToggles.map(({ key, label, desc }) => (

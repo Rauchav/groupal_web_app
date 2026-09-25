@@ -200,7 +200,7 @@ function DealsPageInner() {
               <Zap className="h-5 w-5 text-white flex-shrink-0" fill="white" />
               <div className="flex-1 min-w-0">
                 <p className="text-white font-bold text-sm">
-                  Ending in less than 24 hours — join now!
+                  Ending in less than 24 hours, join now!
                 </p>
                 <p className="text-white/80 text-xs mt-0.5">
                   {endingSoon.map((d) => d.productName).join(" · ")}
