@@ -1,5 +1,5 @@
 import { Body, Container, Head, Hr, Html, Img, Link, Preview, Section, Text } from "@react-email/components"
-import { getLogoDataUri } from "@/lib/email/logo"
+import { EMAIL_LOGO_URL } from "@/lib/email/resend"
 
 // Shared branded wrapper for every Groupal email — the navy header, white
 // card, and preferences-link footer are identical across the transactional
@@ -24,7 +24,7 @@ export function EmailShell({
       <Body style={styles.body}>
         <Container style={styles.container}>
           <Section style={styles.header}>
-            <Img src={getLogoDataUri()} width="160" height="40" alt="Groupal" style={styles.logo} />
+            <Img src={EMAIL_LOGO_URL} width="160" height="40" alt="Groupal" style={styles.logo} />
           </Section>
 
           <Section style={styles.content}>{children}</Section>

@@ -19,3 +19,12 @@ export function getResendClient(): Resend | null {
 export const EMAIL_FROM = process.env.RESEND_FROM_EMAIL || "Groupal <onboarding@resend.dev>"
 
 export const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"
+
+// Static brand assets referenced FROM an email always resolve against the
+// real production domain, never APP_URL directly — APP_URL is localhost
+// in local dev, which no recipient's mail client can ever reach, so an
+// email sent while testing locally would otherwise ship a permanently
+// broken image link. The file itself (public/brand/) is already part of
+// the deployed app, so this needs no separate upload/hosting step.
+const PRODUCTION_URL = "https://groupal-web-app.vercel.app"
+export const EMAIL_LOGO_URL = `${PRODUCTION_URL}/brand/logo%20fondo%20azul-email.png`
