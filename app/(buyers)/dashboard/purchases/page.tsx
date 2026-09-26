@@ -10,7 +10,7 @@ import { toast } from "sonner"
 import { useParticipationStore, useEnsureParticipationsLoaded, MockParticipation } from "@/buyers/stores/participation-store"
 import { useIsSeller } from "@/sellers/stores/seller-store"
 import { computeDealValues } from "@/lib/utils/deal-calculator"
-import { OpenDealPaymentSummary, ClosedDealPaymentSummary, MilestoneScale } from "@/buyers/components/dashboard/DealPaymentSummary"
+import { OpenDealPaymentSummary, ClosedDealPaymentSummary, PaymentIssuePaymentSummary, MilestoneScale } from "@/buyers/components/dashboard/DealPaymentSummary"
 import { ExpandableDescription } from "@/buyers/components/dashboard/ExpandableDescription"
 import { DealReachBadge } from "@/components/deal-reach-badge"
 import { DashboardSidebar, DashboardMobileTabs } from "@/buyers/components/dashboard/DashboardNav"
@@ -19,10 +19,15 @@ import { format } from "date-fns"
 
 // ── Status badge ──────────────────────────────────────────────────────────────
 
-function StatusBadge({ status }: { status: "active" | "completed" | "forfeited" }) {
+function StatusBadge({ status }: { status: "active" | "payment_issue" | "completed" | "forfeited" }) {
   if (status === "active") return (
     <span className="inline-block px-2.5 py-0.5 rounded-full bg-blue-100 text-blue-700 text-xs font-bold">
       In Progress
+    </span>
+  )
+  if (status === "payment_issue") return (
+    <span className="inline-block px-2.5 py-0.5 rounded-full text-xs font-bold" style={{ backgroundColor: "rgba(232,99,0,0.12)", color: "#e86300" }}>
+      Payment Issue
     </span>
   )
   if (status === "completed") return (
@@ -66,7 +71,7 @@ function ParticipationCard({ p }: { p: MockParticipation }) {
           )}
           <StatusBadge status={p.status} />
           {deal.reach && <DealReachBadge reach={deal.reach} className="text-xs text-gray-400" />}
-          {(p.status === "active" || p.status === "completed") && (
+          {(p.status === "active" || p.status === "payment_issue" || p.status === "completed") && (
             <p className="text-xs text-gray-400">Joined in {format(new Date(p.joinedAt), "MMMM d, yyyy")}</p>
           )}
           {p.status === "forfeited" && (
@@ -104,6 +109,16 @@ function ParticipationCard({ p }: { p: MockParticipation }) {
             </div>
             <OpenDealPaymentSummary deal={deal} reservationPaid={p.reservationPaid} deliveryCost={p.deliveryCost} onShare={shareLink} />
           </>
+        )}
+
+        {p.status === "payment_issue" && (
+          <PaymentIssuePaymentSummary
+            participationId={p.id}
+            deal={deal}
+            reservationPaid={p.reservationPaid}
+            deliveryCost={p.deliveryCost}
+            graceDeadline={p.graceDeadline}
+          />
         )}
 
         {p.status === "completed" && (

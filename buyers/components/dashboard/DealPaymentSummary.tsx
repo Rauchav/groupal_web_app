@@ -2,10 +2,12 @@
 
 import { useState } from "react"
 import { useUser } from "@clerk/nextjs"
-import { Share2, Star, Users } from "lucide-react"
+import { toast } from "sonner"
+import { RefreshCw, Share2, Star, Users } from "lucide-react"
 import { Deal } from "@/lib/types/deal"
 import { computeDealValues, computeEstimatedFinalPrice } from "@/lib/utils/deal-calculator"
 import { useApiGet } from "@/lib/api/use-fetch"
+import { useParticipationStore } from "@/buyers/stores/participation-store"
 import { ReviewModal } from "@/buyers/components/dashboard/ReviewModal"
 import type { DealReview } from "@/lib/types/review"
 
@@ -240,6 +242,56 @@ export function ClosedDealPaymentSummary({
         existingReview={existingReview}
         onSubmit={handleSubmitReview}
       />
+    </div>
+  )
+}
+
+// ── Payment issue — deal closed, final charge failed and is in its grace
+// period (dashboard "My Group Buys" no longer shows this participation at
+// all, since the group buy itself already closed — see participation-store's
+// SimpleStatus comment) ──────────────────────────────────────────────────────
+
+export function PaymentIssuePaymentSummary({
+  participationId,
+  deal,
+  reservationPaid,
+  deliveryCost = 9.99,
+  graceDeadline,
+}: {
+  participationId: string
+  deal:             Deal
+  reservationPaid:  number
+  deliveryCost?:    number
+  graceDeadline?:   string
+}) {
+  const retryPayment = useParticipationStore((s) => s.retryPayment)
+  const [retrying, setRetrying] = useState(false)
+
+  async function handleRetry() {
+    setRetrying(true)
+    const result = await retryPayment(participationId)
+    setRetrying(false)
+    if (result.success) {
+      toast.success("Payment successful, your order is on its way!")
+    } else {
+      toast.error("That didn't go through either, no worries, we'll automatically try again, or try once more shortly.")
+    }
+  }
+
+  return (
+    <div>
+      <PricingPanel deal={deal} reservationPaid={reservationPaid} deliveryCost={deliveryCost} isClosed />
+
+      <div className="px-4 pt-3 pb-4 space-y-2.5">
+        <p className="text-xs text-gray-500 leading-relaxed">
+          We couldn&apos;t process your final payment for this deal. No worries, this happens, update your
+          payment method{graceDeadline ? ` before ${new Date(graceDeadline).toLocaleDateString("en-US", { month: "long", day: "numeric" })}` : ""}, or just try again below.
+        </p>
+        <button onClick={handleRetry} disabled={retrying} className={CTA_BUTTON_CLASS} style={{ backgroundColor: "#eaad00" }}>
+          <RefreshCw className={`h-4 w-4 ${retrying ? "animate-spin" : ""}`} style={{ color: "#002356" }} />
+          {retrying ? "Retrying..." : "Retry payment now"}
+        </button>
+      </div>
     </div>
   )
 }

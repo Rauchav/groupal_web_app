@@ -8,16 +8,19 @@ import { apiDealToDeal, type ApiDeal } from "@/lib/api/deal-adapter"
 import { useBadgesStore } from "@/lib/dashboard/badges-store"
 
 // The richer engine status (GroupBuyParticipation.status, straight from
-// Prisma) collapses onto this simpler three-state model for the dashboard/
-// purchases UI — AWAITING_FINAL_PAYMENT / PAYMENT_FAILED / IN_GRACE_PERIOD
-// all stay "active", since the buyer sees what's actually happening via
-// the notifications those states already create, not a second copy of
-// this status machine here.
-export type SimpleStatus = "active" | "completed" | "forfeited"
+// Prisma) collapses onto this simpler state model for the dashboard/
+// purchases UI. "payment_issue" (AWAITING_FINAL_PAYMENT / IN_GRACE_PERIOD)
+// is its own bucket, distinct from "active" — the deal itself has already
+// closed by the time either of those states exists, so it must never be
+// treated as an open, still-joinable group buy (no more sharing/dropping
+// the price makes sense once closed) — that's what used to leave a closed
+// deal stuck in "My Group Buys" with a "Share and drop the price" CTA.
+export type SimpleStatus = "active" | "payment_issue" | "completed" | "forfeited"
 
 function toSimpleStatus(status: string): SimpleStatus {
   if (status === "FINAL_PAYMENT_PAID") return "completed"
   if (status === "FORFEITED" || status === "REFUNDED") return "forfeited"
+  if (status === "AWAITING_FINAL_PAYMENT" || status === "IN_GRACE_PERIOD") return "payment_issue"
   return "active"
 }
 
@@ -29,6 +32,9 @@ export interface MockParticipation {
   reservationPaid: number
   deliveryCost: number
   status: SimpleStatus
+  // Only set when status is "payment_issue" — the buyer's deadline to fix
+  // their payment method before the reservation is forfeited.
+  graceDeadline?: string
   deliveryAddress: {
     street: string
     city: string
@@ -46,6 +52,7 @@ interface ApiParticipation {
   reservationAmount: number
   deliveryCost: number
   status: string
+  graceDeadline: string | null
   deliveryAddress: { street: string; city: string; state: string; country: string; zipCode?: string } | null
 }
 
@@ -58,6 +65,7 @@ function toMockParticipation(p: ApiParticipation): MockParticipation {
     reservationPaid: p.reservationAmount,
     deliveryCost: p.deliveryCost,
     status: toSimpleStatus(p.status),
+    graceDeadline: p.graceDeadline ?? undefined,
     deliveryAddress: {
       street: p.deliveryAddress?.street ?? "",
       city: p.deliveryAddress?.city ?? "",
@@ -81,6 +89,11 @@ interface ParticipationStore {
   getParticipation: (dealId: string) => MockParticipation | undefined
   markGroupBuysViewed: () => void
   markClosedViewed: () => void
+  // Buyer-initiated retry of a failed final charge, from a "payment_issue"
+  // participation's own card — POST /api/participations/[id]/retry.
+  // Refreshes the list on success so the card flips to "completed" without
+  // a manual reload.
+  retryPayment: (participationId: string) => Promise<{ success: boolean; failureReason?: string }>
 }
 
 export const useParticipationStore = create<ParticipationStore>((set, get) => ({
@@ -104,6 +117,12 @@ export const useParticipationStore = create<ParticipationStore>((set, get) => ({
   getParticipation: (dealId) => get().participations.find((p) => p.dealId === dealId),
   markGroupBuysViewed: () => void useBadgesStore.getState().markViewed("groupBuys"),
   markClosedViewed: () => void useBadgesStore.getState().markViewed("purchases"),
+  async retryPayment(participationId) {
+    const res = await fetch(`/api/participations/${participationId}/retry`, { method: "POST" })
+    const body = await res.json().catch(() => ({ success: false }))
+    if (body.success) await get().refresh()
+    return body
+  },
 }))
 
 // Triggers the initial fetch the first time any consumer needs it — every
