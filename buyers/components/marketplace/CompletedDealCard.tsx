@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { motion, type Variants } from "framer-motion";
-import { Share2, ShieldCheck, Users } from "lucide-react";
+import { ShieldCheck, Users } from "lucide-react";
 import { DealReachBadge } from "@/components/deal-reach-badge";
 import { InStorePriceButton } from "./InStorePriceButton";
 import type { DealReach } from "@/lib/types/deal";
@@ -79,16 +79,6 @@ export function CompletedDealCard({
           >
             -{deal.discountAchieved}%
           </span>
-        </div>
-
-        {/* Share — top right */}
-        <div className="absolute top-3 right-3 z-10">
-          <button
-            aria-label="Share this deal"
-            className="flex h-8 w-8 items-center justify-center rounded-full bg-white/80 backdrop-blur-sm text-gray-500 hover:bg-white transition-colors duration-150 shadow-sm cursor-pointer"
-          >
-            <Share2 className="h-3.5 w-3.5" />
-          </button>
         </div>
 
         {/* Success banner — bottom of image, full-width green */}

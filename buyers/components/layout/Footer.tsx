@@ -78,7 +78,7 @@ export function Footer() {
             </a>
             <p className="text-sm text-white/60 leading-relaxed max-w-[18rem]">
               Buy Together. Save Massive. Join group buys on big-ticket items
-              and unlock discounts up to 70%.
+              and unlock discounts up to 60%.
             </p>
             {/* Social icons */}
             <div className="flex items-center gap-2 pt-1">

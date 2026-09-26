@@ -88,7 +88,7 @@ const HOW_IT_WORKS = [
     step:  "04",
     img:   "/display/step 4.svg",
     title: "Deal Closed, everybody Win!",
-    desc:  "As soons as the expiration date is reaached or the group is full, the final discount will be set and activated. You pay the remaining 90%, minus the massive groupal discount. Enjoy your purchase!",
+    desc:  "As soons as the expiration date is reached or the group is full, the final discount will be set and activated. You pay the remaining 90%, minus the massive groupal discount. Enjoy your purchase!",
   },
 ] as const;
 
