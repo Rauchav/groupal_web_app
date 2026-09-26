@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import { usePathname } from "next/navigation";
 import {
   Twitter,
   Instagram,
@@ -32,6 +33,10 @@ export function Footer() {
   const { user } = useUser();
   const sellerProfile = useSellerProfile(user?.id);
   const isSeller = !!sellerProfile;
+  // Home page only, per request — the checkout flow shouldn't distract a
+  // buyer mid-purchase with a pitch to become a seller instead.
+  const pathname = usePathname();
+  const isHomePage = pathname === "/";
 
   return (
     <footer
@@ -39,7 +44,7 @@ export function Footer() {
       style={{ fontFamily: "'Inter', sans-serif" }}
     >
       {/* ── Seller CTA band ────────────────────────────── */}
-      {!isSeller && (
+      {!isSeller && isHomePage && (
         <div
           className="border-b border-white/10"
           style={{ backgroundColor: "#0a3a7a" }}

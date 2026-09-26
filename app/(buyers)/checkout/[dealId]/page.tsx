@@ -409,7 +409,7 @@ function StepReview({
                 <span className="font-bold text-[#e86300]">Important:</span>{" "}
                 You pay only 10% today. The rest (90% minus this group deal accumulated discount) is
                 charged automatically to the same payment method when the deal closes.
-                If that charge fails, you&apos;ll get a short grace period to update your card before your
+                If that charge fails, you'll get a short grace period to update your card before your
                 reservation is affected.{" "}
                 <Link
                   href="/terms#payments"

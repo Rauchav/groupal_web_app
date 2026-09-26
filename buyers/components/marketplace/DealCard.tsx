@@ -96,7 +96,7 @@ function GroupalPricing({
         {/*Potential savings*/}
         <div className="flex items-center justify-between gap-2" style={{ fontSize: "0.6rem", color: "#eaad00" }}>
           <span className="font-semibold tracking-wider text-white" style={{ fontSize: "0.65rem" }}>
-            If the group fills up, they will save
+            If the group fills up, you save
           </span>
           <div className="font-heading font-extrabold tabular-nums leading-none text-xl text-groupal-gold">
             {formatPrice(maxSavings, deal.currency)}
