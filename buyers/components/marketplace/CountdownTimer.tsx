@@ -14,6 +14,14 @@ interface CountdownTimerProps {
   targetDate: Date;
   className?: string;
   compact?: boolean;
+  // Box-style timer only (compact stays a plain text span regardless of
+  // these two): "sm" shrinks it down for tight spaces like a deal card,
+  // where the full checkout-page size would overwhelm the layout;
+  // transparent drops the tinted background/ring, for dropping the timer
+  // straight onto a card's own background instead of floating a box
+  // within a box.
+  size?: "md" | "sm";
+  transparent?: boolean;
 }
 
 function getTimeLeft(targetDate: Date): TimeLeft {
@@ -33,6 +41,8 @@ export function CountdownTimer({
   targetDate,
   className,
   compact = false,
+  size = "md",
+  transparent = false,
 }: CountdownTimerProps) {
   const [timeLeft, setTimeLeft] = useState<TimeLeft>(getTimeLeft(targetDate));
   const isUrgent = timeLeft.days === 0;
@@ -67,31 +77,45 @@ export function CountdownTimer({
     { label: "secs",  value: timeLeft.seconds },
   ];
 
+  const isSmall = size === "sm";
+
   return (
-    <div className={cn("flex items-center gap-1", className)}>
+    <div className={cn("flex items-center", isSmall ? "gap-0.5" : "gap-1", className)}>
       {units.map(({ label, value }, i) => (
-        <div key={label} className="flex items-center gap-1">
+        <div key={label} className={cn("flex items-center", isSmall ? "gap-0.5" : "gap-1")}>
           <div
             className={cn(
-              "flex flex-col items-center justify-center rounded-lg min-w-[2.75rem] px-1.5 py-1",
-              isUrgent
-                ? "bg-groupal-orange/10 ring-1 ring-groupal-orange/30"
-                : "bg-groupal-orange/10 ring-1 ring-groupal-orange/20"
+              "flex flex-col items-center justify-center rounded-lg",
+              isSmall ? "min-w-[2rem] px-1 py-0.5" : "min-w-[2.75rem] px-1.5 py-1",
+              !transparent &&
+                (isUrgent
+                  ? "bg-groupal-orange/10 ring-1 ring-groupal-orange/30"
+                  : "bg-groupal-orange/10 ring-1 ring-groupal-orange/20")
             )}
           >
             <span
               suppressHydrationWarning
               className="font-mono font-extrabold tabular-nums leading-none text-groupal-orange"
-              style={{ fontSize: "1.1rem" }}
+              style={{ fontSize: isSmall ? "0.8rem" : "1.1rem" }}
             >
               {pad(value)}
             </span>
-            <span className="text-[0.6rem] font-medium text-groupal-orange/70 uppercase tracking-wider mt-0.5">
+            <span
+              className={cn(
+                "font-medium text-groupal-orange/70 uppercase tracking-wider mt-0.5",
+                isSmall ? "text-[0.5rem]" : "text-[0.6rem]"
+              )}
+            >
               {label}
             </span>
           </div>
           {i < units.length - 1 && (
-            <span className="font-bold text-groupal-orange/60 text-sm -mt-2 select-none">
+            <span
+              className={cn(
+                "font-bold text-groupal-orange/60 select-none",
+                isSmall ? "text-xs -mt-1.5" : "text-sm -mt-2"
+              )}
+            >
               :
             </span>
           )}

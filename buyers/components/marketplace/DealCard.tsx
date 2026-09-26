@@ -340,8 +340,8 @@ export function DealCard({
             <div className="flex items-center gap-1.5">
               <Clock className="h-3.5 w-3.5 flex-shrink-0" style={{ color: "#e86300" }} />
               <span className="text-xs font-medium text-gray-400">This deal close in</span>
-              <CountdownTimer targetDate={deal.deadlineAt} compact className="text-xs" />
             </div>
+            <CountdownTimer targetDate={deal.deadlineAt} size="sm" transparent />
             <p className="font-medium text-gray-400" style={{ fontSize: "0.68rem" }}>
               Reserve your spot with only{" "}
               <span className="font-bold text-groupal-navy">
