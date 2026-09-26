@@ -83,15 +83,19 @@ function GroupalPricing({
 
       {/* Savings callout */}
       <div className="px-3 pt-2.5 pb-3.5 flex flex-col justify-center gap-1">
-        {/*Current savings*/}
-        <div className="flex items-center justify-between gap-2" style={{ fontSize: "0.6rem", color: "#eaad00" }}>
-          <span className="font-semibold tracking-wider text-white" style={{ fontSize: "0.65rem" }}>
-            Right now each buyer is saving
-          </span>
-          <div className="font-heading font-extrabold tabular-nums leading-none text-xl text-white">
-            {formatPrice(computed.savingsAmount, deal.currency)}
+        {/*Current savings — no buyers yet means nothing to show here (it
+            would just read "$0"); only worth showing once there's a real
+            group discount in effect. */}
+        {deal.currentBuyerCount > 0 && (
+          <div className="flex items-center justify-between gap-2" style={{ fontSize: "0.6rem", color: "#eaad00" }}>
+            <span className="font-semibold tracking-wider text-white" style={{ fontSize: "0.65rem" }}>
+              Right now each buyer is saving
+            </span>
+            <div className="font-heading font-extrabold tabular-nums leading-none text-xl text-white">
+              {formatPrice(computed.savingsAmount, deal.currency)}
+            </div>
           </div>
-        </div>
+        )}
 
         {/*Potential savings*/}
         <div className="flex items-center justify-between gap-2" style={{ fontSize: "0.6rem", color: "#eaad00" }}>
