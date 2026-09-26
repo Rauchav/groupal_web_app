@@ -42,6 +42,13 @@ export interface Deal {
   sellerVerified:       boolean
   sellerUrl?:           string
   productName:          string
+  // Free-text detail beyond the name — nights/hotel/inclusions for a
+  // vacation package, specs for electronics, etc. Optional: older deals
+  // and the seed catalog predate this field. Never shown on the compact
+  // marketplace deal cards (no room); shown at checkout, the seller's
+  // deal-detail page, and the buyer dashboard's open-deal cards, always
+  // right below the product title.
+  productDescription?:  string
   productImages:        string[]  // 1–6 URLs; the first is the cover/main image
   category:             string
   originalPrice:        number

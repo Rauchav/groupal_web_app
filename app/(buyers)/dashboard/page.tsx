@@ -46,6 +46,9 @@ function ActiveDealCard({ participation }: { participation: MockParticipation })
         </div>
         <div className="flex-1 min-w-0 space-y-1">
           <h3 className="font-bold text-[#002356] text-sm leading-snug line-clamp-2">{deal.productName}</h3>
+          {deal.productDescription && (
+            <p className="text-xs text-gray-500 leading-snug line-clamp-2">{deal.productDescription}</p>
+          )}
           <div className="flex items-center gap-1.5">
             <span
               className={`inline-block px-2 py-0.5 rounded-full text-[11px] font-bold ${

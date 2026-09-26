@@ -195,6 +195,10 @@ export default function SellerDealDetailPage() {
 
             <h1 className="font-bold text-[#002356] text-xl leading-snug">{deal.productName}</h1>
 
+            {deal.productDescription && (
+              <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-line">{deal.productDescription}</p>
+            )}
+
             {deal.reach && (
               <div className="flex items-center gap-2 text-sm text-gray-600">
                 <DealReachBadge reach={deal.reach} className="text-gray-600" />

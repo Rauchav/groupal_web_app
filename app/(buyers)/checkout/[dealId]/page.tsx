@@ -168,6 +168,12 @@ function StepReview({
           {deal.productName}
         </h2>
 
+        {deal.productDescription && (
+          <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-line">
+            {deal.productDescription}
+          </p>
+        )}
+
         <div className="flex items-center gap-2">
           <span className="text-sm font-semibold text-gray-500">by {deal.sellerName}</span>
           {deal.sellerVerified && (

@@ -25,6 +25,11 @@ const REACH_SCOPE_ICON: Record<DealReachScope, typeof MapPin> = { city: MapPin, 
 const dealSchema = z
   .object({
     productName:        z.string().min(3, "Product name is required"),
+    // Optional free-text detail beyond the name — nights/hotel/inclusions
+    // for a vacation package, specs for electronics, etc. Shown to buyers
+    // at checkout, the seller's own deal-detail page, and their dashboard's
+    // open-deal cards; never on the compact marketplace deal cards.
+    productDescription: z.string().max(2000, "Keep it under 2000 characters").optional(),
     coverImage:          z.string().url("Enter a valid image URL"),
     // Optional slots — an empty one just means "not filled in yet", not a
     // validation error; onSubmit drops any left blank.
@@ -229,7 +234,7 @@ export default function NewSellerDealPage() {
   } = useForm<DealFormInput, unknown, DealForm>({
     resolver: zodResolver(dealSchema),
     defaultValues: {
-      productName: "", coverImage: "", additionalImages: [], category: PRODUCT_CATEGORIES[0],
+      productName: "", productDescription: "", coverImage: "", additionalImages: [], category: PRODUCT_CATEGORIES[0],
       reachScope: "city", reachCities: [{ value: profile?.city ?? "" }], reachCountries: [{ value: "" }], reachContinents: [],
       externalProductUrl: "",
       originalPrice: "" as unknown as number, maxDiscountPercent: 40, maxBuyersRequired: 20,
@@ -329,6 +334,7 @@ export default function NewSellerDealPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         productName: data.productName,
+        productDescription: data.productDescription || undefined,
         productImages: allUrls,
         category: data.category,
         reach,
@@ -392,6 +398,19 @@ export default function NewSellerDealPage() {
             <label className="block text-sm font-semibold text-gray-700 mb-1">Product name</label>
             <input {...register("productName")} placeholder="Samsung 65&quot; QLED 4K Smart TV" className={inputClass(!!errors.productName)} />
             {errors.productName && <p className="text-xs text-red-500 mt-1">{errors.productName.message}</p>}
+          </div>
+
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-1">
+              Description <span className="font-normal text-gray-400">(optional)</span>
+            </label>
+            <textarea
+              {...register("productDescription")}
+              rows={4}
+              placeholder="Give buyers the details that don't fit in the name, e.g. for a vacation package: how many nights, which hotel, what's included."
+              className={cn(inputClass(!!errors.productDescription), "resize-y")}
+            />
+            {errors.productDescription && <p className="text-xs text-red-500 mt-1">{errors.productDescription.message}</p>}
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

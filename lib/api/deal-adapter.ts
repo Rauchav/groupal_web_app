@@ -12,6 +12,7 @@ export interface ApiDeal {
   id: string
   sellerId: string
   productName: string
+  productDescription: string | null
   productImages: string[]
   category: string
   originalPrice: number
@@ -45,6 +46,7 @@ export function apiDealToDeal(d: ApiDeal): Deal {
     sellerVerified: d.seller.verified,
     sellerUrl: d.seller.website ?? undefined,
     productName: d.productName,
+    productDescription: d.productDescription ?? undefined,
     productImages: d.productImages,
     category: d.category,
     originalPrice: d.originalPrice,

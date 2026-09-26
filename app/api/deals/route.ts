@@ -44,6 +44,7 @@ const pickupDetailsSchema = z.object({
 const createSchema = z
   .object({
     productName: z.string().min(3),
+    productDescription: z.string().max(2000).optional().or(z.literal("")),
     productImages: z.array(z.string().url()).min(1),
     category: z.string().min(1),
     originalPrice: z.number().positive(),
@@ -145,6 +146,7 @@ export async function POST(req: Request) {
     data: {
       sellerId: seller.id,
       productName: data.productName,
+      productDescription: data.productDescription || undefined,
       productImages: data.productImages,
       category: data.category,
       originalPrice: data.originalPrice,

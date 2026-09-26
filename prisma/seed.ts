@@ -72,6 +72,7 @@ async function main() {
         id: deal.id,
         sellerId: seller.id,
         productName: deal.productName,
+        productDescription: deal.productDescription,
         productImages: deal.productImages,
         category: deal.category,
         originalPrice: deal.originalPrice,
