@@ -30,6 +30,18 @@ export const metadata: Metadata = {
     description:
       "Join group buys and unlock discounts up to 70% on electronics, motors, fashion, travel and more.",
     type: "website",
+    siteName: "Groupal",
+  },
+  // No twitter.images here — Next.js falls back to the co-located
+  // opengraph-image file (app/(buyers)/opengraph-image.tsx) for both, so
+  // every platform (LinkedIn, Facebook/Instagram Messenger, WhatsApp,
+  // Twitter/X, iMessage) resolves the exact same title/description/image
+  // instead of each one guessing differently from a page scrape.
+  twitter: {
+    card: "summary_large_image",
+    title: "Groupal, buy together, save massive",
+    description:
+      "Join group buys and unlock discounts up to 70% on electronics, motors, fashion, travel and more.",
   },
 }
 

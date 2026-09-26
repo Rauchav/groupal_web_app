@@ -4,6 +4,17 @@ const isPublicRoute = createRouteMatcher([
   "/",
   "/deals(.*)",
   "/checkout(.*)",
+  // Next.js's file-convention image routes (app/(buyers)/opengraph-image.tsx
+  // and friends) — these get a random per-build hash suffix in their URL
+  // (e.g. /opengraph-image-1lx01b) that "/" alone doesn't cover, since it's
+  // an exact match, not a prefix. Without this, every external crawler
+  // (Facebook/Instagram/WhatsApp's shared scraper, LinkedIn, Twitter/X, all
+  // of which fetch signed-out) gets redirected to /sign-in instead of the
+  // actual image — no error, just silently no preview image anywhere.
+  "/opengraph-image(.*)",
+  "/twitter-image(.*)",
+  "/icon(.*)",
+  "/apple-icon(.*)",
   "/how-it-works",
   "/terms",
   "/sign-in(.*)",
