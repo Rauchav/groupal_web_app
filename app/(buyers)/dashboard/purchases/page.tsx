@@ -11,6 +11,7 @@ import { useParticipationStore, useEnsureParticipationsLoaded, MockParticipation
 import { useIsSeller } from "@/sellers/stores/seller-store"
 import { computeDealValues } from "@/lib/utils/deal-calculator"
 import { OpenDealPaymentSummary, ClosedDealPaymentSummary, MilestoneScale } from "@/buyers/components/dashboard/DealPaymentSummary"
+import { ExpandableDescription } from "@/buyers/components/dashboard/ExpandableDescription"
 import { DealReachBadge } from "@/components/deal-reach-badge"
 import { DashboardSidebar, DashboardMobileTabs } from "@/buyers/components/dashboard/DashboardNav"
 import { CountdownTimer } from "@/buyers/components/marketplace/CountdownTimer"
@@ -60,6 +61,9 @@ function ParticipationCard({ p }: { p: MockParticipation }) {
           <h3 className="font-bold text-[#002356] text-sm leading-snug line-clamp-2">
             {deal.productName}
           </h3>
+          {deal.productDescription && (
+            <ExpandableDescription text={deal.productDescription} className="text-xs text-gray-500 leading-snug" />
+          )}
           <StatusBadge status={p.status} />
           {deal.reach && <DealReachBadge reach={deal.reach} className="text-xs text-gray-400" />}
           {(p.status === "active" || p.status === "completed") && (
