@@ -6,6 +6,7 @@ import { Search, Zap, ChevronDown } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
 import { toast } from "sonner"
 import { DealCard, DealCardSkeleton } from "@/buyers/components/marketplace/DealCard"
+import { GroupalLoader } from "@/components/GroupalLoader"
 import { useApiGet } from "@/lib/api/use-fetch"
 import { apiDealToDeal, type ApiDeal } from "@/lib/api/deal-adapter"
 import { cn } from "@/lib/utils"
@@ -274,7 +275,7 @@ export default function DealsPage() {
   return (
     <Suspense fallback={
       <main className="min-h-screen bg-gray-50 flex items-center justify-center" style={{ paddingTop: "6.5rem" }}>
-        <div className="text-center text-gray-400 text-sm">Loading...</div>
+        <GroupalLoader size={64} className="text-[#002356]" />
       </main>
     }>
       <DealsPageInner />

@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation"
 import { useUser } from "@clerk/nextjs"
 import { useSellerStore, useSellerProfile } from "@/sellers/stores/seller-store"
 import { SellerDashboardSidebar, SellerDashboardMobileTabs } from "@/sellers/components/SellerDashboardNav"
+import { GroupalLoader } from "@/components/GroupalLoader"
 
 // Middleware (middleware.ts) already bounces a fully signed-out visitor to
 // /sellers before this ever renders. What middleware can't see is the mock
@@ -28,7 +29,7 @@ export default function SellerDashboardLayout({ children }: { children: React.Re
   if (!isLoaded || !hasHydrated || !isSignedIn || !profile) {
     return (
       <main className="min-h-screen flex items-center justify-center" style={{ backgroundColor: "#f8f9fa" }}>
-        <div className="h-8 w-8 rounded-full border-2 border-gray-200 border-t-[#002356] animate-spin" />
+        <GroupalLoader size={64} className="text-[#002356]" />
       </main>
     )
   }

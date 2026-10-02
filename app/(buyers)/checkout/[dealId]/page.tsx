@@ -21,6 +21,7 @@ import { useIsSeller } from "@/sellers/stores/seller-store"
 import { CountdownTimer } from "@/buyers/components/marketplace/CountdownTimer"
 import { InStorePriceButton } from "@/buyers/components/marketplace/InStorePriceButton"
 import { DealReachBadge } from "@/components/deal-reach-badge"
+import { GroupalLoader } from "@/components/GroupalLoader"
 import { cn } from "@/lib/utils"
 import { useApiGet } from "@/lib/api/use-fetch"
 import { apiDealToDeal, type ApiDeal } from "@/lib/api/deal-adapter"
@@ -920,7 +921,7 @@ export default function CheckoutPage() {
   if (dealLoading) {
     return (
       <main className="min-h-screen bg-gray-50 flex items-center justify-center" style={{ paddingTop: "6.5rem" }}>
-        <div className="text-center text-gray-400 text-sm">Loading...</div>
+        <GroupalLoader size={64} className="text-[#002356]" />
       </main>
     )
   }

@@ -12,6 +12,7 @@ import { useSellerStore, useSellerProfile } from "@/sellers/stores/seller-store"
 import { DEAL_CATEGORIES } from "@/lib/constants/categories"
 import { cn } from "@/lib/utils"
 import { SuccessCelebration } from "@/components/success-celebration"
+import { GroupalLoader } from "@/components/GroupalLoader"
 import { useApiGet } from "@/lib/api/use-fetch"
 import { CityAutocomplete } from "@/sellers/components/CityAutocomplete"
 
@@ -235,7 +236,7 @@ export default function SellersGatePage() {
   if (!isLoaded || !hasHydrated || (isSignedIn && profile && !justOnboarded)) {
     return (
       <main className="min-h-screen flex items-center justify-center" style={{ backgroundColor: "#002356" }}>
-        <div className="h-8 w-8 rounded-full border-2 border-white/30 border-t-white animate-spin" />
+        <GroupalLoader size={64} className="text-white" />
       </main>
     )
   }

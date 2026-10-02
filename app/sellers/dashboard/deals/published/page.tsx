@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation"
 import { useApiGet } from "@/lib/api/use-fetch"
 import type { ApiDeal } from "@/lib/api/deal-adapter"
 import { SuccessCelebration } from "@/components/success-celebration"
+import { GroupalLoader } from "@/components/GroupalLoader"
 
 function DealPublishedInner() {
   const searchParams = useSearchParams()
@@ -31,7 +32,7 @@ export default function DealPublishedPage() {
   return (
     <Suspense fallback={
       <main className="fixed inset-0 z-50 flex items-center justify-center bg-[#002356]/60 backdrop-blur-sm">
-        <div className="text-center text-white text-sm">Loading...</div>
+        <GroupalLoader size={64} className="text-white" />
       </main>
     }>
       <DealPublishedInner />
