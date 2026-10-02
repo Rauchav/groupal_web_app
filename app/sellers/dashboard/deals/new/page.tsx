@@ -15,6 +15,7 @@ import { CONTINENTS } from "@/lib/constants/continents"
 import { REACH_SCOPE_LABEL } from "@/lib/utils/deal-reach"
 import type { DealReach, DealReachScope } from "@/lib/types/deal"
 import { cn } from "@/lib/utils"
+import { GroupalLoader } from "@/components/GroupalLoader"
 
 const PRODUCT_CATEGORIES = DEAL_CATEGORIES.filter((c) => c !== "All")
 const MAX_ADDITIONAL_IMAGES = 5 // + 1 required cover = 6 total
@@ -748,6 +749,16 @@ export default function NewSellerDealPage() {
           {publishing ? "Checking photos..." : "Publish Group Buy Deal"}
         </button>
       </form>
+
+      {/* Full-screen loader while publishing — the seller-side counterpart
+          of checkout's "Confirming your spot..." moment, same big treatment
+          since this is the main seller conversion action. */}
+      {publishing && (
+        <div className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-5 bg-[#002356]/70 backdrop-blur-sm">
+          <GroupalLoader size={160} className="text-white" />
+          <p className="text-white font-bold text-base">Publishing your deal...</p>
+        </div>
+      )}
     </>
   )
 }

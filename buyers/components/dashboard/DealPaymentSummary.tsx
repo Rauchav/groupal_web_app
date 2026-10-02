@@ -10,6 +10,7 @@ import { useApiGet } from "@/lib/api/use-fetch"
 import { useParticipationStore } from "@/buyers/stores/participation-store"
 import { ReviewModal } from "@/buyers/components/dashboard/ReviewModal"
 import type { DealReview } from "@/lib/types/review"
+import { GroupalLoader } from "@/components/GroupalLoader"
 
 const MILESTONE_COLORS = ["#eaad00", "#e86300", "#DA1200"] as const
 
@@ -288,10 +289,20 @@ export function PaymentIssuePaymentSummary({
           payment method{graceDeadline ? ` before ${new Date(graceDeadline).toLocaleDateString("en-US", { month: "long", day: "numeric" })}` : ""}, or just try again below.
         </p>
         <button onClick={handleRetry} disabled={retrying} className={CTA_BUTTON_CLASS} style={{ backgroundColor: "#eaad00" }}>
-          <RefreshCw className={`h-4 w-4 ${retrying ? "animate-spin" : ""}`} style={{ color: "#002356" }} />
-          {retrying ? "Retrying..." : "Retry payment now"}
+          <RefreshCw className="h-4 w-4" style={{ color: "#002356" }} />
+          Retry payment now
         </button>
       </div>
+
+      {/* Full-screen loader while the retry charge is in flight — same big
+          treatment as checkout's "Confirming your spot...", since this is
+          also a real payment moment. */}
+      {retrying && (
+        <div className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-5 bg-[#002356]/70 backdrop-blur-sm">
+          <GroupalLoader size={160} className="text-white" />
+          <p className="text-white font-bold text-base">Retrying your payment...</p>
+        </div>
+      )}
     </div>
   )
 }

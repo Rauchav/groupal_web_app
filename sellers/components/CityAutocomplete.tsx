@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react"
 import { MapPin } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { GroupalLoader } from "@/components/GroupalLoader"
 
 interface CitySuggestion {
   id: string
@@ -117,7 +118,10 @@ export function CityAutocomplete({
       {open && (loading || suggestions.length > 0) && (
         <div className="absolute z-20 mt-1 w-full rounded-xl border border-gray-200 bg-white shadow-lg overflow-hidden">
           {loading && suggestions.length === 0 ? (
-            <div className="px-3 py-2.5 text-xs text-gray-400">Searching…</div>
+            <div className="px-3 py-2.5 flex items-center gap-2 text-xs text-gray-400">
+              <GroupalLoader size={16} className="text-gray-400" />
+              Searching…
+            </div>
           ) : (
             suggestions.map((s) => (
               <button

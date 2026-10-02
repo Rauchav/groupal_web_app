@@ -832,18 +832,7 @@ function StepConfirm({
           onMouseEnter={(e) => !loading && (e.currentTarget.style.backgroundColor = "#059c4f")}
           onMouseLeave={(e) => !loading && (e.currentTarget.style.backgroundColor = "#048943")}
         >
-          {loading ? (
-            <>
-              <motion.div
-                className="h-4 w-4 rounded-full border-2 border-white/30 border-t-white"
-                animate={{ rotate: 360 }}
-                transition={{ duration: 0.8, repeat: Infinity, ease: "linear" }}
-              />
-              Processing...
-            </>
-          ) : (
-            `Complete Reservation, ${fmt(totalToday, deal.currency)}`
-          )}
+          {loading ? "Processing..." : `Complete Reservation, ${fmt(totalToday, deal.currency)}`}
         </button>
       </div>
 
@@ -1186,6 +1175,18 @@ export default function CheckoutPage() {
             Join now
           </button>
         </div>
+      </div>
+    )}
+
+    {/* Full-screen loader while the reservation charge is in flight — this
+        is the biggest single moment in the whole buyer flow (money actually
+        changes hands here), so it gets the large, standalone treatment
+        instead of the small in-button spinner every other async action
+        uses. */}
+    {loading && (
+      <div className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-5 bg-[#002356]/70 backdrop-blur-sm">
+        <GroupalLoader size={160} className="text-white" />
+        <p className="text-white font-bold text-base">Confirming your spot...</p>
       </div>
     )}
     </>
