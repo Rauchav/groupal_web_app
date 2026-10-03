@@ -10,6 +10,7 @@ import { useRouter, useSearchParams } from "next/navigation"
 import { SignUp, useUser } from "@clerk/nextjs"
 import { useIsSeller } from "@/sellers/stores/seller-store"
 import { AlreadySellerBlock } from "@/buyers/components/auth/AlreadySellerBlock"
+import { EmailValidationGuard } from "@/buyers/components/auth/EmailValidationGuard"
 
 export default function SignUpPage() {
   const router = useRouter()
@@ -44,6 +45,7 @@ export default function SignUpPage() {
           // Only ever mounted once Clerk has confirmed there's no existing
           // session — see app/(buyers)/sign-in/[[...sign-in]]/page.tsx's
           // own comment on this exact same guard for why.
+          <EmailValidationGuard>
           <SignUp
             forceRedirectUrl="/sign-up"
             // The real bug: signing "up" with a Google account that already
@@ -69,6 +71,7 @@ export default function SignUpPage() {
               },
             }}
           />
+          </EmailValidationGuard>
         )}
       </div>
     </main>

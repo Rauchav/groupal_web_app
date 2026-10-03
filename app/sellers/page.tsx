@@ -13,6 +13,7 @@ import { DEAL_CATEGORIES } from "@/lib/constants/categories"
 import { cn } from "@/lib/utils"
 import { SuccessCelebration } from "@/components/success-celebration"
 import { GroupalLoader } from "@/components/GroupalLoader"
+import { EmailValidationGuard } from "@/buyers/components/auth/EmailValidationGuard"
 import { useApiGet } from "@/lib/api/use-fetch"
 import { CityAutocomplete } from "@/sellers/components/CityAutocomplete"
 
@@ -310,11 +311,13 @@ export default function SellersGatePage() {
             </button>
           </div>
 
-          {authMode === "sign-in" ? (
-            <SignIn routing="hash" signUpUrl="/sellers" fallbackRedirectUrl="/sellers" appearance={CLERK_APPEARANCE} />
-          ) : (
-            <SignUp routing="hash" signInUrl="/sellers" fallbackRedirectUrl="/sellers" appearance={CLERK_APPEARANCE} />
-          )}
+          <EmailValidationGuard>
+            {authMode === "sign-in" ? (
+              <SignIn routing="hash" signUpUrl="/sellers" fallbackRedirectUrl="/sellers" appearance={CLERK_APPEARANCE} />
+            ) : (
+              <SignUp routing="hash" signInUrl="/sellers" fallbackRedirectUrl="/sellers" appearance={CLERK_APPEARANCE} />
+            )}
+          </EmailValidationGuard>
         </div>
       )}
     </main>

@@ -10,6 +10,7 @@ import { useRouter, useSearchParams } from "next/navigation"
 import { SignIn, useUser } from "@clerk/nextjs"
 import { useIsSeller } from "@/sellers/stores/seller-store"
 import { AlreadySellerBlock } from "@/buyers/components/auth/AlreadySellerBlock"
+import { EmailValidationGuard } from "@/buyers/components/auth/EmailValidationGuard"
 
 export default function SignInPage() {
   const router = useRouter()
@@ -52,6 +53,7 @@ export default function SignInPage() {
           // isSeller check above, before this component's state ever caught
           // up. This was the real cause of a seller occasionally reaching
           // the buyer homepage without ever seeing AlreadySellerBlock.
+          <EmailValidationGuard>
           <SignIn
             forceRedirectUrl="/sign-in"
             // Symmetric case to the fix on the sign-up page: if someone
@@ -73,6 +75,7 @@ export default function SignInPage() {
               },
             }}
           />
+          </EmailValidationGuard>
         )}
       </div>
     </main>
