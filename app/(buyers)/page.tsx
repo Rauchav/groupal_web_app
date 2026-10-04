@@ -20,6 +20,7 @@ import {
   Plane,
   ChevronRight,
   CheckCircle2,
+  BellRing,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DealCard, DealCardSkeleton } from "@/buyers/components/marketplace/DealCard";
@@ -249,6 +250,38 @@ export default function HomePage() {
                 <DealCardSkeleton key={i} />
               ))}
             </div>
+          ) : liveDeals.length === 0 ? (
+            <motion.div
+              className="bg-white rounded-2xl border border-gray-100 shadow-sm p-12 text-center"
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ once: true, margin: "-60px" }}
+              variants={fadeUp}
+              custom={0}
+            >
+              <div className="flex justify-center mb-5">
+                <div className="flex h-16 w-16 items-center justify-center rounded-full bg-groupal-gold/10">
+                  <BellRing className="h-8 w-8 text-groupal-gold" />
+                </div>
+              </div>
+              <h3 className="font-heading font-bold text-groupal-navy text-xl mb-2">
+                No active group buys right now
+              </h3>
+              <p className="text-gray-500 text-sm max-w-md mx-auto leading-relaxed mb-6">
+                We&apos;re sorry, there&apos;s nothing live at the moment. We&apos;re confident sellers will
+                post new offers very soon, so turn on notifications and we&apos;ll let you know the
+                moment a new one goes live.
+              </p>
+              <Button
+                variant="outline-navy"
+                size="sm"
+                className="gap-1.5"
+                onClick={() => router.push("/dashboard/settings")}
+              >
+                <BellRing className="h-4 w-4" />
+                Turn on notifications
+              </Button>
+            </motion.div>
           ) : (
             <motion.div
               className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5"
