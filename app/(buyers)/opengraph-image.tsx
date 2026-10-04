@@ -1,6 +1,7 @@
 import { ImageResponse } from "next/og"
 import { readFileSync } from "fs"
 import { join } from "path"
+import { loadNunitoExtraBold } from "@/lib/og/nunito-font"
 
 // The platform-level share preview (the bare site link, not a specific
 // deal — that's the sibling image at checkout/[dealId]/opengraph-image.tsx).
@@ -26,6 +27,7 @@ export default function Image() {
   // (emails/EmailShell.tsx) — per the reference mockup, this replaces the
   // hand-rendered "grou"/"pal" text that used to sit here.
   const logoImage = toDataUri("public/brand/logo fondo azul-email.png")
+  const nunitoExtraBold = loadNunitoExtraBold()
 
   return new ImageResponse(
     (
@@ -54,13 +56,17 @@ export default function Image() {
           style={{ objectFit: "contain", marginTop: 12 }}
         />
 
-        {/* Tagline */}
-        <div style={{ display: "flex", fontSize: 34, fontWeight: 800, marginTop: 10 }}>
-          <span style={{ color: "#ffffff" }}>Buy together, </span>
+        {/* Tagline — same Nunito ExtraBold the homepage H1 uses. gap (not a
+            trailing space character) separates the two colored spans —
+            Satori collapses whitespace-only text between flex-item spans
+            no matter how it's authored, especially with a custom embedded
+            font. */}
+        <div style={{ display: "flex", fontFamily: "Nunito", fontSize: 34, fontWeight: 800, marginTop: 10, gap: 10 }}>
+          <span style={{ color: "#ffffff" }}>Buy together,</span>
           <span style={{ color: "#eaad00" }}>save massive</span>
         </div>
       </div>
     ),
-    { ...size }
+    { ...size, fonts: [{ name: "Nunito", data: nunitoExtraBold, weight: 800, style: "normal" }] }
   )
 }

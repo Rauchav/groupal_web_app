@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db"
 import { dealInclude, dealRowToApiDeal } from "@/lib/api/deal-include"
 import { apiDealToDeal } from "@/lib/api/deal-adapter"
 import { computeDealValues } from "@/lib/utils/deal-calculator"
+import { loadNunitoExtraBold } from "@/lib/og/nunito-font"
 
 // Layout/colors match the reference mockup at public/references/
 // "groupal deal share image.png" (#1b4487 panel background, no red max-
@@ -28,6 +29,8 @@ function fmt(amount: number, currency = "USD") {
 export default async function Image({ params }: { params: { dealId: string } }) {
   const dealRow = await prisma.deal.findUnique({ where: { id: params.dealId }, include: dealInclude })
   const deal = dealRow ? apiDealToDeal(dealRowToApiDeal(dealRow)) : null
+  const nunitoExtraBold = loadNunitoExtraBold()
+  const fonts = [{ name: "Nunito", data: nunitoExtraBold, weight: 800 as const, style: "normal" as const }]
 
   if (!deal) {
     return new ImageResponse(
@@ -40,6 +43,7 @@ export default async function Image({ params }: { params: { dealId: string } }) 
             alignItems: "center",
             justifyContent: "center",
             backgroundColor: "#1b4487",
+            fontFamily: "Nunito",
             fontSize: 48,
             fontWeight: 800,
             color: "#ffffff",
@@ -48,7 +52,7 @@ export default async function Image({ params }: { params: { dealId: string } }) 
           Groupal
         </div>
       ),
-      { ...size }
+      { ...size, fonts }
     )
   }
 
@@ -111,10 +115,10 @@ export default async function Image({ params }: { params: { dealId: string } }) 
           {/* Prices */}
           <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
             <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-              <span style={{ fontSize: 20, fontWeight: 700, letterSpacing: 1, color: "#9fb0d0" }}>
+              <span style={{ fontSize: 20, fontWeight: 800, letterSpacing: 1, color: "#9fb0d0" }}>
                 IN-STORE PRICE
               </span>
-              <span style={{ fontSize: 44, fontWeight: 700, color: "#9fb0d0", textDecoration: "line-through" }}>
+              <span style={{ fontSize: 44, fontWeight: 800, color: "#9fb0d0", textDecoration: "line-through" }}>
                 {fmt(deal.originalPrice, deal.currency)}
               </span>
             </div>
@@ -124,8 +128,9 @@ export default async function Image({ params }: { params: { dealId: string } }) 
                   text, trailing-in-span, {" "} expression) — flex `gap` on
                   the row is the only reliable way to separate colored
                   segments. "Grou"/"pal" need to stay glued (one word), so
-                  they're nested in their own zero-gap sub-row. */}
-              <div style={{ display: "flex", fontSize: 30, fontWeight: 800, gap: 8 }}>
+                  they're nested in their own zero-gap sub-row. Nunito
+                  ExtraBold here — same font+weight as the homepage H1. */}
+              <div style={{ display: "flex", fontFamily: "Nunito", fontSize: 30, fontWeight: 800, gap: 8 }}>
                 <div style={{ display: "flex" }}>
                   <span style={{ color: "#ffffff" }}>Grou</span>
                   <span style={{ color: "#eaad00" }}>pal</span>
@@ -150,7 +155,7 @@ export default async function Image({ params }: { params: { dealId: string } }) 
                 padding: "12px 26px",
               }}
             >
-              <span style={{ fontSize: 22, fontWeight: 700, color: "#ffffff" }}>Right now</span>
+              <span style={{ fontSize: 22, fontWeight: 800, color: "#ffffff" }}>Right now</span>
               <span style={{ fontSize: 36, fontWeight: 800, color: "#ffffff" }}>
                 {computed.currentDiscountPercent.toFixed(2)}%
               </span>
@@ -165,7 +170,7 @@ export default async function Image({ params }: { params: { dealId: string } }) 
                 padding: "12px 26px",
               }}
             >
-              <span style={{ fontSize: 22, fontWeight: 700, color: "#ffffff" }}>If group fills up</span>
+              <span style={{ fontSize: 22, fontWeight: 800, color: "#ffffff" }}>If group fills up</span>
               <span style={{ fontSize: 36, fontWeight: 800, color: "#eaad00" }}>
                 {deal.maxDiscountPercent}%
               </span>
@@ -174,7 +179,7 @@ export default async function Image({ params }: { params: { dealId: string } }) 
 
           {/* Buyers + deadline */}
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            <div style={{ display: "flex", fontSize: 28, fontWeight: 700, gap: 8 }}>
+            <div style={{ display: "flex", fontSize: 28, fontWeight: 800, gap: 8 }}>
               <span style={{ color: "#eaad00" }}>{deal.currentBuyerCount}</span>
               <span style={{ color: "#ffffff" }}>of</span>
               <span style={{ color: "#eaad00" }}>{deal.maxBuyersRequired}</span>
@@ -187,6 +192,6 @@ export default async function Image({ params }: { params: { dealId: string } }) 
         </div>
       </div>
     ),
-    { ...size }
+    { ...size, fonts }
   )
 }
