@@ -2,14 +2,17 @@ import { ImageResponse } from "next/og"
 import { prisma } from "@/lib/db"
 import { dealInclude, dealRowToApiDeal } from "@/lib/api/deal-include"
 import { apiDealToDeal } from "@/lib/api/deal-adapter"
-import { computeDealValues, getDiscountColor } from "@/lib/utils/deal-calculator"
+import { computeDealValues } from "@/lib/utils/deal-calculator"
 
-// Was "edge" — switched to the default Node.js runtime because fetching
-// the real deal needs the shared Prisma client (lib/db.ts), whose
-// @prisma/adapter-pg driver relies on Node's net/tls modules and doesn't
-// run on the Edge runtime. next/og's ImageResponse works the same either
-// way; edge was never load-bearing for this route, just next/og's
-// original default.
+// Layout/colors match the reference mockup at public/references/
+// "groupal deal share image.png" (#1b4487 panel background, no red max-
+// discount tag on the product photo, outlined — not filled — stat boxes,
+// no wordmark above the title). Was "edge" — switched to the default
+// Node.js runtime because fetching the real deal needs the shared Prisma
+// client (lib/db.ts), whose @prisma/adapter-pg driver relies on Node's
+// net/tls modules and doesn't run on the Edge runtime. next/og's
+// ImageResponse works the same either way; edge was never load-bearing
+// for this route, just next/og's original default.
 export const alt = "Groupal group buy deal"
 export const size = { width: 1200, height: 630 }
 export const contentType = "image/png"
@@ -36,7 +39,7 @@ export default async function Image({ params }: { params: { dealId: string } }) 
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            backgroundColor: "#002356",
+            backgroundColor: "#1b4487",
             fontSize: 48,
             fontWeight: 800,
             color: "#ffffff",
@@ -50,7 +53,6 @@ export default async function Image({ params }: { params: { dealId: string } }) 
   }
 
   const computed = computeDealValues(deal)
-  const zoneColor = getDiscountColor(computed.progressPercent)
   const deadline = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric" }).format(deal.deadlineAt)
 
   return new ImageResponse(
@@ -63,55 +65,36 @@ export default async function Image({ params }: { params: { dealId: string } }) 
           fontFamily: "sans-serif",
         }}
       >
-        {/* Product image — left half */}
-        <div style={{ width: 500, height: "100%", display: "flex", position: "relative" }}>
+        {/* Product image — left */}
+        <div style={{ width: 530, height: "100%", display: "flex" }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={deal.productImages[0]}
             alt=""
-            width={500}
+            width={530}
             height={630}
-            style={{ objectFit: "cover", width: 500, height: 630 }}
+            style={{ objectFit: "cover", width: 530, height: 630 }}
           />
-          <div
-            style={{
-              position: "absolute",
-              top: 28,
-              left: 28,
-              display: "flex",
-              alignItems: "center",
-              gap: 10,
-              backgroundColor: "#DA1200",
-              color: "#ffffff",
-              fontSize: 30,
-              fontWeight: 800,
-              padding: "10px 20px",
-              borderRadius: 14,
-            }}
-          >
-            -{deal.maxDiscountPercent}% max
-          </div>
         </div>
 
-        {/* Info panel — right half, navy */}
+        {/* Info panel — right */}
         <div
           style={{
-            width: 700,
+            width: 670,
             height: "100%",
             display: "flex",
             flexDirection: "column",
-            justifyContent: "space-between",
-            backgroundColor: "#002356",
+            justifyContent: "flex-start",
+            backgroundColor: "#1b4487",
             padding: "40px 48px",
+            gap: 20,
           }}
         >
-          {/* Wordmark */}
-          <div style={{ display: "flex", fontSize: 34, fontWeight: 800 }}>
-            <span style={{ color: "#ffffff" }}>grou</span>
-            <span style={{ color: "#eaad00" }}>pal</span>
-          </div>
-
-          {/* Product title */}
+          {/* Product title — minHeight reserves room for 2 wrapped lines
+              so a long name never overlaps the price block below it;
+              Satori's flex layout doesn't always re-measure a sibling gap
+              against text that wraps to more lines than its single-line
+              estimate. */}
           <div
             style={{
               display: "flex",
@@ -119,76 +102,87 @@ export default async function Image({ params }: { params: { dealId: string } }) 
               fontWeight: 800,
               color: "#ffffff",
               lineHeight: 1.15,
-              marginTop: 12,
+              minHeight: 100,
             }}
           >
-            {deal.productName.length > 70 ? deal.productName.slice(0, 67) + "…" : deal.productName}
+            {deal.productName.length > 58 ? deal.productName.slice(0, 55) + "…" : deal.productName}
           </div>
 
           {/* Prices */}
-          <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 20 }}>
-            <div style={{ display: "flex", alignItems: "baseline", gap: 12 }}>
-              <span style={{ fontSize: 26, color: "rgba(255,255,255,0.5)", textDecoration: "line-through" }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+              <span style={{ fontSize: 20, fontWeight: 700, letterSpacing: 1, color: "#9fb0d0" }}>
+                IN-STORE PRICE
+              </span>
+              <span style={{ fontSize: 44, fontWeight: 700, color: "#9fb0d0", textDecoration: "line-through" }}>
                 {fmt(deal.originalPrice, deal.currency)}
               </span>
-              <span style={{ fontSize: 22, color: "rgba(255,255,255,0.5)" }}>store price</span>
             </div>
-            <div style={{ display: "flex", alignItems: "baseline", gap: 14 }}>
-              <span style={{ fontSize: 68, fontWeight: 800, color: "#ffffff" }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+              {/* Satori collapses whitespace-only text nodes between flex-
+                  item spans no matter how the space is authored (plain
+                  text, trailing-in-span, {" "} expression) — flex `gap` on
+                  the row is the only reliable way to separate colored
+                  segments. "Grou"/"pal" need to stay glued (one word), so
+                  they're nested in their own zero-gap sub-row. */}
+              <div style={{ display: "flex", fontSize: 30, fontWeight: 800, gap: 8 }}>
+                <div style={{ display: "flex" }}>
+                  <span style={{ color: "#ffffff" }}>Grou</span>
+                  <span style={{ color: "#eaad00" }}>pal</span>
+                </div>
+                <span style={{ color: "#ffffff" }}>price now</span>
+              </div>
+              <span style={{ fontSize: 58, fontWeight: 800, color: "#ffffff" }}>
                 {fmt(computed.currentPrice, deal.currency)}
               </span>
-              <span style={{ fontSize: 26, fontWeight: 700, color: "#eaad00" }}>Groupal price now</span>
             </div>
           </div>
 
-          {/* Discount badges */}
-          <div style={{ display: "flex", gap: 16, marginTop: 24 }}>
+          {/* Discount boxes — outlined, not filled */}
+          <div style={{ display: "flex", gap: 18 }}>
             <div
               style={{
                 display: "flex",
                 flexDirection: "column",
-                backgroundColor: zoneColor,
-                borderRadius: 16,
-                padding: "14px 24px",
+                alignItems: "center",
+                border: "3px solid #ffffff",
+                borderRadius: 18,
+                padding: "12px 26px",
               }}
             >
-              <span style={{ fontSize: 34, fontWeight: 800, color: "#ffffff" }}>
-                {computed.currentDiscountPercent.toFixed(1)}%
+              <span style={{ fontSize: 22, fontWeight: 700, color: "#ffffff" }}>Right now</span>
+              <span style={{ fontSize: 36, fontWeight: 800, color: "#ffffff" }}>
+                {computed.currentDiscountPercent.toFixed(2)}%
               </span>
-              <span style={{ fontSize: 18, fontWeight: 600, color: "#ffffff" }}>off right now</span>
             </div>
             <div
               style={{
                 display: "flex",
                 flexDirection: "column",
-                backgroundColor: "rgba(255,255,255,0.1)",
-                border: "2px solid #eaad00",
-                borderRadius: 16,
-                padding: "14px 24px",
+                alignItems: "center",
+                border: "3px solid #eaad00",
+                borderRadius: 18,
+                padding: "12px 26px",
               }}
             >
-              <span style={{ fontSize: 34, fontWeight: 800, color: "#eaad00" }}>
+              <span style={{ fontSize: 22, fontWeight: 700, color: "#ffffff" }}>If group fills up</span>
+              <span style={{ fontSize: 36, fontWeight: 800, color: "#eaad00" }}>
                 {deal.maxDiscountPercent}%
               </span>
-              <span style={{ fontSize: 18, fontWeight: 600, color: "#ffffff" }}>max if group fills</span>
             </div>
           </div>
 
-          {/* Footer — buyers + deadline */}
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              marginTop: 24,
-              paddingTop: 20,
-              borderTop: "1px solid rgba(255,255,255,0.2)",
-              fontSize: 22,
-              color: "rgba(255,255,255,0.85)",
-            }}
-          >
-            <span>{deal.currentBuyerCount} of {deal.maxBuyersRequired} buyers joined</span>
-            <span style={{ color: "#e86300", fontWeight: 700 }}>Ends {deadline}</span>
+          {/* Buyers + deadline */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            <div style={{ display: "flex", fontSize: 28, fontWeight: 700, gap: 8 }}>
+              <span style={{ color: "#eaad00" }}>{deal.currentBuyerCount}</span>
+              <span style={{ color: "#ffffff" }}>of</span>
+              <span style={{ color: "#eaad00" }}>{deal.maxBuyersRequired}</span>
+              <span style={{ color: "#ffffff" }}>buyers joined</span>
+            </div>
+            <div style={{ display: "flex", fontSize: 30, fontWeight: 800, color: "#e86300" }}>
+              Ends {deadline}
+            </div>
           </div>
         </div>
       </div>

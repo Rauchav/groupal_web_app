@@ -31,7 +31,7 @@ export async function generateMetadata({
   const title = `${deal.productName} for only ${fmt(computed.currentPrice)} at Groupal, save up to ${fmt(maxSavings)}`
   const description =
     `Store price ${fmt(deal.originalPrice)} → Groupal price ${fmt(computed.currentPrice)} right now ` +
-    `(${computed.currentDiscountPercent.toFixed(1)}% off, up to ${deal.maxDiscountPercent}% off if the group fills up). ` +
+    `(join in and save up to ${fmt(maxSavings)}). ` +
     `Deal ends ${deadline}, join and drop the price for everyone!`
 
   return {
