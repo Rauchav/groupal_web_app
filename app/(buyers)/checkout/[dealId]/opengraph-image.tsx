@@ -26,45 +26,13 @@ function fmt(amount: number, currency = "USD") {
   }).format(amount)
 }
 
-export default async function Image({ params }: { params: { dealId: string } }) {
-  // TEMP DIAGNOSTIC — production returns a bare 500 with no visible detail
-  // for this route specifically (confirmed: homepage opengraph-image.tsx,
-  // same Prisma + font-loading pattern, returns 200 fine). Rendering the
-  // actual error into the image itself lets it be read via a plain curl,
-  // without needing Vercel dashboard log access. Remove once root-caused.
-  try {
-  const dealRow = await prisma.deal.findUnique({ where: { id: params.dealId }, include: dealInclude })
-  const deal = dealRow ? apiDealToDeal(dealRowToApiDeal(dealRow)) : null
-  const nunitoExtraBold = loadNunitoExtraBold()
-  const fonts = [{ name: "Nunito", data: nunitoExtraBold, weight: 800 as const, style: "normal" as const }]
-
-  if (!deal) {
-    return new ImageResponse(
-      (
-        <div
-          style={{
-            width: "100%",
-            height: "100%",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            backgroundColor: "#1b4487",
-            fontFamily: "Nunito",
-            fontSize: 48,
-            fontWeight: 800,
-            color: "#ffffff",
-          }}
-        >
-          Groupal
-        </div>
-      ),
-      { ...size, fonts }
-    )
-  }
-
-  const computed = computeDealValues(deal)
-  const deadline = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric" }).format(deal.deadlineAt)
-
+// Generic fallback — used when there's no deal to show, and as a last-
+// resort catch-all so a social-media crawler (WhatsApp, Facebook, etc.)
+// always gets SOME valid image back instead of a 500. A broken/missing
+// preview image is why a shared link's rich preview silently fails to
+// render on the other end — a plain navy "Groupal" square is a much
+// better failure mode than that.
+function fallbackImage(fonts: { name: string; data: ArrayBuffer; weight: 800; style: "normal" }[]) {
   return new ImageResponse(
     (
       <div
@@ -72,136 +40,47 @@ export default async function Image({ params }: { params: { dealId: string } }) 
           width: "100%",
           height: "100%",
           display: "flex",
-          fontFamily: "sans-serif",
+          alignItems: "center",
+          justifyContent: "center",
+          backgroundColor: "#1b4487",
+          fontFamily: fonts.length > 0 ? "Nunito" : "sans-serif",
+          fontSize: 48,
+          fontWeight: 800,
+          color: "#ffffff",
         }}
       >
-        {/* Product image — left */}
-        <div style={{ width: 530, height: "100%", display: "flex" }}>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={deal.productImages[0]}
-            alt=""
-            width={530}
-            height={630}
-            style={{ objectFit: "cover", width: 530, height: 630 }}
-          />
-        </div>
-
-        {/* Info panel — right */}
-        <div
-          style={{
-            width: 670,
-            height: "100%",
-            display: "flex",
-            flexDirection: "column",
-            justifyContent: "flex-start",
-            backgroundColor: "#1b4487",
-            padding: "40px 48px",
-            gap: 20,
-          }}
-        >
-          {/* Product title — minHeight reserves room for 2 wrapped lines
-              so a long name never overlaps the price block below it;
-              Satori's flex layout doesn't always re-measure a sibling gap
-              against text that wraps to more lines than its single-line
-              estimate. */}
-          <div
-            style={{
-              display: "flex",
-              fontSize: 42,
-              fontWeight: 800,
-              color: "#ffffff",
-              lineHeight: 1.15,
-              minHeight: 100,
-            }}
-          >
-            {deal.productName.length > 58 ? deal.productName.slice(0, 55) + "…" : deal.productName}
-          </div>
-
-          {/* Prices */}
-          <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-            <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-              <span style={{ fontSize: 20, fontWeight: 800, letterSpacing: 1, color: "#9fb0d0" }}>
-                IN-STORE PRICE
-              </span>
-              <span style={{ fontSize: 44, fontWeight: 800, color: "#9fb0d0", textDecoration: "line-through" }}>
-                {fmt(deal.originalPrice, deal.currency)}
-              </span>
-            </div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-              {/* Satori collapses whitespace-only text nodes between flex-
-                  item spans no matter how the space is authored (plain
-                  text, trailing-in-span, {" "} expression) — flex `gap` on
-                  the row is the only reliable way to separate colored
-                  segments. "Grou"/"pal" need to stay glued (one word), so
-                  they're nested in their own zero-gap sub-row. Nunito
-                  ExtraBold here — same font+weight as the homepage H1. */}
-              <div style={{ display: "flex", fontFamily: "Nunito", fontSize: 30, fontWeight: 800, gap: 8 }}>
-                <div style={{ display: "flex" }}>
-                  <span style={{ color: "#ffffff" }}>Grou</span>
-                  <span style={{ color: "#eaad00" }}>pal</span>
-                </div>
-                <span style={{ color: "#ffffff" }}>price now</span>
-              </div>
-              <span style={{ fontSize: 58, fontWeight: 800, color: "#ffffff" }}>
-                {fmt(computed.currentPrice, deal.currency)}
-              </span>
-            </div>
-          </div>
-
-          {/* Discount boxes — outlined, not filled */}
-          <div style={{ display: "flex", gap: 18 }}>
-            <div
-              style={{
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                border: "3px solid #ffffff",
-                borderRadius: 18,
-                padding: "12px 26px",
-              }}
-            >
-              <span style={{ fontSize: 22, fontWeight: 800, color: "#ffffff" }}>Right now</span>
-              <span style={{ fontSize: 36, fontWeight: 800, color: "#ffffff" }}>
-                {computed.currentDiscountPercent.toFixed(2)}%
-              </span>
-            </div>
-            <div
-              style={{
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                border: "3px solid #eaad00",
-                borderRadius: 18,
-                padding: "12px 26px",
-              }}
-            >
-              <span style={{ fontSize: 22, fontWeight: 800, color: "#ffffff" }}>If group fills up</span>
-              <span style={{ fontSize: 36, fontWeight: 800, color: "#eaad00" }}>
-                {deal.maxDiscountPercent}%
-              </span>
-            </div>
-          </div>
-
-          {/* Buyers + deadline */}
-          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            <div style={{ display: "flex", fontSize: 28, fontWeight: 800, gap: 8 }}>
-              <span style={{ color: "#eaad00" }}>{deal.currentBuyerCount}</span>
-              <span style={{ color: "#ffffff" }}>of</span>
-              <span style={{ color: "#eaad00" }}>{deal.maxBuyersRequired}</span>
-              <span style={{ color: "#ffffff" }}>buyers joined</span>
-            </div>
-            <div style={{ display: "flex", fontSize: 30, fontWeight: 800, color: "#e86300" }}>
-              Ends {deadline}
-            </div>
-          </div>
-        </div>
+        Groupal
       </div>
     ),
     { ...size, fonts }
   )
+}
+
+export default async function Image({ params }: { params: { dealId: string } }) {
+  // Explicitly included for this dynamic route via next.config.js's
+  // outputFileTracingIncludes — Vercel's build-time file tracer didn't
+  // pick this font up automatically for a per-request serverless function
+  // (it only worked for the homepage's opengraph-image.tsx because that
+  // route has no dynamic params, so Next.js pre-renders it once at build
+  // time against the real local filesystem, never as a deployed function).
+  // Loaded inside the try, not above it — if outputFileTracingIncludes
+  // ever stops covering this file for any reason, the font read itself
+  // must not be able to crash the whole route past the fallback below.
+  let fonts: { name: string; data: ArrayBuffer; weight: 800; style: "normal" }[] = []
+  try {
+    fonts = [{ name: "Nunito", data: loadNunitoExtraBold(), weight: 800, style: "normal" }]
   } catch (err) {
-    const message = err instanceof Error ? `${err.name}: ${err.message}\n${err.stack ?? ""}` : String(err)
+    console.error("checkout/[dealId]/opengraph-image: font load failed, falling back to default sans:", err)
+  }
+
+  try {
+    const dealRow = await prisma.deal.findUnique({ where: { id: params.dealId }, include: dealInclude })
+    const deal = dealRow ? apiDealToDeal(dealRowToApiDeal(dealRow)) : null
+    if (!deal) return fallbackImage(fonts)
+
+    const computed = computeDealValues(deal)
+    const deadline = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric" }).format(deal.deadlineAt)
+
     return new ImageResponse(
       (
         <div
@@ -209,19 +88,138 @@ export default async function Image({ params }: { params: { dealId: string } }) 
             width: "100%",
             height: "100%",
             display: "flex",
-            flexDirection: "column",
-            padding: 40,
-            backgroundColor: "#DA1200",
-            color: "#ffffff",
-            fontSize: 18,
-            fontFamily: "monospace",
-            whiteSpace: "pre-wrap",
+            fontFamily: "sans-serif",
           }}
         >
-          {message.slice(0, 1800)}
+          {/* Product image — left */}
+          <div style={{ width: 530, height: "100%", display: "flex" }}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={deal.productImages[0]}
+              alt=""
+              width={530}
+              height={630}
+              style={{ objectFit: "cover", width: 530, height: 630 }}
+            />
+          </div>
+
+          {/* Info panel — right */}
+          <div
+            style={{
+              width: 670,
+              height: "100%",
+              display: "flex",
+              flexDirection: "column",
+              justifyContent: "flex-start",
+              backgroundColor: "#1b4487",
+              padding: "40px 48px",
+              gap: 20,
+            }}
+          >
+            {/* Product title — minHeight reserves room for 2 wrapped lines
+                so a long name never overlaps the price block below it;
+                Satori's flex layout doesn't always re-measure a sibling gap
+                against text that wraps to more lines than its single-line
+                estimate. */}
+            <div
+              style={{
+                display: "flex",
+                fontSize: 42,
+                fontWeight: 800,
+                color: "#ffffff",
+                lineHeight: 1.15,
+                minHeight: 100,
+              }}
+            >
+              {deal.productName.length > 58 ? deal.productName.slice(0, 55) + "…" : deal.productName}
+            </div>
+
+            {/* Prices */}
+            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                <span style={{ fontSize: 20, fontWeight: 800, letterSpacing: 1, color: "#9fb0d0" }}>
+                  IN-STORE PRICE
+                </span>
+                <span style={{ fontSize: 44, fontWeight: 800, color: "#9fb0d0", textDecoration: "line-through" }}>
+                  {fmt(deal.originalPrice, deal.currency)}
+                </span>
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                {/* Satori collapses whitespace-only text nodes between flex-
+                    item spans no matter how the space is authored (plain
+                    text, trailing-in-span, {" "} expression) — flex `gap` on
+                    the row is the only reliable way to separate colored
+                    segments. "Grou"/"pal" need to stay glued (one word), so
+                    they're nested in their own zero-gap sub-row. Nunito
+                    ExtraBold here — same font+weight as the homepage H1. */}
+                <div style={{ display: "flex", fontFamily: "Nunito", fontSize: 30, fontWeight: 800, gap: 8 }}>
+                  <div style={{ display: "flex" }}>
+                    <span style={{ color: "#ffffff" }}>Grou</span>
+                    <span style={{ color: "#eaad00" }}>pal</span>
+                  </div>
+                  <span style={{ color: "#ffffff" }}>price now</span>
+                </div>
+                <span style={{ fontSize: 58, fontWeight: 800, color: "#ffffff" }}>
+                  {fmt(computed.currentPrice, deal.currency)}
+                </span>
+              </div>
+            </div>
+
+            {/* Discount boxes — outlined, not filled */}
+            <div style={{ display: "flex", gap: 18 }}>
+              <div
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  border: "3px solid #ffffff",
+                  borderRadius: 18,
+                  padding: "12px 26px",
+                }}
+              >
+                <span style={{ fontSize: 22, fontWeight: 800, color: "#ffffff" }}>Right now</span>
+                <span style={{ fontSize: 36, fontWeight: 800, color: "#ffffff" }}>
+                  {computed.currentDiscountPercent.toFixed(2)}%
+                </span>
+              </div>
+              <div
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  border: "3px solid #eaad00",
+                  borderRadius: 18,
+                  padding: "12px 26px",
+                }}
+              >
+                <span style={{ fontSize: 22, fontWeight: 800, color: "#ffffff" }}>If group fills up</span>
+                <span style={{ fontSize: 36, fontWeight: 800, color: "#eaad00" }}>
+                  {deal.maxDiscountPercent}%
+                </span>
+              </div>
+            </div>
+
+            {/* Buyers + deadline */}
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              <div style={{ display: "flex", fontSize: 28, fontWeight: 800, gap: 8 }}>
+                <span style={{ color: "#eaad00" }}>{deal.currentBuyerCount}</span>
+                <span style={{ color: "#ffffff" }}>of</span>
+                <span style={{ color: "#eaad00" }}>{deal.maxBuyersRequired}</span>
+                <span style={{ color: "#ffffff" }}>buyers joined</span>
+              </div>
+              <div style={{ display: "flex", fontSize: 30, fontWeight: 800, color: "#e86300" }}>
+                Ends {deadline}
+              </div>
+            </div>
+          </div>
         </div>
       ),
-      { ...size }
+      { ...size, fonts }
     )
+  } catch (err) {
+    // Never let a crawler fetching this see a bare 500 — log server-side
+    // for debugging, but always return a valid image.
+    console.error("checkout/[dealId]/opengraph-image failed:", err)
+    return fallbackImage(fonts)
   }
 }
