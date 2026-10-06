@@ -27,6 +27,12 @@ function fmt(amount: number, currency = "USD") {
 }
 
 export default async function Image({ params }: { params: { dealId: string } }) {
+  // TEMP DIAGNOSTIC — production returns a bare 500 with no visible detail
+  // for this route specifically (confirmed: homepage opengraph-image.tsx,
+  // same Prisma + font-loading pattern, returns 200 fine). Rendering the
+  // actual error into the image itself lets it be read via a plain curl,
+  // without needing Vercel dashboard log access. Remove once root-caused.
+  try {
   const dealRow = await prisma.deal.findUnique({ where: { id: params.dealId }, include: dealInclude })
   const deal = dealRow ? apiDealToDeal(dealRowToApiDeal(dealRow)) : null
   const nunitoExtraBold = loadNunitoExtraBold()
@@ -194,4 +200,28 @@ export default async function Image({ params }: { params: { dealId: string } }) 
     ),
     { ...size, fonts }
   )
+  } catch (err) {
+    const message = err instanceof Error ? `${err.name}: ${err.message}\n${err.stack ?? ""}` : String(err)
+    return new ImageResponse(
+      (
+        <div
+          style={{
+            width: "100%",
+            height: "100%",
+            display: "flex",
+            flexDirection: "column",
+            padding: 40,
+            backgroundColor: "#DA1200",
+            color: "#ffffff",
+            fontSize: 18,
+            fontFamily: "monospace",
+            whiteSpace: "pre-wrap",
+          }}
+        >
+          {message.slice(0, 1800)}
+        </div>
+      ),
+      { ...size }
+    )
+  }
 }
