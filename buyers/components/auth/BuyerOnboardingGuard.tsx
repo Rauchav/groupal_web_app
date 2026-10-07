@@ -137,7 +137,7 @@ export function BuyerOnboardingGuard() {
           <div className="mx-auto h-12 w-12 rounded-2xl flex items-center justify-center" style={{ backgroundColor: "#eaad00" }}>
             <UserIcon className="h-6 w-6" style={{ color: "#002356" }} />
           </div>
-          <h1 className="font-heading font-bold text-[#002356] text-xl">Complete your profile</h1>
+          <h1 className="font-heading font-bold text-[#002356] text-xl">Fill out your profile info</h1>
           <p className="text-gray-500 text-sm">
             One quick step before you can start browsing and joining group buys.
           </p>

@@ -11,8 +11,10 @@ import { Building2, ArrowRight, ShieldAlert } from "lucide-react"
 import { useSellerStore, useSellerProfile } from "@/sellers/stores/seller-store"
 import { DEAL_CATEGORIES } from "@/lib/constants/categories"
 import { cn } from "@/lib/utils"
+import { toast } from "sonner"
 import { SuccessCelebration } from "@/components/success-celebration"
 import { GroupalLoader } from "@/components/GroupalLoader"
+import { ProfileImageUpload } from "@/components/profile-image-upload"
 import { EmailValidationGuard } from "@/buyers/components/auth/EmailValidationGuard"
 import { useApiGet } from "@/lib/api/use-fetch"
 import { CityAutocomplete } from "@/sellers/components/CityAutocomplete"
@@ -45,6 +47,7 @@ type OnboardingForm = z.infer<typeof onboardingSchema>
 const COMPANY_CATEGORIES = DEAL_CATEGORIES.filter((c) => c !== "All")
 
 function OnboardingStep({ userId, onOnboarded }: { userId: string; onOnboarded: () => void }) {
+  const { user } = useUser()
   const createProfile = useSellerStore((s) => s.createProfile)
   const [justOnboarded, setJustOnboarded] = useState(false)
 
@@ -61,6 +64,10 @@ function OnboardingStep({ userId, onOnboarded }: { userId: string; onOnboarded: 
   const city = watch("city")
 
   async function onSubmit(data: OnboardingForm) {
+    if (!user?.hasImage) {
+      toast.error("Please add a profile picture before continuing.")
+      return
+    }
     createProfile({
       userId,
       companyName: data.companyName,
@@ -122,6 +129,25 @@ function OnboardingStep({ userId, onOnboarded }: { userId: string; onOnboarded: 
       </div>
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+        {/* Photo — pre-filled from Google/Apple when available; the
+            seller just confirms it by continuing, or clicks to replace
+            it. Accounts with no OAuth photo (email+password sign-up)
+            must click to add one before Continue works. Same mandatory
+            mechanic as the buyer onboarding gate
+            (buyers/components/auth/BuyerOnboardingGuard.tsx). */}
+        <div className="flex items-center gap-4">
+          <ProfileImageUpload
+            rounded="rounded-2xl"
+            fallback={<Building2 className="h-7 w-7" style={{ color: "#002356" }} />}
+          />
+          <div>
+            <p className="font-semibold text-gray-700 text-sm">Profile picture</p>
+            <p className="text-xs text-gray-400 mt-0.5">
+              {user?.hasImage ? "Click to change it" : "Click to add one — required"}
+            </p>
+          </div>
+        </div>
+
         <div>
           <label className="block text-sm font-semibold text-gray-700 mb-1">Company name</label>
           <input
