@@ -51,6 +51,18 @@ model User {
   // block real (survives a different browser/device) instead of only
   // ever blocking within the one browser that happened to set it.
   hasBuyerActivity         Boolean @default(false)
+  // Collected by the mandatory "complete your profile" step every buyer
+  // (new or pre-existing) has to pass before reaching any buyer page — see
+  // buyers/components/auth/BuyerOnboardingGuard.tsx. Plain unverified
+  // string, same maturity level as SellerProfile.phone — no SMS
+  // verification infra exists yet for either side. Nullable (not
+  // required) at the DB level since real pre-existing buyer accounts
+  // already have no phone on file; the guard is what actually enforces
+  // "required" at the application level, for every account regardless of
+  // when it was created. firstName/lastName aren't duplicated here — the
+  // guard writes those straight to Clerk (the app's existing source of
+  // truth for buyer name everywhere else) via user.update().
+  phone                    String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

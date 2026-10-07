@@ -83,20 +83,31 @@ export function SuccessCelebration({
   description,
   ctaLabel,
   ctaHref,
+  onContinue,
 }: {
   title:       string
   description: ReactNode
   ctaLabel:    string
   // Navigated to (via router.push) after a brief closing animation, so the
-  // card reads as closing rather than an abrupt page swap.
-  ctaHref:     string
+  // card reads as closing rather than an abrupt page swap. Omit when
+  // passing onContinue instead (e.g. a gate that just needs to dismiss
+  // itself in place, not navigate anywhere — see
+  // buyers/components/auth/BuyerOnboardingGuard.tsx).
+  ctaHref?:    string
+  // Called instead of navigating, for a caller that wants to handle
+  // "done" itself (e.g. flipping local state to unmount this component)
+  // rather than changing routes.
+  onContinue?: () => void
 }) {
   const router = useRouter()
   const [closing, setClosing] = useState(false)
 
   function handleContinue() {
     setClosing(true)
-    setTimeout(() => router.push(ctaHref), 250)
+    setTimeout(() => {
+      if (onContinue) onContinue()
+      else if (ctaHref) router.push(ctaHref)
+    }, 250)
   }
 
   return (

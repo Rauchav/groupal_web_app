@@ -22,28 +22,49 @@ import {
 const profileSchema = z.object({
   firstName: z.string().min(1, "First name is required"),
   lastName:  z.string().min(1, "Last name is required"),
-  phone:     z.string().optional(),
+  phone:     z.string().min(6, "Phone number is required"),
 })
 type ProfileForm = z.infer<typeof profileSchema>
 
 function ProfileTab() {
   const { user } = useUser()
+  const { data, refetch } = useApiGet<{ phone: string | null }>(user ? "/api/users/me" : null)
+  const [saving, setSaving] = useState(false)
 
   const {
     register,
     handleSubmit,
+    reset,
     formState: { errors },
   } = useForm<ProfileForm>({
     resolver: zodResolver(profileSchema),
-    defaultValues: {
+    // Resets once the real phone comes back from the API — defaultValues
+    // only apply on mount, and that first render has no fetched data yet.
+    values: {
       firstName: user?.firstName ?? "",
       lastName:  user?.lastName  ?? "",
-      phone:     "",
+      phone:     data?.phone ?? "",
     },
   })
 
-  function onSubmit(_data: ProfileForm) {
-    toast.success("Profile updated!")
+  async function onSubmit(formData: ProfileForm) {
+    if (!user) return
+    setSaving(true)
+    try {
+      await user.update({ firstName: formData.firstName, lastName: formData.lastName })
+      const res = await fetch("/api/users/me", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone: formData.phone }),
+      })
+      if (!res.ok) throw new Error("Couldn't save your changes, please try again.")
+      refetch()
+      toast.success("Profile updated!")
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Couldn't save your changes, please try again.")
+    } finally {
+      setSaving(false)
+    }
   }
 
   return (
@@ -106,18 +127,24 @@ function ProfileTab() {
         <input
           {...register("phone")}
           placeholder="+591 70000000"
-          className="w-full h-11 px-3 rounded-xl border border-gray-200 bg-gray-50 text-sm outline-none focus:ring-2 focus:ring-[#002356]/20 focus:border-[#002356] transition-all"
+          className={cn(
+            "w-full h-11 px-3 rounded-xl border text-sm outline-none transition-all",
+            "focus:ring-2 focus:ring-[#002356]/20 focus:border-[#002356]",
+            errors.phone ? "border-red-400 bg-red-50" : "border-gray-200 bg-gray-50"
+          )}
         />
+        {errors.phone && <p className="text-xs text-red-500 mt-1">{errors.phone.message}</p>}
       </div>
 
       <button
         type="submit"
-        className="px-6 py-3 rounded-xl font-bold text-white text-sm cursor-pointer transition-colors"
+        disabled={saving}
+        className="px-6 py-3 rounded-xl font-bold text-white text-sm cursor-pointer transition-colors disabled:opacity-60 disabled:cursor-wait"
         style={{ backgroundColor: "#048943" }}
-        onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#059c4f")}
-        onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "#048943")}
+        onMouseEnter={(e) => !saving && (e.currentTarget.style.backgroundColor = "#059c4f")}
+        onMouseLeave={(e) => !saving && (e.currentTarget.style.backgroundColor = "#048943")}
       >
-        Save Changes
+        {saving ? "Saving..." : "Save Changes"}
       </button>
     </form>
   )

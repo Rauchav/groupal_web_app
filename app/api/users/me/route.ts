@@ -20,6 +20,7 @@ export async function GET() {
     lastViewedGroupBuysCount: user.lastViewedGroupBuysCount,
     lastViewedPurchasesCount: user.lastViewedPurchasesCount,
     hasBuyerActivity: user.hasBuyerActivity,
+    phone: user.phone,
   })
 }
 
@@ -28,6 +29,7 @@ const patchSchema = z.object({
   lastViewedGroupBuysCount: z.number().int().min(0).optional(),
   lastViewedPurchasesCount: z.number().int().min(0).optional(),
   hasBuyerActivity: z.boolean().optional(),
+  phone: z.string().min(1).optional(),
 })
 
 // PATCH /api/users/me — always operates on the caller's own row, resolved
@@ -53,6 +55,7 @@ export async function PATCH(req: Request) {
       lastViewedGroupBuysCount: data.lastViewedGroupBuysCount,
       lastViewedPurchasesCount: data.lastViewedPurchasesCount,
       hasBuyerActivity: data.hasBuyerActivity,
+      phone: data.phone,
     },
   })
 
@@ -62,5 +65,6 @@ export async function PATCH(req: Request) {
     lastViewedGroupBuysCount: updated.lastViewedGroupBuysCount,
     lastViewedPurchasesCount: updated.lastViewedPurchasesCount,
     hasBuyerActivity: updated.hasBuyerActivity,
+    phone: updated.phone,
   })
 }
