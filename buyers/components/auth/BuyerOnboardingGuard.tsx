@@ -10,6 +10,7 @@ import { User as UserIcon, ArrowRight } from "lucide-react"
 import { useIsSeller } from "@/sellers/stores/seller-store"
 import { useApiGet } from "@/lib/api/use-fetch"
 import { SuccessCelebration } from "@/components/success-celebration"
+import { ProfileImageUpload } from "@/components/profile-image-upload"
 import { cn } from "@/lib/utils"
 
 // Pulls the human-readable message out of a Clerk API error — these come
@@ -29,16 +30,24 @@ type OnboardingForm = z.infer<typeof onboardingSchema>
 // Mounted once in app/(buyers)/layout.tsx, so it runs on every buyer
 // route. Real bug this fixes: an account created by manually typing an
 // email + password at sign-up previously reached every buyer page with
-// no name, no phone, nothing — Google/Apple sign-in at least transfers a
-// name, but even that can be a blank/placeholder one, and never includes
-// a phone number either way. Sellers already go through a real
-// onboarding step (app/sellers/page.tsx's OnboardingStep) before they can
-// use their portal at all; buyers never had an equivalent, despite the
-// buyer/seller split being otherwise symmetric everywhere else in this
-// app. This is that equivalent — a full-screen, non-dismissible gate
-// (same visual language as SellerModeModal/SuccessCelebration) that
-// blocks every buyer page, old accounts included, until first name, last
-// name, and phone are all on file.
+// no name, no phone, no photo, nothing on file. Sellers already go
+// through a real onboarding step (app/sellers/page.tsx's OnboardingStep)
+// before they can use their portal at all; buyers never had an
+// equivalent, despite the buyer/seller split being otherwise symmetric
+// everywhere else in this app. This is that equivalent.
+//
+// Gates on User.buyerProfileCompletedAt — a one-time "confirmed" flag,
+// not a live re-derivation of "do firstName/lastName/phone/photo
+// currently look filled in". That distinction is deliberate: a Google/
+// Apple sign-in often already has a name and photo transferred from the
+// OAuth provider before the buyer has ever actually looked at or
+// confirmed them. A field-completeness check alone would let that
+// account skip this gate entirely — exactly the "still ends up an
+// unconfirmed nobody" gap the user flagged, since Google never provides
+// a phone number either way. So every buyer sees this once, Google/Apple
+// accounts included; theirs just arrives pre-filled (name + photo) to
+// confirm or edit rather than type from scratch, with only phone
+// actually new to them.
 //
 // Deliberately excludes a signed-in seller (useIsSeller) — a seller
 // browsing the buyer portal view-only is already handled by
@@ -47,7 +56,7 @@ type OnboardingForm = z.infer<typeof onboardingSchema>
 export function BuyerOnboardingGuard() {
   const { isSignedIn, isLoaded, user } = useUser()
   const isSeller = useIsSeller()
-  const { data, loading, refetch } = useApiGet<{ phone: string | null }>(
+  const { data, loading, refetch } = useApiGet<{ phone: string | null; buyerProfileCompletedAt: string | null }>(
     isSignedIn && !isSeller ? "/api/users/me" : null
   )
   // Set the instant onboarding finishes, so the check below stops treating
@@ -63,20 +72,34 @@ export function BuyerOnboardingGuard() {
     formState: { errors },
   } = useForm<OnboardingForm>({
     resolver: zodResolver(onboardingSchema),
-    defaultValues: { firstName: user?.firstName ?? "", lastName: user?.lastName ?? "", phone: "" },
+    defaultValues: {
+      firstName: user?.firstName ?? "",
+      lastName:  user?.lastName  ?? "",
+      // Clerk's phoneNumbers array is only ever populated if the app
+      // requests that scope AND the OAuth provider/account actually has
+      // one — empty for the overwhelming majority of Google sign-ins, but
+      // worth reading in case it's there, same reasoning as prefilling
+      // name from Clerk instead of asking a Google-signed-in buyer to
+      // retype it.
+      phone:     user?.primaryPhoneNumber?.phoneNumber ?? "",
+    },
   })
 
   async function onSubmit(formData: OnboardingForm) {
     if (!user) return
+    if (!user.hasImage) {
+      toast.error("Please add a profile picture before continuing.")
+      return
+    }
     setSubmitting(true)
     try {
       await user.update({ firstName: formData.firstName, lastName: formData.lastName })
       const res = await fetch("/api/users/me", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone: formData.phone }),
+        body: JSON.stringify({ phone: formData.phone, completeBuyerProfile: true }),
       })
-      if (!res.ok) throw new Error("Couldn't save your phone number, please try again.")
+      if (!res.ok) throw new Error("Couldn't save your profile, please try again.")
       refetch()
       setJustCompleted(true)
     } catch (err) {
@@ -89,10 +112,10 @@ export function BuyerOnboardingGuard() {
   // Not loaded yet, signed out, or a seller (own guard handles that case)
   // — nothing to show. Also nothing to show while still waiting on the
   // first /api/users/me fetch, to avoid flashing the form for an account
-  // that actually already has a phone on file.
+  // that's already confirmed its profile.
   if (!isLoaded || !isSignedIn || isSeller || loading || !data) return null
 
-  const needsOnboarding = !justCompleted && (!user?.firstName || !user?.lastName || !data.phone)
+  const needsOnboarding = !justCompleted && !data.buyerProfileCompletedAt
 
   if (justCompleted) {
     return (
@@ -108,17 +131,39 @@ export function BuyerOnboardingGuard() {
   if (!needsOnboarding) return null
 
   return (
-    <main className="fixed inset-0 z-50 flex items-center justify-center bg-[#002356]/60 backdrop-blur-sm px-4">
-      <div className="w-full max-w-md bg-white rounded-2xl shadow-2xl p-6 sm:p-8 space-y-6">
+    <main className="fixed inset-0 z-50 flex items-center justify-center bg-[#002356]/60 backdrop-blur-sm px-4 py-8 overflow-y-auto">
+      <div className="w-full max-w-md bg-white rounded-2xl shadow-2xl p-6 sm:p-8 space-y-6 my-auto">
         <div className="text-center space-y-1.5">
           <div className="mx-auto h-12 w-12 rounded-2xl flex items-center justify-center" style={{ backgroundColor: "#eaad00" }}>
             <UserIcon className="h-6 w-6" style={{ color: "#002356" }} />
           </div>
           <h1 className="font-heading font-bold text-[#002356] text-xl">Complete your profile</h1>
-          <p className="text-gray-500 text-sm">One quick step before you can start browsing and joining group buys.</p>
+          <p className="text-gray-500 text-sm">
+            One quick step before you can start browsing and joining group buys.
+          </p>
         </div>
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+          {/* Photo — pre-filled from Google/Apple when available; the
+              buyer just confirms it by continuing, or clicks to replace
+              it. Accounts with no OAuth photo (email+password sign-up)
+              must click to add one before Continue works. */}
+          <div className="flex items-center gap-4">
+            <ProfileImageUpload
+              fallback={
+                <span className="text-[#002356] font-extrabold text-xl">
+                  {user?.firstName?.[0] ?? "U"}
+                </span>
+              }
+            />
+            <div>
+              <p className="font-semibold text-gray-700 text-sm">Profile picture</p>
+              <p className="text-xs text-gray-400 mt-0.5">
+                {user?.hasImage ? "Click to change it" : "Click to add one — required"}
+              </p>
+            </div>
+          </div>
+
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-1">First name</label>

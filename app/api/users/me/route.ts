@@ -21,6 +21,7 @@ export async function GET() {
     lastViewedPurchasesCount: user.lastViewedPurchasesCount,
     hasBuyerActivity: user.hasBuyerActivity,
     phone: user.phone,
+    buyerProfileCompletedAt: user.buyerProfileCompletedAt,
   })
 }
 
@@ -30,6 +31,9 @@ const patchSchema = z.object({
   lastViewedPurchasesCount: z.number().int().min(0).optional(),
   hasBuyerActivity: z.boolean().optional(),
   phone: z.string().min(1).optional(),
+  // A bare trigger, not a client-supplied timestamp — the server always
+  // stamps its own `new Date()` below, never trusts one from the request.
+  completeBuyerProfile: z.boolean().optional(),
 })
 
 // PATCH /api/users/me — always operates on the caller's own row, resolved
@@ -56,6 +60,7 @@ export async function PATCH(req: Request) {
       lastViewedPurchasesCount: data.lastViewedPurchasesCount,
       hasBuyerActivity: data.hasBuyerActivity,
       phone: data.phone,
+      buyerProfileCompletedAt: data.completeBuyerProfile ? new Date() : undefined,
     },
   })
 
@@ -66,5 +71,6 @@ export async function PATCH(req: Request) {
     lastViewedPurchasesCount: updated.lastViewedPurchasesCount,
     hasBuyerActivity: updated.hasBuyerActivity,
     phone: updated.phone,
+    buyerProfileCompletedAt: updated.buyerProfileCompletedAt,
   })
 }

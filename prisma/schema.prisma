@@ -63,6 +63,17 @@ model User {
   // guard writes those straight to Clerk (the app's existing source of
   // truth for buyer name everywhere else) via user.update().
   phone                    String?
+  // Set the moment a buyer actually submits the "complete your profile"
+  // gate — NOT derived from whether name/phone/photo currently look
+  // complete. This distinction matters for a Google/Apple sign-in: Clerk
+  // may already have a name and photo transferred from the OAuth
+  // provider before the buyer has ever actually looked at or confirmed
+  // them, so a purely field-completeness check would let that account
+  // skip the gate entirely — exactly the "still ends up a nobody,
+  // unconfirmed" case the user flagged. A timestamp (not a plain
+  // boolean) doubles as a free audit trail of when each account actually
+  // completed this step.
+  buyerProfileCompletedAt  DateTime?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
