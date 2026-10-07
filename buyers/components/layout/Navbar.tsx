@@ -159,7 +159,7 @@ export function Navbar() {
                   className="flex items-center gap-2 rounded-xl px-2 py-1.5 text-white/80 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
                 >
                   <div className="h-7 w-7 rounded-full bg-groupal-gold flex items-center justify-center text-groupal-navy font-bold text-xs flex-shrink-0 overflow-hidden">
-                    {user?.imageUrl
+                    {user?.hasImage
                       ? <Image src={user.imageUrl} alt="avatar" width={28} height={28} className="object-cover" />
                       : (user?.firstName?.[0] ?? "U")}
                   </div>
@@ -308,7 +308,7 @@ export function Navbar() {
               <div className="pt-1 border-t border-white/10">
                 <div className="flex items-center gap-2 px-1 py-3">
                   <div className="h-8 w-8 rounded-full bg-groupal-gold flex items-center justify-center text-groupal-navy font-bold text-xs flex-shrink-0 overflow-hidden">
-                    {user?.imageUrl
+                    {user?.hasImage
                       ? <Image src={user.imageUrl} alt="avatar" width={32} height={32} className="object-cover" />
                       : (user?.firstName?.[0] ?? "U")}
                   </div>

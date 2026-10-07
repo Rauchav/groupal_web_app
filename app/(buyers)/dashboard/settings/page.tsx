@@ -1,7 +1,6 @@
 "use client"
 
 import { useState } from "react"
-import Image from "next/image"
 import { useUser } from "@clerk/nextjs"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
@@ -9,6 +8,7 @@ import { z } from "zod"
 import { toast } from "sonner"
 import { CreditCard, User, Bell, Lock } from "lucide-react"
 import { Switch } from "@/components/ui/switch"
+import { ProfileImageUpload } from "@/components/profile-image-upload"
 import { DashboardSidebar, DashboardMobileTabs } from "@/buyers/components/dashboard/DashboardNav"
 import { useApiGet } from "@/lib/api/use-fetch"
 import { cn } from "@/lib/utils"
@@ -50,18 +50,16 @@ function ProfileTab() {
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
       {/* Avatar */}
       <div className="flex items-center gap-4">
-        <div className="h-16 w-16 rounded-full overflow-hidden bg-[#eaad00] flex items-center justify-center flex-shrink-0">
-          {user?.imageUrl ? (
-            <Image src={user.imageUrl} alt="Profile" width={64} height={64} className="object-cover" />
-          ) : (
+        <ProfileImageUpload
+          fallback={
             <span className="text-[#002356] font-extrabold text-xl">
               {user?.firstName?.[0] ?? "U"}
             </span>
-          )}
-        </div>
+          }
+        />
         <div>
           <p className="font-semibold text-gray-700 text-sm">Profile Picture</p>
-          <p className="text-xs text-gray-400 mt-0.5">Managed by your sign-in provider</p>
+          <p className="text-xs text-gray-400 mt-0.5">Click to upload a new photo</p>
         </div>
       </div>
 

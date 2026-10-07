@@ -1,17 +1,17 @@
 "use client"
 
-import { useRef, useState } from "react"
-import Image from "next/image"
+import { useState } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
 import { toast } from "sonner"
-import { Building2, Camera, Loader2, Mail, ShieldCheck, X } from "lucide-react"
+import { Building2, Mail, ShieldCheck, X } from "lucide-react"
 import { useUser } from "@clerk/nextjs"
 import { useSellerStore, useSellerProfile } from "@/sellers/stores/seller-store"
 import { DEAL_CATEGORIES } from "@/lib/constants/categories"
 import { cn } from "@/lib/utils"
 import { CityAutocomplete } from "@/sellers/components/CityAutocomplete"
+import { ProfileImageUpload } from "@/components/profile-image-upload"
 
 // Pulls the human-readable message out of a Clerk API error — these come
 // back as { errors: [{ message, longMessage, code }] }, not a plain Error.
@@ -227,88 +227,6 @@ function EmailSection() {
   )
 }
 
-const MAX_LOGO_BYTES = 5 * 1024 * 1024 // 5MB — Clerk's own setProfileImage limit
-
-// Clerk hosts and serves this image itself (the exact same mechanism
-// buyers already get for free from Google/Apple sign-in — see
-// buyers/components/layout/Navbar.tsx and app/(buyers)/dashboard/
-// settings/page.tsx's own user.imageUrl reads) — no S3/Supabase storage
-// needed. Sellers specifically need this control (unlike buyers, whose
-// avatar is "Managed by your sign-in provider" by design) because the
-// seller gate page allows email+password accounts with no OAuth avatar
-// to inherit in the first place.
-function SellerLogoUpload() {
-  const { user } = useUser()
-  const inputRef = useRef<HTMLInputElement>(null)
-  const [uploading, setUploading] = useState(false)
-
-  async function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0]
-    e.target.value = "" // lets picking the same file again re-fire onChange
-    if (!file || !user) return
-
-    if (!file.type.startsWith("image/")) {
-      toast.error("Please choose an image file.")
-      return
-    }
-    if (file.size > MAX_LOGO_BYTES) {
-      toast.error("That image is too large, please choose one under 5MB.")
-      return
-    }
-
-    setUploading(true)
-    try {
-      await user.setProfileImage({ file })
-      toast.success("Profile picture updated!")
-    } catch (err) {
-      toast.error(clerkErrorMessage(err, "Couldn't update your profile picture, please try again."))
-    } finally {
-      setUploading(false)
-    }
-  }
-
-  return (
-    <button
-      type="button"
-      onClick={() => inputRef.current?.click()}
-      disabled={uploading}
-      className="group relative h-16 w-16 rounded-2xl flex items-center justify-center flex-shrink-0 overflow-hidden cursor-pointer disabled:cursor-wait"
-      style={{ backgroundColor: "#eaad00" }}
-      aria-label="Change profile picture"
-    >
-      {user?.hasImage ? (
-        <Image src={user.imageUrl} alt="Profile" width={64} height={64} className="h-full w-full object-cover" />
-      ) : (
-        <Building2 className="h-7 w-7" style={{ color: "#002356" }} />
-      )}
-
-      {/* Hover/uploading overlay — always mounted (not conditional on
-          group-hover) so the spinner shows without needing a hover state
-          mid-upload on a touch device. */}
-      <div
-        className={cn(
-          "absolute inset-0 flex items-center justify-center bg-black/50 transition-opacity",
-          uploading ? "opacity-100" : "opacity-0 group-hover:opacity-100"
-        )}
-      >
-        {uploading ? (
-          <Loader2 className="h-5 w-5 text-white animate-spin" />
-        ) : (
-          <Camera className="h-5 w-5 text-white" />
-        )}
-      </div>
-
-      <input
-        ref={inputRef}
-        type="file"
-        accept="image/*"
-        onChange={handleFileSelect}
-        className="hidden"
-      />
-    </button>
-  )
-}
-
 const COMPANY_CATEGORIES = DEAL_CATEGORIES.filter((c) => c !== "All")
 
 const companySchema = z.object({
@@ -361,7 +279,10 @@ export default function SellerSettingsPage() {
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
           <div className="flex items-center gap-4">
-            <SellerLogoUpload />
+            <ProfileImageUpload
+              rounded="rounded-2xl"
+              fallback={<Building2 className="h-7 w-7" style={{ color: "#002356" }} />}
+            />
             <div>
               <p className="font-semibold text-gray-700 text-sm">{profile?.companyName}</p>
               <p className="text-xs text-gray-400 mt-0.5">
